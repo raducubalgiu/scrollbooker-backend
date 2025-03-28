@@ -1,0 +1,32 @@
+Adexpert:
+44.378997, 26.134576
+
+ITP Sector 5:
+44.411980, 26.088486
+
+Euromaster Autoserv Lujerului
+44.429570, 26.032533
+
+ITP&Service AUTO AG TEST
+44.446843, 25.998233
+
+Ritter ITP (ITP)
+44.424036, 26.008605
+
+ITP Star (ITP)
+44.386357, 26.136355
+
+Sorriso (BarberShop)
+44.438891, 26.136138
+
+Gentleman Barber Shop By Adry (Barbershop)
+44.446412, 25.999440
+
+Kristal Beauty Studio
+44.360537, 26.137028
+
+Beauty by Maison Noir
+44.448920, 26.095040
+
+
+

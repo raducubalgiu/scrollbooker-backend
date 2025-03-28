@@ -1,0 +1,19 @@
+2025-03-15 08:01:52.636 | ERROR    | app.service.booking.appointment:create_new_appointment:86 - Business/Employee with id: 69 already has an appointment starting at: 2025-03-19 08:00:00
+2025-03-15 08:01:52.637 | WARNING  | app.core.exceptions:http_exception_handler:18 - HTTP Exception: 403 - This slot is already booked, Path: http://localhost:8000/api/v1/appointments/
+2025-03-15 08:03:26.037 | ERROR    | app.service.booking.appointment:create_new_appointment:87 - Business/Employee with id: 69 already has an appointment starting at: 2025-03-19 08:00:00
+2025-03-15 08:03:26.038 | WARNING  | app.core.exceptions:http_exception_handler:18 - HTTP Exception: 403 - This slot is already booked, Path: http://localhost:8000/api/v1/appointments/
+2025-03-15 08:04:15.418 | ERROR    | app.service.booking.appointment:create_new_appointment:87 - Business/Employee with id: 69 already has an appointment starting at: 2025-03-19 08:00:00
+2025-03-15 08:04:15.419 | WARNING  | app.core.exceptions:http_exception_handler:18 - HTTP Exception: 403 - This slot is already booked, Path: http://localhost:8000/api/v1/appointments/
+2025-03-15 08:06:07.516 | ERROR    | app.service.booking.appointment:create_new_appointment:88 - Business/Employee with id: 69 already has an appointment starting at: 2025-03-19 08:00:00
+2025-03-15 08:06:07.518 | WARNING  | app.core.exceptions:http_exception_handler:18 - HTTP Exception: 403 - This slot is already booked, Path: http://localhost:8000/api/v1/appointments/
+2025-03-15 08:09:49.110 | ERROR    | app.core.exceptions:global_exception_handler:9 - Uncaught Error: AttributeError("'NoneType' object has no attribute 'id'"), Path: http://localhost:8000/api/v1/appointments/
+2025-03-15 08:10:47.699 | ERROR    | app.core.exceptions:global_exception_handler:9 - Uncaught Error: ResponseValidationError(), Path: http://localhost:8000/api/v1/appointments/
+2025-03-15 08:12:10.600 | ERROR    | app.core.security:decode_token:36 - Token could not be decoded. Error: Signature has expired.
+2025-03-15 08:12:19.348 | ERROR    | app.core.exceptions:global_exception_handler:9 - Uncaught Error: ResponseValidationError(), Path: http://localhost:8000/api/v1/appointments/
+2025-03-15 08:15:06.070 | ERROR    | app.core.exceptions:global_exception_handler:9 - Uncaught Error: ResponseValidationError(), Path: http://localhost:8000/api/v1/appointments/
+2025-03-15 08:15:28.779 | ERROR    | app.service.booking.appointment:create_new_appointment:96 - Business/Employee with id: 69 already has an appointment starting at: 2025-03-19 08:00:00
+2025-03-15 08:15:28.780 | WARNING  | app.core.exceptions:http_exception_handler:18 - HTTP Exception: 403 - This slot is already booked, Path: http://localhost:8000/api/v1/appointments/
+2025-03-15 19:56:30.619 | ERROR    | app.core.exceptions:global_exception_handler:9 - Uncaught Error: DBAPIError("(sqlalchemy.dialects.postgresql.asyncpg.Error) <class 'asyncpg.exceptions.DataError'>: invalid input for query argument $1: ['[', ']'] (invalid array element at index 0: 'str' object cannot be interpreted as an integer)"), Path: http://localhost:8000/insert-user-settings
+2025-03-15 19:57:28.104 | ERROR    | app.core.exceptions:global_exception_handler:9 - Uncaught Error: DBAPIError("(sqlalchemy.dialects.postgresql.asyncpg.Error) <class 'asyncpg.exceptions.DataError'>: invalid input for query argument $1: ['[', ']'] (invalid array element at index 0: 'str' object cannot be interpreted as an integer)"), Path: http://localhost:8000/insert-user-settings
+2025-03-15 21:15:09.447 | ERROR    | app.core.exceptions:global_exception_handler:9 - Uncaught Error: TypeError('list indices must be integers or slices, not str'), Path: http://localhost:8000/insert-user-settings
+2025-03-15 21:36:20.011 | ERROR    | app.core.exceptions:global_exception_handler:9 - Uncaught Error: TypeError("'NoneType' object is not subscriptable"), Path: http://localhost:8000/insert-user-settings

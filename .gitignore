@@ -1,0 +1,8 @@
+/.env
+/.idea
+/alembic
+/alembic.ini
+/docker-compose.yml
+/frontend
+/venv
+/__pycache__

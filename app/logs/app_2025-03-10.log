@@ -1,0 +1,6 @@
+2025-03-10 21:01:05.226 | WARNING  | app.core.exceptions:http_exception_handler:16 - HTTP Exception: Method Not Allowed, Path: http://localhost:8000/api/v1/businesses/
+2025-03-10 21:01:16.156 | WARNING  | app.core.exceptions:http_exception_handler:16 - HTTP Exception: Method Not Allowed, Path: http://localhost:8000/api/v1/businesses/
+2025-03-10 21:11:09.760 | ERROR    | app.core.exceptions:global_exception_handler:7 - Uncaught Error: 'tuple' object has no attribute 'error', Path: http://localhost:8000/api/v1/services/?page=1&limit=10
+2025-03-10 21:12:42.730 | ERROR    | app.core.exceptions:global_exception_handler:7 - Uncaught Error: 'tuple' object has no attribute 'error', Path: http://localhost:8000/api/v1/services/?page=1&limit=10
+2025-03-10 21:17:08.901 | ERROR    | app.service.booking.service:get_all_services:9 - Some fake error here!
+2025-03-10 21:20:25.714 | ERROR    | app.service.booking.service:get_all_services:9 - Some fake error here!

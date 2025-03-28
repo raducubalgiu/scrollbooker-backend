@@ -1,0 +1,30 @@
+from fastapi import APIRouter
+from starlette import status
+from starlette.requests import Request
+
+from app.core.dependencies import DBSession
+from app.schema.booking.appointment import AppointmentResponse, AppointmentCreate
+from app.service.booking.appointment import create_new_appointment, change_appointment_status, \
+    get_daily_available_slots, get_calendar_available_slots, create_appointment_scheduler
+
+router = APIRouter(prefix="/appointments", tags=["Appointments"])
+
+@router.post("/appointment-scheduler")
+async def create_appointment_sched(db: DBSession):
+    return await create_appointment_scheduler(db)
+
+@router.post("/", response_model=AppointmentResponse)
+async def create_appointment(db: DBSession, appointment: AppointmentCreate, request: Request):
+    return await create_new_appointment(db, appointment, request)
+
+@router.put("/{appointment_id}/change-status", response_model=AppointmentResponse)
+async def change_status(db: DBSession, appointment_id: int, status: str, request: Request):
+    return await change_appointment_status(db, appointment_id, status, request)
+
+@router.get("/timeslots", status_code=status.HTTP_200_OK)
+async def get_daily_timeslots(db: DBSession, day: str, user_id: int, slot_duration: int):
+    return await get_daily_available_slots(db, day, user_id, slot_duration)
+
+@router.get("/calendar-timeslots", status_code=status.HTTP_200_OK)
+async def get_available_calendar_timeslots(db: DBSession, start_date: str, end_date: str, user_id: int):
+    return await get_calendar_available_slots(db, start_date, end_date, user_id)
