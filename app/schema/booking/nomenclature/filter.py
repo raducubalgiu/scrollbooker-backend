@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel, Field
 
@@ -20,3 +20,10 @@ class FilterResponse(FilterBase):
 class FilterUpdate(BaseModel):
     name: Optional[str] = None
     active: Optional[bool] = None
+
+class SubFilterLoadOnly(BaseModel):
+    id: int
+    name: str
+
+class FilterWithSubFiltersResponse(FilterResponse):
+    sub_filters: Optional[List[SubFilterLoadOnly]] = []

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from pydantic import Field, BaseModel
 from datetime import datetime
 
@@ -18,3 +18,10 @@ class ServiceDomainResponse(ServiceDomainBase):
 
 class ServiceDomainUpdate(BaseModel):
     name: Optional[str] = None
+
+class ServiceLoadOnly(BaseModel):
+    id: int
+    name: str
+
+class ServiceDomainWithServices(ServiceDomainResponse):
+    services: Optional[List[ServiceLoadOnly]] = []

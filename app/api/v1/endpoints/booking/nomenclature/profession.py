@@ -1,13 +1,14 @@
 from fastapi import APIRouter
 from starlette import status
 from app.core.dependencies import DBSession, SuperAdminSession
-from app.schema.booking.nomenclature.profession import ProfessionCreate, ProfessionResponse, ProfessionUpdate
+from app.schema.booking.nomenclature.profession import ProfessionCreate, ProfessionResponse, ProfessionUpdate, \
+    ProfessionWithBusinessTypesResponse
 from app.service.booking.nomenclature.profession import create_new_profession, \
     update_profession_by_id, delete_profession_by_id, get_all_professions_with_business_types
 
 router = APIRouter(prefix="/professions", tags=["Professions"])
 
-@router.get("/")
+@router.get("/with-business-types", response_model=list[ProfessionWithBusinessTypesResponse])
 async def get_professions_with_business_types(db: DBSession, page: int, limit: int):
     return await get_all_professions_with_business_types(db, page, limit)
 

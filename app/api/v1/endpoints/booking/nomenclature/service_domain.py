@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from starlette import status
 from app.core.dependencies import DBSession, SuperAdminSession
 from app.schema.booking.nomenclature.service_domain import ServiceDomainCreate, \
-    ServiceDomainUpdate, ServiceDomainResponse
+    ServiceDomainUpdate, ServiceDomainResponse, ServiceDomainWithServices
 from app.service.booking.nomenclature.service_domain import get_all_service_domains, create_new_service_domain, \
     update_service_domain_by_id, delete_service_domain_by_id, get_all_service_domains_with_services
 
@@ -12,7 +12,7 @@ router = APIRouter(prefix="/service-domains", tags=["Service Domains"])
 async def get_service_domains(db: DBSession):
     return await get_all_service_domains(db)
 
-@router.get("/services")
+@router.get("/with-services", response_model=list[ServiceDomainWithServices])
 async def get_service_domains_with_services(db: DBSession):
     return await get_all_service_domains_with_services(db)
 

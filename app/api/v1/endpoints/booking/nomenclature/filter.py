@@ -1,11 +1,12 @@
 from fastapi import APIRouter
 from app.core.dependencies import DBSession, SuperAdminSession
-from app.schema.booking.nomenclature.filter import FilterResponse, FilterCreate, FilterUpdate
+from app.schema.booking.nomenclature.filter import FilterResponse, FilterCreate, FilterUpdate, \
+    FilterWithSubFiltersResponse
 from app.service.booking.nomenclature.filter import create_new_filter, get_filters_with_sub_filters, update_filter_by_id
 
 router = APIRouter(prefix="/filters", tags=["Filters"])
 
-@router.get('/')
+@router.get('/with-sub-filters', response_model=list[FilterWithSubFiltersResponse])
 async def get_filters_sub_filters(db: DBSession):
     return await get_filters_with_sub_filters(db)
 

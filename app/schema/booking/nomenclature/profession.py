@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel, Field
 
@@ -20,3 +20,10 @@ class ProfessionResponse(ProfessionBase):
 
 class ProfessionUpdate(ProfessionBase):
     active: Optional[bool] = None
+
+class BusinessTypeLoadOnly(BaseModel):
+    id: int
+    name: str
+
+class ProfessionWithBusinessTypesResponse(ProfessionResponse):
+    business_types: Optional[List[BusinessTypeLoadOnly]] = []
