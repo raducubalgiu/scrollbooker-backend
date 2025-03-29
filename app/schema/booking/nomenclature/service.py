@@ -6,6 +6,9 @@ class ServiceBase(BaseModel):
     name: str = Field(min_length=3, max_length=50)
     keywords: List[str] = []
 
+    class Config:
+        from_attributes = True
+
 class ServiceCreate(ServiceBase):
     pass
 

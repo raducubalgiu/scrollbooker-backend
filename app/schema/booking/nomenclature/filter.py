@@ -15,7 +15,7 @@ class FilterResponse(FilterBase):
     updated_at: Optional[datetime] = None
 
     class Config:
-        from_attributes: True
+        from_attributes = True
 
 class FilterUpdate(BaseModel):
     name: Optional[str] = None
@@ -24,6 +24,9 @@ class FilterUpdate(BaseModel):
 class SubFilterLoadOnly(BaseModel):
     id: int
     name: str
+
+    class Config:
+        from_attributes = True
 
 class FilterWithSubFiltersResponse(FilterResponse):
     sub_filters: Optional[List[SubFilterLoadOnly]] = []

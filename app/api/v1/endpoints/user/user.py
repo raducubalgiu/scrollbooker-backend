@@ -15,7 +15,7 @@ async def get_user_dashboard_summary(db: DBSession, user_id: int, start_date: st
     return await get_user_dashboard_summary_by_id(db, user_id, start_date, end_date)
 
 # Get User Schedules
-@router.get("/{user_id}/schedules", response_model=list[ScheduleResponse])
+@router.get("/{user_id}/schedules")
 async def get_user_schedules(db: DBSession, user_id: int):
     return await get_schedules_by_user_id(db, user_id)
 

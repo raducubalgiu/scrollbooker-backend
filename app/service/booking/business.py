@@ -16,10 +16,10 @@ from geoalchemy2.functions import ST_DistanceSphere # type: ignore
 from timezonefinder import TimezoneFinder # type: ignore
 
 from app.models.booking.product_sub_filters import product_sub_filters
-from app.schema.booking.business import BusinessCreate
+from app.schema.booking.business import BusinessCreate, BusinessEmployeesResponse
 from datetime import timedelta,datetime
 
-async def get_business_employees_by_id(db: DBSession, business_id: int):
+async def get_business_employees_by_id(db: DBSession, business_id: int, page: int, limit: int):
    stmt = ((select(User, UserCounters, EmploymentRequest.created_at.label("hire_date"))
            .join(EmploymentRequest, and_(
                   EmploymentRequest.business_id == business_id,
@@ -29,19 +29,26 @@ async def get_business_employees_by_id(db: DBSession, business_id: int):
            .where(User.business_employee_id == business_id) #type: ignore
         ).order_by("hire_date"))
 
-   stmt_employees = await db.execute(stmt)
+   count_employees = await db.execute(stmt)
+   count = len(count_employees.all())
+
+   stmt_employees = await db.execute(stmt.offset((page - 1) * limit).limit(limit))
    employees = stmt_employees.all()
 
-   return [
-       {
-           "id": employee.id,
-           "username": employee.username,
-           "followers_count": counters.followers_count,
-           "ratings_count": counters.ratings_count,
-           "ratings_average": counters.ratings_average,
-           "hire_date": datetime.strftime(hire_date, '%Y-%d-%m')
-       } for employee, counters, hire_date in employees
-   ]
+   return {
+       "count": count,
+       "results": [
+           {
+               "id": employee.id,
+               "username": employee.username,
+               "job": employee.profession,
+               "followers_count": counters.followers_count,
+               "ratings_count": counters.ratings_count,
+               "ratings_average": counters.ratings_average,
+               "hire_date": datetime.strftime(hire_date, '%Y-%d-%m')
+           } for employee, counters, hire_date in employees
+       ]
+   }
 
 async def get_businesses_by_distance(
         db: DBSession,
@@ -101,7 +108,7 @@ async def get_businesses_by_distance(
                 Schedule.end_time >= daily_end.timetz(),
                 Service.id == service_id,
                 SubFilter.id.in_(sub_filters),
-                User.instant_booking == instant_booking,
+                *( [User.instant_booking == True] if instant_booking else []),
                 availability_condition
             )
         )

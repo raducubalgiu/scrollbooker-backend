@@ -6,12 +6,31 @@ from starlette.requests import Request
 
 from app.core.crud_helpers import db_get_all
 from app.core.dependencies import DBSession
-from app.models import Schedule, Review, User, Follow, Appointment, Product
-from sqlalchemy import select, func, case, and_
-
+from app.models import Schedule, Review, User, Follow, Appointment, Product, Business
+from sqlalchemy import select, func, case, and_, or_
 
 async def get_schedules_by_user_id(db: DBSession, user_id: int):
-    return await db_get_all(db, model=Schedule, filters={Schedule.user_id: user_id})
+    business_query = await db.execute(select(Business, User.id).where(
+        and_(
+            User.id == user_id,
+            or_(
+                Business.owner_id == user_id,
+                Business.id == User.business_employee_id
+            )
+        )
+    ))
+    business = business_query.scalar_one_or_none()
+
+    if not business:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail='Business not found')
+
+    schedules = await db_get_all(db, model=Schedule, filters={Schedule.user_id: user_id})
+
+    return {
+        "schedules": schedules,
+        "timezone": business.timezone
+    }
 
 async def get_user_dashboard_summary_by_id(db: DBSession, user_id: int, start_date: str, end_date:str):
     try:

@@ -2,9 +2,11 @@ from fastapi import APIRouter, Query
 from starlette import status
 from starlette.requests import Request
 from typing import List
+
+from app.core.crud_helpers import PaginatedResponse
 from app.core.dependencies import DBSession
 from app.core.dependencies import BusinessSession
-from app.schema.booking.business import BusinessCreate
+from app.schema.booking.business import BusinessCreate, BusinessEmployeesResponse
 from app.service.booking.business import attach_service_to_business, get_businesses_by_distance, create_new_business, \
     delete_business_by_id, detach_service_from_business, get_business_employees_by_id
 
@@ -31,8 +33,8 @@ async def create_business(db: DBSession, business_data: BusinessCreate):
     return await create_new_business(db, business_data)
 
 @router.get("/{business_id}/employees")
-async def get_business_employees(db: DBSession, business_id: int):
-    return await get_business_employees_by_id(db, business_id)
+async def get_business_employees(db: DBSession, business_id: int, page: int, limit: int):
+    return await get_business_employees_by_id(db, business_id, page, limit)
 
 @router.delete("/{business_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[BusinessSession])
 async def delete_business(db: DBSession, business_id: int, request: Request):

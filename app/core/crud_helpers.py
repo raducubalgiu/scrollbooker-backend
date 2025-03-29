@@ -1,4 +1,4 @@
-from typing import TypeVar, Optional, Dict, Union
+from typing import TypeVar, Optional, Dict, Union, Generic
 from fastapi import HTTPException
 from pydantic import BaseModel
 from starlette import status
@@ -10,6 +10,52 @@ from app.core.logger import logger
 
 ModelType = TypeVar("ModelType", bound=Base)
 SchemaIn = TypeVar("SchemaIn", bound=BaseModel)
+SchemaOut = TypeVar("SchemaOut", bound=BaseModel)
+
+class PaginatedResponse(BaseModel, Generic[SchemaOut]):
+    count: int
+    results: List[SchemaOut]
+
+async def db_get_all_paginate(
+        db: DBSession,
+        model: Type[SchemaIn],
+        schema: Type[SchemaOut],
+        page: int,
+        limit: int,
+        filters: Optional[Dict[Any, Any]] = None,
+        order_by: Optional[Union[str, List[str]]] = None,
+        descending: Optional[bool] = False,
+        unique: Optional[bool] = None,
+        joins: Optional[List] = None
+) -> PaginatedResponse[SchemaOut]:
+    query_all = select(model)
+
+    if joins:
+        query_all = query_all.options(*joins)
+
+    if filters:
+        for field, value in filters.items():
+            column = getattr(model, field) if isinstance(field, str) else field
+            query_all = query_all.where(column == value)  # type: ignore
+
+    if order_by:
+        if isinstance(order_by, str):
+            order_by = [order_by]
+        for column_name in order_by:
+            column = getattr(model, column_name, None)
+            if column is not None:
+                query_all = query_all.order_by(desc(column) if descending else asc(column))
+            else:
+                raise ValueError(f"Column '{column_name}' does not exist in {model.__name__}")
+
+    total_query = await db.execute(select(query_all.subquery()))
+    total = len(total_query.scalars().all())
+
+    result = await db.execute(query_all.offset((page - 1) * limit).limit(limit))
+    items = result.scalars().unique().all() if unique else result.scalars().all()
+
+    results = [schema.model_validate(obj) for obj in items]
+    return PaginatedResponse(count=total, results=results)
 
 async def db_get_all(
         db: DBSession,
@@ -43,12 +89,12 @@ async def db_get_all(
                 else:
                     raise ValueError(f"Column '{column_name}' does not exist in {model.__name__}")
 
-        if limit:
-            query_all = query_all.limit(limit)
         if page and limit:
+            query_all = query_all.limit(limit)
             query_all = query_all.offset((page - 1) * limit)
 
         result = await db.execute(query_all)
+
         if unique:
             return result.scalars().unique().all()
         else:

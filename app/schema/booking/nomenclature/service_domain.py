@@ -14,7 +14,7 @@ class ServiceDomainResponse(ServiceDomainBase):
     updated_at: Optional[datetime] = None
 
     class Config:
-        from_attributes: True
+        from_attributes = True
 
 class ServiceDomainUpdate(BaseModel):
     name: Optional[str] = None
@@ -22,6 +22,9 @@ class ServiceDomainUpdate(BaseModel):
 class ServiceLoadOnly(BaseModel):
     id: int
     name: str
+
+    class Config:
+        from_attributes = True
 
 class ServiceDomainWithServices(ServiceDomainResponse):
     services: Optional[List[ServiceLoadOnly]] = []

@@ -1,5 +1,7 @@
 from fastapi import APIRouter
 from starlette import status
+
+from app.core.crud_helpers import PaginatedResponse
 from app.core.dependencies import DBSession, SuperAdminSession
 from app.schema.booking.nomenclature.business_type import BusinessTypeResponse, BusinessTypeCreate, BusinessTypeUpdate, \
     BusinessTypeWithProfessionsResponse, BusinessTypeWithServicesAndFilters
@@ -10,7 +12,7 @@ from app.service.booking.nomenclature.business_type import create_new_business_t
 
 router = APIRouter(prefix="/business-types", tags=["Business Types"])
 
-@router.get("/with-services-and-filters", response_model=list[BusinessTypeWithServicesAndFilters])
+@router.get("/with-services-and-filters", response_model=PaginatedResponse[BusinessTypeWithServicesAndFilters])
 async def get_business_types_with_services(db: DBSession, page: int, limit: int):
     return await get_all_business_types_with_services(db, page, limit)
 

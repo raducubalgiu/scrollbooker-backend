@@ -1,15 +1,15 @@
 from fastapi import APIRouter
 from starlette import status
+
 from app.core.dependencies import DBSession, SuperAdminSession
 from app.schema.booking.nomenclature.business_domain import BusinessDomainResponse, BusinessDomainCreate, BusinessDomainUpdate
-from app.service.booking.nomenclature.business_domain import create_new_business_domain, get_all_business_domain, \
-    update_business_domain_by_id, delete_business_domain_by_id
+from app.service.booking.nomenclature.business_domain import create_new_business_domain, get_all_business_domain, update_business_domain_by_id, delete_business_domain_by_id
 
 router = APIRouter(prefix="/business-domains", tags=["Businesses Domain"])
 
 @router.get("/", response_model=list[BusinessDomainResponse])
-async def get_business_domain(db: DBSession, page: int, limit: int):
-    return await get_all_business_domain(db, page, limit)
+async def get_business_domain(db: DBSession):
+    return await get_all_business_domain(db)
 
 @router.post("/", response_model=BusinessDomainResponse, dependencies=[SuperAdminSession])
 async def create_business_domain(db: DBSession, business_domain_create: BusinessDomainCreate):

@@ -15,8 +15,6 @@ from app.models import User, UserCounters, Role, Business
 from app.schema.auth.auth import UserRegister, UserInfoResponse
 from jose import JWTError #type: ignore
 
-from app.schema.user.user_counters import UserCountersBase
-
 load_dotenv()
 
 async def register_user(db: DBSession, user_register: UserRegister):
@@ -71,9 +69,10 @@ async def login_user(db: DBSession, username: str, password: str):
 async def generate_tokens(username: str, user_id: int, role: str):
     access_token = await create_token(
         data={"sub": username, "id": user_id, "role": role},
-        expires_at=timedelta(seconds=float(os.getenv("ACCESS_TOKEN_EXPIRE_SECONDS"))),
+        expires_at=timedelta(minutes=float(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))),
         secret_key=os.getenv("SECRET_KEY")
     )
+
     refresh_token = await create_token(
         data={"sub": username, "id": user_id, "role": role},
         expires_at=timedelta(days=float(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS"))),
@@ -96,7 +95,7 @@ async def get_refresh_token(db: DBSession, token: str):
         if not user:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
-        access_token_expires = timedelta(minutes=float(os.getenv("ACCESS_TOKEN_EXPIRE_SECONDS")))
+        access_token_expires = timedelta(minutes=float(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES")))
 
         access_token = await create_token(
             data={"sub": username},

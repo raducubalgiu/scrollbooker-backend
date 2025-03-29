@@ -11,7 +11,7 @@ class BusinessBase(BaseModel):
     owner_id: int = None
 
     class Config:
-        from_attributes: True
+        from_attributes = True
 
 class BusinessCreate(BusinessBase):
     pass
@@ -25,14 +25,20 @@ class BusinessResponse(BusinessBase):
     timezone: str
 
     class Config:
-        from_attributes: True
+        from_attributes = True
 
-class BusinessByDistanceResponse(BaseModel):
-    id: int
-    description: str
-    # products: Optional[List[ProductResponse]] = []
-    # schedule: List[ScheduleResponse] = []
-    # services: Optional[List[ServiceResponse]] = []
-    #appointments: Optional[List[AppointmentResponse]] = []
-    distance: str
+class BusinessEmployeesResponse(BaseModel):
+    id: str
+    username: str
+    job: str
+    followers_count: int
+    ratings_count: int
+    ratings_average: float
+    hire_date: str
+
+    class Config:
+        from_attributes = True
+
+
+
 
