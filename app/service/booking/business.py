@@ -101,7 +101,7 @@ async def get_businesses_by_distance(
                 Schedule.end_time >= daily_end.timetz(),
                 Service.id == service_id,
                 SubFilter.id.in_(sub_filters),
-                User.instant_booking == instant_booking,
+                *( [User.instant_booking == True] if instant_booking else []),
                 availability_condition
             )
         )
