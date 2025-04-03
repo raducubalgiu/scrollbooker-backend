@@ -1,11 +1,13 @@
 from fastapi import HTTPException
 from starlette.requests import Request
 from starlette import status
+from sqlalchemy import text
 from app.core.crud_helpers import db_get_one
 from app.core.data_utils import local_to_utc
 from app.core.dependencies import DBSession, check_resource_ownership
 from app.schema.booking.schedule import ScheduleCreate, ScheduleUpdate
 from app.models import Schedule, Business, User
+from datetime import datetime
 
 async def get_start_end_time(timezone, schedule: ScheduleCreate | ScheduleUpdate):
     if schedule.start_time and schedule.end_time:
@@ -34,6 +36,7 @@ async def create_user_schedule(db: DBSession, business_id: int, schedule_create:
                             detail='Schedule is already defined')
 
     start_end_time = await get_start_end_time(business.timezone, schedule_create)
+    day_week_index = datetime.strptime(schedule_create.day_of_week.strip(), '%A').weekday()
 
     if is_business_owner or is_employee_of_business:
         new_schedule = Schedule(
@@ -41,7 +44,9 @@ async def create_user_schedule(db: DBSession, business_id: int, schedule_create:
             business_id=business_id,
             day_of_week=schedule_create.day_of_week,
             start_time=start_end_time["start_time"],
-            end_time=start_end_time["end_time"]
+            end_time=start_end_time["end_time"],
+            time_offset=text(f"INTERVAL '{schedule_create.time_offset}'"),
+            day_week_index=day_week_index
         )
 
         db.add(new_schedule)
@@ -60,6 +65,7 @@ async def update_user_schedule(db: DBSession, business_id: int, schedule_id: int
 
     schedule.start_time = start_end_time["start_time"]
     schedule.end_time = start_end_time["end_time"]
+    schedule.time_offset = text(f"INTERVAL '{schedule_update.time_offset}'")
 
     await db.commit()
     await db.refresh(schedule)

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Time, ForeignKey, UniqueConstraint, Index, Boolean
+from sqlalchemy import Column, Integer, String, Time, ForeignKey, UniqueConstraint, Index, Interval
 from sqlalchemy.orm import relationship
 from app.models import Base
 
@@ -9,6 +9,8 @@ class Schedule(Base):
     day_of_week = Column(String, nullable=False, index=True) # This will be an enum later
     start_time = Column(Time(timezone=True), nullable=True)
     end_time = Column(Time(timezone=True), nullable=True)
+    time_offset = Column(Interval, nullable=False)
+    day_week_index = Column(Integer, nullable=False)
 
     # User with role Business or Employee
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
