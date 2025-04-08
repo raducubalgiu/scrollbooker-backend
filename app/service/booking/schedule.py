@@ -1,73 +1,79 @@
+from typing import List
+
 from fastapi import HTTPException
 from starlette.requests import Request
 from starlette import status
-from sqlalchemy import text
+from sqlalchemy import select, or_
 from app.core.crud_helpers import db_get_one
-from app.core.data_utils import local_to_utc
 from app.core.dependencies import DBSession, check_resource_ownership
 from app.schema.booking.schedule import ScheduleCreate, ScheduleUpdate
 from app.models import Schedule, Business, User
-from datetime import datetime
+import calendar
 
-async def get_start_end_time(timezone, schedule: ScheduleCreate | ScheduleUpdate):
-    if schedule.start_time and schedule.end_time:
-        # Apply UTC timezone
-        start_time_utc = await local_to_utc(timezone=timezone, local_time=schedule.start_time)
-        end_time_utc = await local_to_utc(timezone=timezone, local_time=schedule.end_time)
+async def get_business(db: DBSession, auth_user_id: int):
+    business_stmt = await db.execute(
+        select(Business)
+        .join(User, User.id == auth_user_id) #type: ignore
+        .where(or_(
+            Business.owner_id == auth_user_id,
+            User.business_employee_id == Business.id
+        ))
+    )
 
-        return { "start_time": start_time_utc.timetz(), "end_time": end_time_utc.timetz() }
-    else:
-        return { "start_time": None, "end_time": None }
+    business = business_stmt.scalars().first()
 
-async def create_user_schedule(db: DBSession, business_id: int, schedule_create: ScheduleCreate, request: Request):
+    if not business:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail='You do not have permissions to perform this action')
+
+    return business
+
+async def create_user_schedule(db: DBSession, schedule_create: ScheduleCreate, request: Request):
     auth_user_id = request.state.user.get("id")
-    business = await db_get_one(db, model=Business, filters={Business.id: business_id})
 
     existing_schedule = await db_get_one(db, model=Schedule,
         filters={Schedule.user_id: auth_user_id, Schedule.day_of_week: schedule_create.day_of_week}, raise_not_found=False)
-
-    is_employee_of_business = await db_get_one(db, model=User,
-        filters={User.business_employee_id: business_id}, raise_not_found=False)
-
-    is_business_owner = business.owner_id == auth_user_id
 
     if existing_schedule:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail='Schedule is already defined')
 
-    start_end_time = await get_start_end_time(business.timezone, schedule_create)
-    day_week_index = datetime.strptime(schedule_create.day_of_week.strip(), '%A').weekday()
+    day_week_index = list(calendar.day_name).index(schedule_create.day_of_week)
 
-    if is_business_owner or is_employee_of_business:
-        new_schedule = Schedule(
-            user_id=auth_user_id,
-            business_id=business_id,
-            day_of_week=schedule_create.day_of_week,
-            start_time=start_end_time["start_time"],
-            end_time=start_end_time["end_time"],
-            time_offset=text(f"INTERVAL '{schedule_create.time_offset}'"),
-            day_week_index=day_week_index
-        )
+    business = await get_business(db, auth_user_id)
 
-        db.add(new_schedule)
-        await db.commit()
-        await db.refresh(new_schedule)
-        return new_schedule
-    else:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                            detail='You do not have permission to perform this action')
+    new_schedule = Schedule(
+        user_id=auth_user_id,
+        business_id=business.id,
+        day_of_week=schedule_create.day_of_week,
+        start_time=schedule_create.start_time,
+        end_time=schedule_create.end_time,
+        day_week_index=day_week_index
+    )
 
-async def update_user_schedule(db: DBSession, business_id: int, schedule_id: int, schedule_update: ScheduleUpdate, request: Request):
+    db.add(new_schedule)
+    await db.commit()
+    await db.refresh(new_schedule)
+    return new_schedule
+
+async def update_user_schedule(db: DBSession, schedule_id: int, schedule_update: ScheduleUpdate, request: Request):
+    auth_user_id = request.state.user.get("id")
     schedule = await check_resource_ownership(db, Schedule, schedule_id, request)
-    business = await db_get_one(db, model=Business, filters={Business.id: business_id})
+    await get_business(db, auth_user_id)
 
-    start_end_time = await get_start_end_time(business.timezone, schedule_update)
-
-    schedule.start_time = start_end_time["start_time"]
-    schedule.end_time = start_end_time["end_time"]
-    schedule.time_offset = text(f"INTERVAL '{schedule_update.time_offset}'")
+    schedule.start_time = schedule_update.start_time
+    schedule.end_time = schedule_update.end_time
 
     await db.commit()
     await db.refresh(schedule)
 
     return schedule
+
+async def update_user_many_schedules(db: DBSession, schedule_update: List[ScheduleUpdate], request: Request):
+    updated_schedules = []
+
+    for schedule in schedule_update:
+        updated_schedule = await update_user_schedule(db, schedule.id, schedule, request)
+        updated_schedules.append(updated_schedule)
+
+    return updated_schedules

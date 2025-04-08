@@ -25,12 +25,9 @@ async def get_schedules_by_user_id(db: DBSession, user_id: int):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail='Business not found')
 
-    schedules = await db_get_all(db, model=Schedule, filters={Schedule.user_id: user_id})
+    schedules = await db_get_all(db, model=Schedule, filters={Schedule.user_id: user_id}, order_by="day_week_index")
 
-    return {
-        "schedules": schedules,
-        "timezone": business.timezone
-    }
+    return schedules
 
 async def get_user_dashboard_summary_by_id(db: DBSession, user_id: int, start_date: str, end_date:str):
     try:

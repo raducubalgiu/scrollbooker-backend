@@ -7,10 +7,9 @@ class Schedule(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     day_of_week = Column(String, nullable=False, index=True) # This will be an enum later
-    start_time = Column(Time(timezone=True), nullable=True)
-    end_time = Column(Time(timezone=True), nullable=True)
-    time_offset = Column(Interval, nullable=False)
     day_week_index = Column(Integer, nullable=False)
+    start_time = Column(Time, nullable=True)
+    end_time = Column(Time, nullable=True)
 
     # User with role Business or Employee
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -21,6 +20,7 @@ class Schedule(Base):
 
     __table_args__ = (
         UniqueConstraint("user_id", "day_of_week", name="unique_user_day"),
+        UniqueConstraint("user_id", "day_week_index", name="unique_user_day_week_index"),
         Index("idx_start_time", "start_time"),
         Index("idx_end_time", "end_time"),
         Index("idx_user_id_day_of_week", "user_id", "day_of_week"),
