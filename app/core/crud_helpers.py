@@ -63,8 +63,6 @@ async def db_get_all(
         filters: Optional[Dict[Any, Any]] = None,
         joins: Optional[List] = None,
         unique: Optional[bool] = None,
-        limit: Optional[int] = None,
-        page: Optional[int] =None,
         order_by: Optional[Union[str, List[str]]] = None,
         descending: Optional[bool] = False
         ) -> List[ModelType]:
@@ -88,10 +86,6 @@ async def db_get_all(
                     query_all = query_all.order_by(desc(column) if descending else asc(column))
                 else:
                     raise ValueError(f"Column '{column_name}' does not exist in {model.__name__}")
-
-        if page and limit:
-            query_all = query_all.limit(limit)
-            query_all = query_all.offset((page - 1) * limit)
 
         result = await db.execute(query_all)
 

@@ -6,7 +6,7 @@ class EmploymentRequestBase(BaseModel):
     employee_id: int
 
     class Config:
-        from_attributes: True
+        from_attributes = True
 
 class EmploymentRequestUpdate(BaseModel):
     status: str
@@ -23,4 +23,4 @@ class EmploymentRequestResponse(EmploymentRequestBase):
     updated_at: Optional[datetime] = None
 
     class Config:
-        from_attributes: True
+        from_attributes = True

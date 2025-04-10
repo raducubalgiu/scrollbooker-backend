@@ -12,7 +12,7 @@ class AppointmentCreate(AppointmentBase):
     channel: Optional[str] = None
 
     class Config:
-        from_attributes: True
+        from_attributes = True
 
 class AppointmentResponse(AppointmentBase):
     id: int
@@ -27,4 +27,4 @@ class AppointmentResponse(AppointmentBase):
     updated_at: Optional[datetime] = None
 
     class Config:
-        from_attributes: True
+        from_attributes = True

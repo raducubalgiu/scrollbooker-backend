@@ -8,4 +8,4 @@ class PostMediaResponse(BaseModel):
     thumbnail_url: Optional[HttpUrl] = None
 
     class Config:
-        from_attributes: True
+        from_attributes = True

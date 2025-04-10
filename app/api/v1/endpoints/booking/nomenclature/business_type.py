@@ -4,7 +4,7 @@ from starlette import status
 from app.core.crud_helpers import PaginatedResponse
 from app.core.dependencies import DBSession, SuperAdminSession
 from app.schema.booking.nomenclature.business_type import BusinessTypeResponse, BusinessTypeCreate, BusinessTypeUpdate, \
-    BusinessTypeWithProfessionsResponse, BusinessTypeWithServicesAndFilters
+    BusinessTypeWithProfessionsResponse, BusinessTypeWithServicesAndFiltersResponse
 from app.service.booking.nomenclature.business_type import create_new_business_type, \
     delete_business_type_by_id, update_business_type_by_id, get_all_business_types_with_services, \
     attach_filters_to_business_type, attach_professions_to_business_type, detach_professions_from_business_type, \
@@ -12,11 +12,11 @@ from app.service.booking.nomenclature.business_type import create_new_business_t
 
 router = APIRouter(prefix="/business-types", tags=["Business Types"])
 
-@router.get("/with-services-and-filters", response_model=PaginatedResponse[BusinessTypeWithServicesAndFilters])
+@router.get("/with-services-and-filters", response_model=PaginatedResponse[BusinessTypeWithServicesAndFiltersResponse])
 async def get_business_types_with_services(db: DBSession, page: int, limit: int):
     return await get_all_business_types_with_services(db, page, limit)
 
-@router.get("/with-professions", response_model=list[BusinessTypeWithProfessionsResponse])
+@router.get("/with-professions", response_model=PaginatedResponse[BusinessTypeWithProfessionsResponse])
 async def get_business_types_with_professions(db: DBSession, page: int, limit: int):
     return await get_all_business_types_with_professions(db, page, limit)
 

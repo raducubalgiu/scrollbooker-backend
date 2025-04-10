@@ -12,7 +12,7 @@ class ReviewBase(BaseModel):
     parent_id: Optional[int] = None
 
     class Config:
-        from_attributes: True
+        from_attributes = True
 
 class ReviewCreate(ReviewBase):
     pass
@@ -24,4 +24,4 @@ class ReviewResponse(ReviewBase):
     updated_at: datetime
 
     class Config:
-        from_attributes: True
+        from_attributes = True

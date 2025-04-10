@@ -61,7 +61,7 @@ class FilterWithSubFilters(FilterLoadOnly):
 class BusinessTypeWithProfessionsResponse(BusinessTypeResponse):
     professions: Optional[List[ProfessionLoadOnly]] = []
 
-class BusinessTypeWithServicesAndFilters(BusinessTypeResponse):
+class BusinessTypeWithServicesAndFiltersResponse(BusinessTypeResponse):
     services: Optional[List[ServiceLoadOnly]] = []
     filters: Optional[List[FilterWithSubFilters]] = []
 

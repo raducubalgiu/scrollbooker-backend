@@ -10,7 +10,7 @@ class UserCountersBase(BaseModel):
     ratings_average: int
 
     class Config:
-        from_attributes: True
+        from_attributes = True
 
 class UserCountersResponse(UserCountersBase):
     pass

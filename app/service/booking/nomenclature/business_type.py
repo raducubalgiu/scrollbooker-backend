@@ -6,7 +6,7 @@ from app.models import BusinessType, Service, Filter, SubFilter, Profession
 from app.models.booking.nomenclature.business_type_filters import business_type_filters
 from app.models.booking.nomenclature.business_type_professions import business_type_professions
 from app.schema.booking.nomenclature.business_type import BusinessTypeCreate, BusinessTypeUpdate, \
-    BusinessTypeWithServicesAndFilters
+    BusinessTypeWithProfessionsResponse, BusinessTypeWithServicesAndFiltersResponse
 
 
 async def get_all_business_types(db: DBSession, page: int, limit: int):
@@ -22,7 +22,7 @@ async def update_business_type_by_id(db: DBSession, business_type_update: Busine
     return await db_update(db, model=BusinessType, update_data=business_type_update, resource_id=business_type_id)
 
 async def get_all_business_types_with_services(db: DBSession, page: int, limit: int):
-    return await db_get_all_paginate(db, model=BusinessType, schema=BusinessTypeWithServicesAndFilters,
+    return await db_get_all_paginate(db, model=BusinessType, schema=BusinessTypeWithServicesAndFiltersResponse,
                 joins=[
                     joinedload(BusinessType.services).load_only(Service.name),
                     joinedload(BusinessType.filters).load_only(Filter.name)
@@ -30,7 +30,7 @@ async def get_all_business_types_with_services(db: DBSession, page: int, limit: 
                 ], unique=True, page=page, limit=limit, order_by=["business_domain_id"])
 
 async def get_all_business_types_with_professions(db: DBSession, page: int, limit: 10):
-    return await db_get_all(db, model=BusinessType,
+    return await db_get_all_paginate(db, model=BusinessType, schema=BusinessTypeWithProfessionsResponse,
                 joins=[joinedload(BusinessType.professions).load_only(Profession.name)],
                 unique=True, page=page, limit=limit)
 

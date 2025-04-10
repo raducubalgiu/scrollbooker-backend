@@ -16,7 +16,7 @@ class ProfessionResponse(ProfessionBase):
     updated_at: Optional[datetime] = None
 
     class Config:
-        from_attributes: True
+        from_attributes = True
 
 class ProfessionUpdate(ProfessionBase):
     active: Optional[bool] = None
