@@ -20,7 +20,7 @@ async def restrict_employee_and_business(db: DBSession, review_data: ReviewCreat
     if auth_user_role == 'employee':
         stmt = await db.execute(
             select(Business)
-            .where(Business.id == user.business_employee_id) # type: ignore
+            .where(Business.id == user.employee_business_id) # type: ignore
             .options(joinedload(Business.services))
         )
         business = stmt.scalars().first()

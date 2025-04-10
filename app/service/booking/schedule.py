@@ -16,7 +16,7 @@ async def get_business(db: DBSession, auth_user_id: int):
         .join(User, User.id == auth_user_id) #type: ignore
         .where(or_(
             Business.owner_id == auth_user_id,
-            User.business_employee_id == Business.id
+            User.employee_business_id == Business.id
         ))
     )
 

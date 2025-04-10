@@ -3,11 +3,15 @@ from fastapi import HTTPException
 from sqlalchemy.orm import joinedload
 from starlette import status
 from starlette.requests import Request
-
-from app.core.crud_helpers import db_get_all
+from app.core.logger import logger
+from app.core.crud_helpers import db_get_all, db_get_all_paginate, db_get_one
 from app.core.dependencies import DBSession
-from app.models import Schedule, Review, User, Follow, Appointment, Product, Business
+from app.core.enums.enums import RoleEnum
+from app.models import Schedule, Review, User, Follow, Appointment, Product, Business, BusinessType, Profession
 from sqlalchemy import select, func, case, and_, or_
+
+from app.models.booking.nomenclature.business_type_professions import business_type_professions
+from app.schema.booking.product import ProductResponse
 
 async def get_schedules_by_user_id(db: DBSession, user_id: int):
     business_query = await db.execute(select(Business, User.id).where(
@@ -15,10 +19,11 @@ async def get_schedules_by_user_id(db: DBSession, user_id: int):
             User.id == user_id,
             or_(
                 Business.owner_id == user_id,
-                Business.id == User.business_employee_id
+                Business.id == User.employee_business_id
             )
         )
     ))
+
     business = business_query.scalar_one_or_none()
 
     if not business:
@@ -28,6 +33,10 @@ async def get_schedules_by_user_id(db: DBSession, user_id: int):
     schedules = await db_get_all(db, model=Schedule, filters={Schedule.user_id: user_id}, order_by="day_week_index")
 
     return schedules
+
+async def get_user_products_by_id(db: DBSession, user_id: int, page: int, limit: int):
+    return await db_get_all_paginate(db,
+                model=Product, filters={Product.user_id: user_id}, schema=ProductResponse , page=page, limit=limit)
 
 async def get_user_dashboard_summary_by_id(db: DBSession, user_id: int, start_date: str, end_date:str):
     try:
@@ -48,10 +57,10 @@ async def get_user_dashboard_summary_by_id(db: DBSession, user_id: int, start_da
                 func.coalesce(func.sum(Product.price), 0).label("total_sales"),
                 func.coalesce(func.count(Appointment.id), 0).label("total_bookings"),
                 func.coalesce(
-                    func.sum(case((Appointment.channel == "closer_app", 1), else_=0)), 0
+                    func.sum(case((Appointment.channel == "closer_app", 1), else_=0)), 0 #type: ignore
                 ).label("closer_bookings"),
                 func.coalesce(
-                    func.sum(case((Appointment.channel == "own_client", 1), else_=0)), 0
+                    func.sum(case((Appointment.channel == "own_client", 1), else_=0)), 0 #type: ignore
                 ).label("own_bookings"),
             )
             .outerjoin(Appointment, Appointment.user_id == User.id)  # type: ignore
@@ -169,3 +178,23 @@ async def get_user_followings_by_user_id(db: DBSession, user_id: int, page: int,
 
    followings = query.mappings().all()
    return followings
+
+# If Business - return Business Types, if employee - return Professions
+async def get_available_professions_by_user_id(db: DBSession, user_id: int):
+    user = await db_get_one(db, model=User, filters={User.id: user_id},
+                            joins=[joinedload(User.role),
+                                   joinedload(User.owner_business),
+                                   joinedload(User.employee_business)])
+
+    if user.role.name == RoleEnum.BUSINESS:
+        return {"BUSINESS"}
+
+    if user.role.name == RoleEnum.EMPLOYEE:
+        stmt = await db.execute(
+            select(BusinessType)
+            .options(joinedload(BusinessType.professions))
+            .where(BusinessType.id == user.employee_business.business_type_id) #type: ignore
+        )
+        business_type = stmt.scalars().first()
+        professions = business_type.professions
+        return professions

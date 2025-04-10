@@ -16,7 +16,7 @@ from geoalchemy2.functions import ST_DistanceSphere # type: ignore
 from timezonefinder import TimezoneFinder # type: ignore
 
 from app.models.booking.product_sub_filters import product_sub_filters
-from app.schema.booking.business import BusinessCreate, BusinessEmployeesResponse
+from app.schema.booking.business import BusinessCreate
 from datetime import timedelta,datetime
 
 async def get_business_employees_by_id(db: DBSession, business_id: int, page: int, limit: int):
@@ -26,7 +26,7 @@ async def get_business_employees_by_id(db: DBSession, business_id: int, page: in
                   EmploymentRequest.employee_id == User.id)
             )
             .join(UserCounters, UserCounters.user_id == User.id) # type: ignore
-           .where(User.business_employee_id == business_id) #type: ignore
+           .where(User.employee_business_id == business_id) #type: ignore
         ).order_by("hire_date"))
 
    count_employees = await db.execute(stmt)
@@ -128,7 +128,7 @@ async def get_businesses_by_distance(
                    distance_expr.label("distance"),
                    is_follow_subquery.label("is_follow")
             )
-            .join(User, or_( Business.owner_id == User.id, Business.id == User.business_employee_id))
+            .join(User, or_( Business.owner_id == User.id, Business.id == User.employee_business_id))
             .join(Schedule, Schedule.user_id == User.id) #type: ignore
             .join(UserCounters, UserCounters.user_id == User.id)
             .join(Product, Product.user_id == User.id)
@@ -139,7 +139,7 @@ async def get_businesses_by_distance(
                 or_(
                     and_(
                         Business.has_employees == True,
-                        Business.id == User.business_employee_id,
+                        Business.id == User.employee_business_id,
                         filter_business_or_employee
                     ),
                     and_(

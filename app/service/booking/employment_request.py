@@ -33,7 +33,7 @@ async def accept_employment_request(db: DBSession,
             employment_request.status = employment_update.status
 
             employee = await db.get(User, auth_user_id)
-            employee.business_employee_id = employment_request.business_id
+            employee.employee_business_id = employment_request.business_id
 
             employee_role = await db_get_one(db, model=Role, filters={Role.name: RoleEnum.EMPLOYEE})
             employee.role_id = employee_role.id

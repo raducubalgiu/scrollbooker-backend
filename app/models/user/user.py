@@ -11,7 +11,7 @@ class User(Base):
     username = Column(String(50), unique=True, nullable=False, index=True)
     password = Column(String(255), nullable=False)
     email = Column(String, unique=True, nullable=False, index=True)
-    bio = Column(Text, nullable=True)
+    bio = Column(String(100), nullable=True)
     profession = Column(String(100), nullable=False, default='Creator')
     instant_booking = Column(Boolean, nullable=False, default=False)
     avatar = Column(String)
@@ -27,10 +27,10 @@ class User(Base):
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
 
     # Relations
-    owner_of_business = relationship("Business", back_populates="business_owner", uselist=False, foreign_keys=[Business.owner_id])
+    owner_business = relationship("Business", back_populates="business_owner", uselist=False, foreign_keys=[Business.owner_id])
 
-    business_employee_id = Column(Integer, ForeignKey("businesses.id"), nullable=True)
-    employee_of_business = relationship("Business", back_populates="employees", foreign_keys=[business_employee_id])
+    employee_business_id = Column(Integer, ForeignKey("businesses.id"), nullable=True)
+    employee_business = relationship("Business", back_populates="employees", foreign_keys=[employee_business_id])
 
     counters = relationship('UserCounters', back_populates="user", uselist=False, cascade="all, delete")
     role = relationship("Role", back_populates="users")

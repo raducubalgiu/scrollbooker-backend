@@ -21,8 +21,8 @@ class Business(Base):
     owner_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
     business_type_id = Column(Integer, ForeignKey("business_types.id"), nullable=False)
 
-    business_owner = relationship("User", back_populates="owner_of_business", foreign_keys=[owner_id])
-    employees = relationship("User", back_populates="employee_of_business", foreign_keys="User.business_employee_id")
+    business_owner = relationship("User", back_populates="owner_business", foreign_keys=[owner_id])
+    employees = relationship("User", back_populates="employee_business", foreign_keys="User.employee_business_id")
     services = relationship("Service", secondary=business_services, back_populates="businesses")
     schedules = relationship("Schedule", back_populates="business")
     products = relationship("Product", back_populates="business", cascade="all, delete-orphan")
