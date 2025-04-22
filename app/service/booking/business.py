@@ -2,7 +2,8 @@ from typing import List
 from sqlalchemy.orm import joinedload
 from starlette.requests import Request
 from fastapi import HTTPException, Query
-
+from app.core.logger import logger
+from app.core.crud_helpers import db_get_one
 from app.core.data_utils import local_to_utc_fulldate
 from app.core.dependencies import DBSession
 from starlette import status
@@ -16,8 +17,29 @@ from geoalchemy2.functions import ST_DistanceSphere # type: ignore
 from timezonefinder import TimezoneFinder # type: ignore
 
 from app.models.booking.product_sub_filters import product_sub_filters
-from app.schema.booking.business import BusinessCreate
+from app.schema.booking.business import BusinessCreate, BusinessResponse
 from datetime import timedelta,datetime
+from app.schema.booking.nomenclature.service import ServiceIdsUpdate
+
+async def get_business_by_id(db: DBSession, business_id: int):
+    business = await db_get_one(db,
+                                model=Business,
+                                filters={Business.id: business_id},
+                                joins=[joinedload(Business.services).load_only(Service.id, Service.name)])
+
+    point = to_shape(business.coordinates)
+    latitude = point.y
+    longitude = point.x
+
+    return BusinessResponse(
+        id=business.id,
+        owner_id=business.owner_id,
+        description= business.description,
+        timezone=business.timezone,
+        address=business.address,
+        services=business.services,
+        coordinates=(longitude, latitude)
+    )
 
 async def get_business_employees_by_id(db: DBSession, business_id: int, page: int, limit: int):
    stmt = ((select(User, UserCounters, EmploymentRequest.created_at.label("hire_date"))
@@ -76,7 +98,7 @@ async def get_businesses_by_distance(
         daily_end = datetime.combine(full_start.date(), full_end.timetz())
 
         user_point = func.ST_SetSRID(func.ST_Point(lon, lat), 4326)
-        distance_expr = func.ST_Distance(Business.location.cast(Geography), user_point.cast(Geography)) / 1000
+        distance_expr = func.ST_Distance(Business.coordinates.cast(Geography), user_point.cast(Geography)) / 1000
 
         availability_condition = or_(
             not_(
@@ -190,7 +212,7 @@ async def get_businesses_by_distance(
     }
 
 async def create_new_business(db: DBSession, business_data: BusinessCreate):
-    longitude, latitude = business_data.location
+    longitude, latitude = business_data.coordinates
 
     tf = TimezoneFinder()
     timezone = tf.timezone_at_land(lng=longitude, lat=latitude)
@@ -206,7 +228,7 @@ async def create_new_business(db: DBSession, business_data: BusinessCreate):
                             detail='You already have a business attached')
 
     stmt = text("""
-        INSERT INTO businesses (description, address, location, timezone, owner_id) 
+        INSERT INTO businesses (description, address, coordinates, timezone, owner_id) 
         VALUES (:description, :address, ST_SetSRID(ST_Point(:longitude, :latitude), 4326), :timezone, :owner_id)
         RETURNING id
     """)
@@ -266,6 +288,43 @@ async def attach_service_to_business(db: DBSession, business_id: int, service_id
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail='Business or service not found')
 
+async def attach_many_services_to_business(db: DBSession, business_id: int, service_ids: ServiceIdsUpdate, request: Request):
+    authenticated_user_id = request.state.user.get("id")
+    business = await db.get(Business, business_id)
+
+    if business:
+        if authenticated_user_id != business.owner_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail='You do not have permission to perform this action')
+
+        try:
+            for service_id in service_ids.service_ids:
+                service = await db.get(Service, service_id)
+
+                if not service:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                        detail='Service not found')
+
+                is_present = await db.execute(
+                    select(business_services).where(
+                        (business_services.c.business_id == business_id) & (business_services.c.service_id == service_id) # type: ignore
+                    )
+                )
+
+
+                if not is_present.scalar():
+                    await db.execute(insert(business_services).values(business_id=business_id, service_id=service_id))
+                    await db.commit()
+            return {"detail": f"Services {service_ids} successfully attached to Business {business_id}"}
+        except Exception as e:
+            await db.rollback()
+            logger.error(f"Services could not saved. Error: {e}")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail='Something went wrong')
+
+    else:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail='Business or service not found')
 
 async def detach_service_from_business(db: DBSession, business_id: int, service_id: int, request: Request):
     authenticated_user_id = request.state.user.get("id")

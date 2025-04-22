@@ -2,15 +2,19 @@ from fastapi import APIRouter, Query
 from starlette import status
 from starlette.requests import Request
 from typing import List
-
-from app.core.crud_helpers import PaginatedResponse
 from app.core.dependencies import DBSession
 from app.core.dependencies import BusinessSession
-from app.schema.booking.business import BusinessCreate, BusinessEmployeesResponse
+from app.schema.booking.business import BusinessCreate
+from app.schema.booking.nomenclature.service import ServiceIdsUpdate
 from app.service.booking.business import attach_service_to_business, get_businesses_by_distance, create_new_business, \
-    delete_business_by_id, detach_service_from_business, get_business_employees_by_id
+    delete_business_by_id, detach_service_from_business, get_business_employees_by_id, get_business_by_id, \
+    attach_many_services_to_business
 
 router = APIRouter(prefix="/businesses", tags=["Businesses"])
+
+@router.get("/{business_id}")
+async def get_business(db: DBSession, business_id: int):
+    return await get_business_by_id(db, business_id)
 
 @router.get("/nearby")
 async def get_nearby_businesses(db: DBSession,
@@ -44,7 +48,11 @@ async def delete_business(db: DBSession, business_id: int, request: Request):
 async def attach_services(db: DBSession, business_id: int, service_id: int, request: Request):
     return await attach_service_to_business(db, business_id, service_id, request)
 
+@router.post("/{business_id}/services", status_code=status.HTTP_201_CREATED, dependencies=[BusinessSession])
+async def attach_many_services(db: DBSession, business_id: int, service_ids: ServiceIdsUpdate, request: Request):
+    return await attach_many_services_to_business(db, business_id, service_ids, request)
+
 @router.delete("/{business_id}/services/{service_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[BusinessSession])
-async def attach_services(db: DBSession, business_id: int, service_id: int, request: Request):
+async def detach_services(db: DBSession, business_id: int, service_id: int, request: Request):
     return await detach_service_from_business(db, business_id, service_id, request)
 

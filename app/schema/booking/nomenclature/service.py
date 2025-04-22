@@ -38,3 +38,6 @@ class ServiceWithFiltersResponse(ServiceBase):
 
     class Config:
         from_attributes = True
+
+class ServiceIdsUpdate(BaseModel):
+    service_ids: List[int]

@@ -1,7 +1,9 @@
 from fastapi import APIRouter
+from starlette import status
 from app.core.dependencies import DBSession, SuperAdminSession
 from app.schema.booking.nomenclature.sub_filter import SubFilterCreate, SubFilterResponse, SubFilterUpdate
-from app.service.booking.nomenclature.sub_filter import create_new_sub_filter, update_sub_filter_by_id
+from app.service.booking.nomenclature.sub_filter import create_new_sub_filter, update_sub_filter_by_id, \
+    delete_sub_filters_by_id
 
 router = APIRouter(prefix="/sub-filters", tags=["SubFilters"])
 
@@ -13,3 +15,6 @@ async def create_sub_filter(db: DBSession, sub_filter_create: SubFilterCreate):
 async def update_sub_filter(db: DBSession, sub_filter_update: SubFilterUpdate, sub_filter_id: int):
     return await update_sub_filter_by_id(db, sub_filter_update, sub_filter_id)
 
+@router.delete("/{sub_filter_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[SuperAdminSession])
+async def delete_sub_filter(db: DBSession, sub_filter_id: int):
+    return await delete_sub_filters_by_id(db, sub_filter_id)

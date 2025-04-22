@@ -3,17 +3,16 @@ from fastapi import HTTPException
 from sqlalchemy.orm import joinedload
 from starlette import status
 from starlette.requests import Request
-from app.core.logger import logger
 from app.core.crud_helpers import db_get_all, db_get_all_paginate, db_get_one
 from app.core.dependencies import DBSession
 from app.core.enums.enums import RoleEnum
-from app.models import Schedule, Review, User, Follow, Appointment, Product, Business, BusinessType, Profession
+from app.models import Schedule, Review, User, Follow, Appointment, Product, Business, BusinessType, SubFilter
 from sqlalchemy import select, func, case, and_, or_
+from app.schema.booking.product import ProductWithSubFiltersResponse
+from app.schema.booking.business import BusinessResponse
+from geoalchemy2.shape import to_shape # type: ignore
 
-from app.models.booking.nomenclature.business_type_professions import business_type_professions
-from app.schema.booking.product import ProductResponse
-
-async def get_schedules_by_user_id(db: DBSession, user_id: int):
+async def get_user_business_by_id(db: DBSession, user_id: int):
     business_query = await db.execute(select(Business, User.id).where(
         and_(
             User.id == user_id,
@@ -21,22 +20,41 @@ async def get_schedules_by_user_id(db: DBSession, user_id: int):
                 Business.owner_id == user_id,
                 Business.id == User.employee_business_id
             )
-        )
-    ))
+        )).options(joinedload(Business.services))
+    )
 
-    business = business_query.scalar_one_or_none()
+    business = business_query.unique().scalar_one_or_none()
 
     if not business:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail='Business not found')
 
+    point = to_shape(business.coordinates)
+    latitude = point.y
+    longitude = point.x
+
+    return BusinessResponse(
+        id=business.id,
+        business_type_id=business.business_type_id,
+        owner_id=business.owner_id,
+        description=business.description,
+        timezone=business.timezone,
+        address=business.address,
+        services=business.services,
+        coordinates=(longitude, latitude)
+    )
+
+async def get_user_schedules_by_id(db: DBSession, user_id: int):
+    await get_user_business_by_id(db, user_id)
     schedules = await db_get_all(db, model=Schedule, filters={Schedule.user_id: user_id}, order_by="day_week_index")
 
     return schedules
 
 async def get_user_products_by_id(db: DBSession, user_id: int, page: int, limit: int):
     return await db_get_all_paginate(db,
-                model=Product, filters={Product.user_id: user_id}, schema=ProductResponse , page=page, limit=limit)
+                model=Product, filters={Product.user_id: user_id}, schema=ProductWithSubFiltersResponse , page=page, limit=limit,
+                unique=True, joins=[joinedload(Product.sub_filters).joinedload(SubFilter.filter)])
+
 
 async def get_user_dashboard_summary_by_id(db: DBSession, user_id: int, start_date: str, end_date:str):
     try:

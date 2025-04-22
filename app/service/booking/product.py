@@ -1,11 +1,11 @@
 from fastapi import HTTPException
 from starlette.requests import Request
 from starlette import status
-from app.core.crud_helpers import db_delete, db_get_all
+from app.core.crud_helpers import db_delete, db_get_all, db_update
 from app.core.dependencies import DBSession, check_resource_ownership
 from app.core.logger import logger
 from app.models import Product, Schedule, product_sub_filters, business_services
-from app.schema.booking.product import ProductCreateWithSubFilters
+from app.schema.booking.product import ProductCreateWithSubFilters, ProductUpdate, ProductCreate
 from app.core.logger import logger
 from sqlalchemy import insert,select
 
@@ -51,6 +51,11 @@ async def create_new_product(db: DBSession, product_with_sub_filters: ProductCre
         logger.error(f"Product could not be saved. Error: {e}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail='Something went wrong')
+
+async def update_product_by_id(db: DBSession, product_id: int, product_update: ProductUpdate, request: Request):
+    await check_resource_ownership(db, resource_model=Product, resource_id=product_id, request=request)
+
+    return await db_update(db, model=Product, resource_id=product_id, update_data=product_update)
 
 async def delete_product_by_id(db: DBSession, product_id: int, request: Request):
     await check_resource_ownership(db, Product, product_id, request)

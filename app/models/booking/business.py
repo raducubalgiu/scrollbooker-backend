@@ -9,7 +9,7 @@ class Business(Base):
     __tablename__ = "businesses"
 
     id = Column(Integer, primary_key=True)
-    location = Column(Geometry("POINT", srid=4326), nullable=False, unique=True) # SRID 4326 (GPS coordinates)
+    coordinates = Column(Geometry("POINT", srid=4326), nullable=False, unique=True) # SRID 4326 (GPS coordinates)
     timezone = Column(String, nullable=False)
     address = Column(String, nullable=False)
     description = Column(String, nullable=True)

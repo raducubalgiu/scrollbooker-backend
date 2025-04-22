@@ -2,26 +2,20 @@ from pydantic import BaseModel
 from typing import Optional, List
 
 from app.schema.booking.nomenclature.service import ServiceResponse
-from app.schema.user.user import UserResponse
 
 class BusinessBase(BaseModel):
     description: Optional[str] = None
     address: str
-    location: tuple[float, float]
+    coordinates: tuple[float, float]
     owner_id: int = None
-
-    class Config:
-        from_attributes = True
+    business_type_id: int
 
 class BusinessCreate(BusinessBase):
     pass
 
 class BusinessResponse(BusinessBase):
     id: int
-    business_owner: Optional[UserResponse] = None
-    employees: Optional[List[UserResponse]] = []
     services: Optional[List[ServiceResponse]] = []
-    distance: Optional[str] = None
     timezone: str
 
     class Config:

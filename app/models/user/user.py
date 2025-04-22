@@ -1,14 +1,13 @@
-from sqlalchemy import Column, Integer, String, Boolean, Text, Date, ForeignKey, Float, TIMESTAMP, func
+from sqlalchemy import Column, Integer, String, Boolean, Date, ForeignKey, Float, TIMESTAMP, func
 from sqlalchemy.orm import relationship
 from app.models import Base, Business, EmploymentRequest
-from .user_counters import UserCounters
 
 class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
     fullname = Column(String(100), nullable=True)
-    username = Column(String(50), unique=True, nullable=False, index=True)
+    username = Column(String(35), unique=True, nullable=False, index=True)
     password = Column(String(255), nullable=False)
     email = Column(String, unique=True, nullable=False, index=True)
     bio = Column(String(100), nullable=True)

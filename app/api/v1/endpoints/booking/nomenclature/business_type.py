@@ -5,12 +5,19 @@ from app.core.crud_helpers import PaginatedResponse
 from app.core.dependencies import DBSession, SuperAdminSession
 from app.schema.booking.nomenclature.business_type import BusinessTypeResponse, BusinessTypeCreate, BusinessTypeUpdate, \
     BusinessTypeWithProfessionsResponse, BusinessTypeWithServicesAndFiltersResponse
+from app.schema.booking.nomenclature.filter import FilterResponse, FilterWithSubFiltersResponse
+from app.schema.booking.nomenclature.service import ServiceResponse
 from app.service.booking.nomenclature.business_type import create_new_business_type, \
     delete_business_type_by_id, update_business_type_by_id, get_all_business_types_with_services, \
     attach_filters_to_business_type, attach_professions_to_business_type, detach_professions_from_business_type, \
-    detach_filters_from_business_type, get_all_business_types_with_professions
+    detach_filters_from_business_type, get_all_business_types_with_professions, get_business_type_services_by_id, \
+    get_business_type_filters_and_sub_filters_by_id
 
 router = APIRouter(prefix="/business-types", tags=["Business Types"])
+
+@router.get("/{business_type_id}/services", response_model=list[ServiceResponse])
+async def get_business_type_services(db: DBSession, business_type_id: int):
+    return await get_business_type_services_by_id(db, business_type_id)
 
 @router.get("/with-services-and-filters", response_model=PaginatedResponse[BusinessTypeWithServicesAndFiltersResponse])
 async def get_business_types_with_services(db: DBSession, page: int, limit: int):
@@ -19,6 +26,10 @@ async def get_business_types_with_services(db: DBSession, page: int, limit: int)
 @router.get("/with-professions", response_model=PaginatedResponse[BusinessTypeWithProfessionsResponse])
 async def get_business_types_with_professions(db: DBSession, page: int, limit: int):
     return await get_all_business_types_with_professions(db, page, limit)
+
+@router.get("/{business_type_id}/filters", response_model=list[FilterWithSubFiltersResponse])
+async def get_business_type_filters_and_sub_filters(db: DBSession, business_type_id: int):
+    return await get_business_type_filters_and_sub_filters_by_id(db, business_type_id)
 
 @router.post("/", response_model=BusinessTypeResponse, dependencies=[SuperAdminSession])
 async def create_business_type(db: DBSession, business_type_create: BusinessTypeCreate):

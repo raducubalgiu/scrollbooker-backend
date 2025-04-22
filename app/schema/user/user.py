@@ -7,8 +7,8 @@ from app.schema.booking.schedule import ScheduleResponse
 
 class UserBaseMinimum(BaseModel):
     id: int
-    fullname: Optional[str] = None
-    username: str = Field(min_length=3, max_length=50)
+    fullname: Optional[str] = Field(max_length=30)
+    username: str = Field(min_length=3, max_length=35)
     avatar: Optional[str] = None
     is_follow: Optional[bool]
 
@@ -17,8 +17,8 @@ class UserBaseMinimum(BaseModel):
 
 class UserBase(BaseModel):
     id: int
-    fullname: Optional[str] = Field(min_length=3, max_length=100)
-    username: str = Field(min_length=3, max_length=50)
+    fullname: Optional[str] = Field(max_length=30)
+    username: str = Field(min_length=3, max_length=35)
     bio: Optional[str] = Field(None, max_length=100)
     email: EmailStr
     date_of_birth: Optional[datetime] = None

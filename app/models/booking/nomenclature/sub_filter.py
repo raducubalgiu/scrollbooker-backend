@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, Boolean, TIMESTAMP, func, Foreig
 from sqlalchemy.orm import relationship
 
 from app.models import Base
+from app.models.booking.product_sub_filters import product_sub_filters
 
 class SubFilter(Base):
     __tablename__ = "sub_filters"
@@ -12,6 +13,7 @@ class SubFilter(Base):
     filter_id = Column(Integer, ForeignKey("filters.id", ondelete="CASCADE"), nullable=False, index=True)
 
     filter = relationship("Filter", back_populates="sub_filters")
+    products = relationship("Product", secondary=product_sub_filters, back_populates="sub_filters")
 
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)

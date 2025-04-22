@@ -3,9 +3,9 @@ from fastapi.security import OAuth2PasswordRequestForm
 from starlette import status
 from dotenv import load_dotenv
 from app.core.security import oauth2_bearer
-from app.schema.auth.auth import UserRegister, UserRegisterResponse, UserInfoResponse
+from app.schema.auth.auth import UserRegister, UserRegisterResponse, UserInfoResponse, UserInfoUpdate
 from app.schema.auth.token import Token
-from app.service.auth.auth import login_user, register_user, get_refresh_token, get_user_info
+from app.service.auth.auth import login_user, register_user, get_refresh_token, get_user_info, update_user_info
 from app.core.dependencies import DBSession
 from app.models import User
 from sqlalchemy import select
@@ -34,3 +34,7 @@ async def refresh_token(db: DBSession, token: str):
 @router.get("/user-info", response_model=UserInfoResponse)
 async def user_info(db: DBSession, token: str = Depends(oauth2_bearer)):
     return await get_user_info(db, token)
+
+@router.put("/update-user-info", response_model=UserInfoResponse)
+async def user_info(db: DBSession, user_update: UserInfoUpdate, token: str = Depends(oauth2_bearer)):
+    return await update_user_info(db, user_update, token)

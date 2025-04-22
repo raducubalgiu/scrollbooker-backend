@@ -1,6 +1,8 @@
 from sqlalchemy import Column, Integer, Float, String, ForeignKey, TIMESTAMP, func, Index
 from sqlalchemy.orm import relationship
+
 from app.models import Base
+from app.models.booking.product_sub_filters import product_sub_filters
 
 class Product(Base):
     __tablename__ = "products"
@@ -29,6 +31,7 @@ class Product(Base):
     user = relationship("User", back_populates="products")
     appointments = relationship("Appointment", back_populates="product")
     reviews = relationship("Review", back_populates="product")
+    sub_filters = relationship("SubFilter", secondary=product_sub_filters, back_populates="products")
 
     __table_args__ = (
         Index("idx_products_name", "name"),

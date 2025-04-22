@@ -12,7 +12,7 @@ from app.core.crud_helpers import db_get_one
 from app.core.security import hash_password, verify_password, create_token, decode_token
 from app.core.dependencies import DBSession
 from app.models import User, UserCounters, Role, Business
-from app.schema.auth.auth import UserRegister, UserInfoResponse
+from app.schema.auth.auth import UserRegister, UserInfoResponse, UserInfoUpdate
 from jose import JWTError #type: ignore
 
 load_dotenv()
@@ -23,7 +23,6 @@ async def register_user(db: DBSession, user_register: UserRegister):
     if user:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='User already registered')
 
-    # Hash the password async
     hashed = await hash_password(user_register.password)
 
     # This will be removed in the future
@@ -135,18 +134,70 @@ async def get_user_info(db: DBSession, token: str):
         else:
             business_id = None
 
-        return {
-            "id": user.id,
-            "fullname": user.fullname,
-            "avatar": user.avatar,
-            "username": user.username,
-            "business_id": business_id,
-            "email": user.email,
-            "counters": user.counters,
-            "profession": user.profession
-        }
+        return UserInfoResponse(
+            id=user.id,
+            username=user.username,
+            fullname=user.fullname,
+            avatar=user.avatar,
+            business_id=business_id,
+            email=user.email,
+            counters=user.counters,
+            profession=user.profession
+        )
 
     except JWTError as e:
+        logger.error(f"Invalid access token. Error: {e}")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail='Invalid access token')
+
+async def update_user_info(db: DBSession, user_update: UserInfoUpdate ,token: str):
+    try:
+        payload = await decode_token(token, secret_key=os.getenv("SECRET_KEY"))
+
+        if not payload:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                                detail='Invalid token')
+
+        username = payload.get("sub")
+        user = await db_get_one(db, model=User,
+                                filters={User.username: username},
+                                joins=[
+                                    joinedload(User.counters),
+                                    joinedload(User.owner_business).load_only(Business.id),
+                                    joinedload(User.role).load_only(Role.name)
+                                ])
+
+        if not user:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+
+        if user.role.name == RoleEnum.EMPLOYEE:
+            business_id = user.employee_business_id
+        elif user.role.name == RoleEnum.BUSINESS:
+            business_id = user.owner_business.id
+        else:
+            business_id = None
+
+        user.username = user_update.username
+        user.fullname = user_update.fullname
+        user.bio = user_update.bio
+        user.profession = user_update.profession
+
+        await db.commit()
+        await db.refresh(user)
+
+        return UserInfoResponse(
+            id=user.id,
+            username=user.username,
+            fullname=user.fullname,
+            avatar=user.avatar,
+            business_id=business_id,
+            email=user.email,
+            counters=user.counters,
+            profession=user.profession
+        )
+
+    except JWTError as e:
+        await db.rollback()
         logger.error(f"Invalid access token. Error: {e}")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Invalid access token')
