@@ -6,7 +6,8 @@ from starlette.requests import Request
 from app.core.crud_helpers import db_get_all, db_get_all_paginate, db_get_one
 from app.core.dependencies import DBSession
 from app.core.enums.enums import RoleEnum
-from app.models import Schedule, Review, User, Follow, Appointment, Product, Business, BusinessType, SubFilter
+from app.models import Schedule, Review, User, Follow, Appointment, Product, Business, BusinessType, SubFilter, \
+    BusinessDomain
 from sqlalchemy import select, func, case, and_, or_
 from app.schema.booking.product import ProductWithSubFiltersResponse
 from app.schema.booking.business import BusinessResponse
@@ -202,10 +203,16 @@ async def get_available_professions_by_user_id(db: DBSession, user_id: int):
     user = await db_get_one(db, model=User, filters={User.id: user_id},
                             joins=[joinedload(User.role),
                                    joinedload(User.owner_business),
-                                   joinedload(User.employee_business)])
+                                   joinedload(User.employee_business)]
+                            )
 
     if user.role.name == RoleEnum.BUSINESS:
-        return {"BUSINESS"}
+        business = await db_get_one(db, model=Business, filters={Business.owner_id: user.id},
+                        joins=[joinedload(Business.business_type).load_only(BusinessType.business_domain_id)])
+
+        business_types = await db_get_all(db, model=BusinessType,
+                            filters={BusinessType.business_domain_id: business.business_type.business_domain_id})
+        return business_types
 
     if user.role.name == RoleEnum.EMPLOYEE:
         stmt = await db.execute(

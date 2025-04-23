@@ -1,15 +1,17 @@
 from sqlalchemy import Boolean
-from app.core.crud_helpers import db_delete, db_create, db_get_all
+from app.core.crud_helpers import db_delete, db_create, db_get_all, db_get_all_paginate, db_update
 from app.models.user.role import Role
-from app.schema.user.role import RoleCreate
+from app.schema.user.role import RoleCreate, RoleResponse, RoleUpdate
 from app.core.dependencies import DBSession
 
-async def get_all_roles(db: DBSession):
-    return await db_get_all(db, model=Role)
+async def get_all_roles(db: DBSession, page: int, limit: int):
+    return await db_get_all_paginate(db, model=Role, schema=RoleResponse, page=page, limit=limit)
 
-async def create_new_role(db: DBSession, new_role: RoleCreate):
-    active= new_role.active if new_role.active == Boolean else True
-    return await db_create(db, model=Role, create_data=new_role, extra_params={"active": active})
+async def create_new_role(db: DBSession, role_create: RoleCreate):
+    return await db_create(db, model=Role, create_data=role_create)
+
+async def update_role_by_id(db: DBSession, role_id: int, role_update: RoleUpdate):
+    return await db_update(db, model=Role, resource_id=role_id, update_data=role_update)
 
 async def delete_role_by_id(db: DBSession, role_id: int):
     return await db_delete(db, model=Role, resource_id=role_id)

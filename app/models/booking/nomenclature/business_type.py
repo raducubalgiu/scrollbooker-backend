@@ -13,6 +13,8 @@ class BusinessType(Base):
     active = Column(Boolean, nullable=False, default=True)
     business_domain_id = Column(Integer, ForeignKey("business_domains.id", ondelete="CASCADE"), nullable=False)
 
+    business_domain = relationship("BusinessDomain", back_populates="business_types")
+    businesses = relationship("Business", back_populates="business_type")
     services = relationship("Service", secondary=service_business_types, back_populates="business_types")
     filters = relationship("Filter", secondary=business_type_filters, back_populates="business_types")
     professions = relationship("Profession", secondary=business_type_professions, back_populates="business_types")

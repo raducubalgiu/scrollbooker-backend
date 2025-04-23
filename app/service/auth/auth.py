@@ -11,7 +11,7 @@ from app.core.logger import logger
 from app.core.crud_helpers import db_get_one
 from app.core.security import hash_password, verify_password, create_token, decode_token
 from app.core.dependencies import DBSession
-from app.models import User, UserCounters, Role, Business
+from app.models import User, UserCounters, Role, Business, Permission
 from app.schema.auth.auth import UserRegister, UserInfoResponse, UserInfoUpdate
 from jose import JWTError #type: ignore
 
@@ -144,6 +144,24 @@ async def get_user_info(db: DBSession, token: str):
             counters=user.counters,
             profession=user.profession
         )
+
+    except JWTError as e:
+        logger.error(f"Invalid access token. Error: {e}")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail='Invalid access token')
+
+async def get_user_permissions(db: DBSession, token: str):
+    try:
+        payload = await decode_token(token, secret_key=os.getenv("SECRET_KEY"))
+
+        if not payload:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                                detail='Invalid token')
+
+        username = payload.get("sub")
+        user = await db_get_one(db, model=User, filters={User.username: username},
+                    joins=[joinedload(User.role).joinedload(Role.permissions).load_only(Permission.name, Permission.code)])
+        return user.role.permissions
 
     except JWTError as e:
         logger.error(f"Invalid access token. Error: {e}")
