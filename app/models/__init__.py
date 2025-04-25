@@ -38,3 +38,5 @@ from app.models.user.role import Role
 from app.models.user.permission import Permission
 from app.models.user.role_permissions import role_permissions
 from app.models.user.user_counters import UserCounters
+from app.models.user.consent import Consent
+from app.models.user.notification import Notification

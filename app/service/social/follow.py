@@ -4,7 +4,7 @@ from sqlalchemy.orm import joinedload
 from starlette.requests import Request
 from starlette import status
 from app.core.dependencies import DBSession
-from app.models import Follow, User, UserCounters
+from app.models import Follow, User, UserCounters, Notification
 from app.core.logger import logger
 
 async def is_user_follow(db: DBSession, follower_id: int, followee_id: int):
@@ -39,12 +39,25 @@ async def follow_user(db :DBSession, follower_id: int, followee_id: int, request
 
     try:
         await db.execute(insert(Follow).values(follower_id=follower_id, followee_id=followee_id))
-        query_counters = await db.execute(select(UserCounters).where(UserCounters.user_id == follower_id)) #type: ignore
-        user_counters = query_counters.scalar()
-        user_counters.followings_count = user_counters.followings_count + 1
+        query_follower_counters = await db.execute(select(UserCounters).where(UserCounters.user_id == follower_id)) #type: ignore
+        query_followee_counters = await db.execute(select(UserCounters).where(UserCounters.user_id == followee_id)) #type: ignore
+        follower_counters = query_follower_counters.scalar()
+        followee_counters = query_followee_counters.scalar()
+
+        follower_counters.followings_count = follower_counters.followings_count + 1
+        followee_counters.followers_count = followee_counters.followers_count + 1
+
+        notification = Notification(
+            type="follow",
+            sender_id=follower_id,
+            receiver_id=followee_id,
+            data={},
+            message=None
+        )
+        db.add(notification)
 
         await db.commit()
-        return { "detail": "Follow request was successfull" }
+        return { "detail": "Follow request was successfully" }
     except Exception as e:
         await db.rollback()
         logger.error(f"User: {followee_id} could not be followed by User: {follower_id}. Error: {e}")

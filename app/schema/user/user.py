@@ -10,7 +10,7 @@ class UserBaseMinimum(BaseModel):
     fullname: Optional[str] = Field(max_length=30)
     username: str = Field(min_length=3, max_length=35)
     avatar: Optional[str] = None
-    is_follow: Optional[bool]
+    is_follow: Optional[bool] = None
 
     class Config:
         from_attributes = True

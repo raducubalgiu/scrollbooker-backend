@@ -7,11 +7,30 @@ from app.core.crud_helpers import db_get_all, db_get_all_paginate, db_get_one
 from app.core.dependencies import DBSession
 from app.core.enums.enums import RoleEnum
 from app.models import Schedule, Review, User, Follow, Appointment, Product, Business, BusinessType, SubFilter, \
-    BusinessDomain
+    Notification
 from sqlalchemy import select, func, case, and_, or_
 from app.schema.booking.product import ProductWithSubFiltersResponse
 from app.schema.booking.business import BusinessResponse
 from geoalchemy2.shape import to_shape # type: ignore
+
+from app.schema.user.notification import NotificationResponse
+
+
+async def search_users_clients(db: DBSession, q: str):
+    query = select(User).filter(User.role_id == 2) #type: ignore
+
+    if q:
+        search_term = f"%{q}%"
+        query = query.filter(
+            or_(
+                User.username.ilike(search_term),
+                User.fullname.ilike(search_term)
+            )
+        )
+
+    users_stmt = await db.execute(query.order_by(User.username.asc()).limit(50))
+    users = users_stmt.scalars().all()
+    return users
 
 async def get_user_business_by_id(db: DBSession, user_id: int):
     business_query = await db.execute(select(Business, User.id).where(
@@ -198,9 +217,21 @@ async def get_user_followings_by_user_id(db: DBSession, user_id: int, page: int,
    followings = query.mappings().all()
    return followings
 
+async def get_user_notifications_by_id(db: DBSession, page: int, limit: int):
+    return await db_get_all_paginate(db,
+                                     model=Notification,
+                                     schema=NotificationResponse,
+                                     filters={Notification.is_deleted: False},
+                                     joins=[joinedload(Notification.sender)],
+                                     page=page,
+                                     limit=limit)
+
+
 # If Business - return Business Types, if employee - return Professions
 async def get_available_professions_by_user_id(db: DBSession, user_id: int):
-    user = await db_get_one(db, model=User, filters={User.id: user_id},
+    user = await db_get_one(db,
+                            model=User,
+                            filters={User.id: user_id},
                             joins=[joinedload(User.role),
                                    joinedload(User.owner_business),
                                    joinedload(User.employee_business)]

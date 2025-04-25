@@ -11,6 +11,8 @@ from app.core.logger import logger
 async def send_employment_request(db: DBSession, new_employment: EmploymentRequestCreate,  request: Request):
     auth_user_id = request.state.user.get("id")
     business = await db_get_one(db, model=Business, filters={Business.owner_id: auth_user_id}, raise_not_found=False)
+    employer = await db.get(User, auth_user_id)
+    employee = await db.get(User, new_employment.employee_id)
 
     if not business:
         logger.logger(f"Business with ID: {auth_user_id} doesn't have the Business defined")
@@ -18,7 +20,12 @@ async def send_employment_request(db: DBSession, new_employment: EmploymentReque
                             detail='You do not have permission to perform this action')
 
     return await db_create(db, model=EmploymentRequest, create_data=new_employment,
-                    extra_params={'employer_id': auth_user_id, 'business_id': business.id})
+                    extra_params={
+                        'employer_id': auth_user_id,
+                        'employer_username': employer.username,
+                        'employee_username': employee.id,
+                        'business_id': business.id
+                    })
 
 async def accept_employment_request(db: DBSession,
                                     employment_request_id: int,
