@@ -14,8 +14,8 @@ async def create_appointment_sched(db: DBSession):
     return await create_appointment_scheduler(db)
 
 @router.post("/", response_model=AppointmentResponse)
-async def create_appointment(db: DBSession, appointment: AppointmentCreate, request: Request):
-    return await create_new_appointment(db, appointment, request)
+async def create_appointment(db: DBSession, appointment_create: AppointmentCreate, request: Request):
+    return await create_new_appointment(db, appointment_create, request)
 
 @router.put("/{appointment_id}/change-status", response_model=AppointmentResponse)
 async def change_status(db: DBSession, appointment_id: int, status: str, request: Request):
@@ -26,5 +26,5 @@ async def get_daily_timeslots(db: DBSession, day: str, user_id: int, slot_durati
     return await get_daily_available_slots(db, day, user_id, slot_duration)
 
 @router.get("/calendar-timeslots", status_code=status.HTTP_200_OK)
-async def get_available_calendar_timeslots(db: DBSession, start_date: str, end_date: str, user_id: int):
-    return await get_calendar_available_slots(db, start_date, end_date, user_id)
+async def get_available_calendar_timeslots(db: DBSession, start_date: str, end_date: str, user_id: int, slot_duration: int):
+    return await get_calendar_available_slots(db, start_date, end_date, user_id, slot_duration)

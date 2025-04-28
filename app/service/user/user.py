@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import HTTPException
 from sqlalchemy.orm import joinedload
 from starlette import status
@@ -7,14 +7,13 @@ from app.core.crud_helpers import db_get_all, db_get_all_paginate, db_get_one
 from app.core.dependencies import DBSession
 from app.core.enums.enums import RoleEnum
 from app.models import Schedule, Review, User, Follow, Appointment, Product, Business, BusinessType, SubFilter, \
-    Notification
+    Notification, EmploymentRequest, Profession
 from sqlalchemy import select, func, case, and_, or_
 from app.schema.booking.product import ProductWithSubFiltersResponse
 from app.schema.booking.business import BusinessResponse
 from geoalchemy2.shape import to_shape # type: ignore
 
 from app.schema.user.notification import NotificationResponse
-
 
 async def search_users_clients(db: DBSession, q: str):
     query = select(User).filter(User.role_id == 2) #type: ignore
@@ -70,16 +69,39 @@ async def get_user_schedules_by_id(db: DBSession, user_id: int):
 
     return schedules
 
+async def get_user_employment_requests_by_id(db: DBSession, user_id: int, request: Request):
+    auth_user_id = request.state.user.get("id")
+    user = await db_get_one(db, model=User, filters={User.id: user_id}, joins=[joinedload(User.role)])
+
+    if user.id != auth_user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail='You do not have permission to perform this action')
+
+    field_name = "employer_id" if user.role.name == RoleEnum.BUSINESS else "employee_id"
+
+    employment_requests = await db_get_all(db,
+                                           model=EmploymentRequest,
+                                           filters={getattr(EmploymentRequest, field_name): user_id, EmploymentRequest.status: 'pending'},
+                                           joins=[
+                                               joinedload(EmploymentRequest.employer).load_only(User.id, User.username, User.fullname, User.avatar),
+                                               joinedload(EmploymentRequest.employee).load_only(User.id, User.username, User.fullname, User.avatar),
+                                               joinedload(EmploymentRequest.profession).load_only(Profession.id, Profession.name)
+                                           ])
+    return employment_requests
+
+
 async def get_user_products_by_id(db: DBSession, user_id: int, page: int, limit: int):
     return await db_get_all_paginate(db,
                 model=Product, filters={Product.user_id: user_id}, schema=ProductWithSubFiltersResponse , page=page, limit=limit,
                 unique=True, joins=[joinedload(Product.sub_filters).joinedload(SubFilter.filter)])
 
 
-async def get_user_dashboard_summary_by_id(db: DBSession, user_id: int, start_date: str, end_date:str):
+async def get_user_dashboard_summary_by_id(db: DBSession, user_id: int, start_date: str, end_date:str, all_employees: bool):
     try:
-        start_date_obj = datetime.strptime(start_date, '%Y-%m-%d')
+        start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
         end_date_obj = datetime.strptime(end_date, '%Y-%m-%d')
+        end_date_obj = end_date_obj.replace(hour=23, minute=59, second=59, microsecond=999999, tzinfo=timezone.utc)
+
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail=f"Start date and end date should use the format - %Y-%m-%d")
@@ -87,8 +109,14 @@ async def get_user_dashboard_summary_by_id(db: DBSession, user_id: int, start_da
     days_diff = end_date_obj - start_date_obj
     previous_start_date = start_date_obj - days_diff
     previous_end_date = end_date_obj - days_diff
+    previous_end_date = previous_end_date.replace(hour=23, minute=59, second=59, microsecond=999999, tzinfo=timezone.utc)
 
-    def build_query(s_date, e_date, u_id):
+    user = await db_get_one(db, model=User, filters={User.id: user_id},
+                            joins=[joinedload(User.role), joinedload(User.owner_business).load_only(Business.id)])
+    is_super_admin = user.role.name == RoleEnum.SUPER_ADMIN
+    is_business = user.role.name == RoleEnum.BUSINESS
+
+    def calculate_dashboard_summary(s_date, e_date, is_bs, is_sa, all_emp, u_id):
         return (
             select(
                 User.id.label("user_id"),
@@ -105,7 +133,8 @@ async def get_user_dashboard_summary_by_id(db: DBSession, user_id: int, start_da
             .outerjoin(Product, Product.id == Appointment.product_id)
             .where(
                 and_(
-                    Appointment.user_id == u_id,
+                    *( [Appointment.user_id == u_id] if not is_sa and not all_emp else []),
+                    *( [Appointment.business_id == user.owner_business.id] if all_emp and is_bs else []),
                     Appointment.created_at >= s_date,
                     Appointment.created_at <= e_date
                 )
@@ -113,8 +142,8 @@ async def get_user_dashboard_summary_by_id(db: DBSession, user_id: int, start_da
             .group_by(User.id)
         )
 
-    current_result = await db.execute(build_query(start_date_obj, end_date_obj, user_id))
-    previous_result = await db.execute(build_query(previous_start_date, previous_end_date, user_id))
+    current_result = await db.execute(calculate_dashboard_summary(start_date_obj, end_date_obj, is_business, is_super_admin, all_employees, user_id))
+    previous_result = await db.execute(calculate_dashboard_summary(previous_start_date, previous_end_date, is_business, is_super_admin, all_employees, user_id))
 
     current_data = current_result.mappings().first()
     previous_data = previous_result.mappings().first()
@@ -122,11 +151,14 @@ async def get_user_dashboard_summary_by_id(db: DBSession, user_id: int, start_da
     def calculate_trend(current, previous):
         if previous == 0:
             return "up" if current > 0 else "no_change", "100%" if current > 0 else "%0"
+
         percentage_change = ((current - previous) / previous) * 100 if previous else 0
         trend = "up" if percentage_change > 0 else "down"
         return trend, f"{percentage_change:.2f}%"
 
+
     response = []
+
     for key, title in [
         ('total_bookings', 'Total Bookings'),
         ('own_bookings', 'Own bookings'),

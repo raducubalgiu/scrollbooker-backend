@@ -10,6 +10,7 @@ class AppointmentBase(BaseModel):
 class AppointmentCreate(AppointmentBase):
     product_id: int
     channel: Optional[str] = None
+    instant_booking: bool
 
     class Config:
         from_attributes = True

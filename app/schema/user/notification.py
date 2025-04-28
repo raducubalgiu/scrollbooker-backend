@@ -14,6 +14,7 @@ class NotificationCreate(NotificationBase):
     pass
 
 class NotificationResponse(NotificationBase):
+    id: int
     data: Optional[Dict[str, Any]] = None
     message: Optional[str] = None
     is_read: bool

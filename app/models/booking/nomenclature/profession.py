@@ -15,6 +15,7 @@ class Profession(Base):
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     business_types = relationship("BusinessType", secondary=business_type_professions, back_populates="professions")
+    employment_requests = relationship("EmploymentRequest", back_populates="profession")
 
     __table_args__ = (
         Index("profession_name", "name"),

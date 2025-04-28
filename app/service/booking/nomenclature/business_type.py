@@ -1,6 +1,6 @@
 from sqlalchemy.orm import joinedload
 from app.core.crud_helpers import db_create, db_delete, db_update, db_insert_many_to_many, \
-    db_remove_many_to_many, db_get_all_paginate, db_get_one
+    db_remove_many_to_many, db_get_all_paginate, db_get_one, db_get_all
 from app.core.dependencies import DBSession
 from app.models import BusinessType, Service, Filter, SubFilter, Profession
 from app.models.booking.nomenclature.business_type_filters import business_type_filters
@@ -17,7 +17,7 @@ async def delete_business_type_by_id(db: DBSession, business_type_id: int):
 async def update_business_type_by_id(db: DBSession, business_type_update: BusinessTypeUpdate, business_type_id: int):
     return await db_update(db, model=BusinessType, update_data=business_type_update, resource_id=business_type_id)
 
-async def get_all_business_types_with_services(db: DBSession, page: int, limit: int):
+async def get_all_business_type_with_services(db: DBSession, page: int, limit: int):
     return await db_get_all_paginate(db, model=BusinessType, schema=BusinessTypeWithServicesAndFiltersResponse,
                 joins=[
                     joinedload(BusinessType.services).load_only(Service.name),
@@ -25,9 +25,18 @@ async def get_all_business_types_with_services(db: DBSession, page: int, limit: 
                     .joinedload(Filter.sub_filters).load_only(SubFilter.name)
                 ], unique=True, page=page, limit=limit, order_by=["id"], descending=True)
 
-async def get_business_type_services_by_id(db: DBSession, business_type_id: int):
-    business_type = await db_get_one(db, model=BusinessType, filters={BusinessType.id: business_type_id},
-                            joins=[joinedload(BusinessType.services)])
+async def get_professions_by_business_type_id(db: DBSession, business_type_id: int):
+    business_type = await db_get_one(db,
+                            model=BusinessType,
+                            filters={BusinessType.id: business_type_id},
+                            joins=[joinedload(BusinessType.professions)])
+    return business_type.professions
+
+async def get_services_by_business_type_id(db: DBSession, business_type_id: int):
+    business_type = await db_get_one(db,
+                                     model=BusinessType,
+                                     filters={BusinessType.id: business_type_id},
+                                     joins=[joinedload(BusinessType.services)])
     return business_type.services
 
 async def get_business_type_filters_and_sub_filters_by_id(db: DBSession, business_type_id: int):

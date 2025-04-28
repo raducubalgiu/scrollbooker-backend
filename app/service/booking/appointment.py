@@ -70,29 +70,31 @@ async def create_appointment_scheduler(db: DBSession):
     return {"detail": "Nothing happened!"}
 
 
-async def create_new_appointment(db: DBSession, appointment: AppointmentCreate, request: Request):
+async def create_new_appointment(db: DBSession, appointment_create: AppointmentCreate, request: Request):
     auth_user_id = request.state.user.get("id")
-    product = await db_get_one(db, model=Product, filters={Product.id: appointment.product_id})
+    product = await db_get_one(db, model=Product, filters={Product.id: appointment_create.product_id})
+
+    # TODO: Add Validation for not be able to create appointment in the past
 
     stmt = await db.execute(
         select(Appointment).where(
             or_(
                 and_(
                     Appointment.user_id == product.user_id,
-                    Appointment.start_date == appointment.start_date
+                    Appointment.start_date == appointment_create.start_date
                 ),
                 and_(Appointment.customer_id == auth_user_id,
-                    Appointment.start_date == appointment.start_date)
+                    Appointment.start_date == appointment_create.start_date)
             )
         ))
     is_slot_booked = stmt.scalars().first()
 
     if is_slot_booked:
-        logger.error(f"Business/Employee with id: {product.user_id} already has an appointment starting at: {appointment.start_date}")
+        logger.error(f"Business/Employee with id: {product.user_id} already has an appointment starting at: {appointment_create.start_date}")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
             detail="This slot is already booked")
 
-    return await db_create(db, model=Appointment, create_data=appointment, extra_params={
+    return await db_create(db, model=Appointment, create_data=appointment_create, extra_params={
         "customer_id": auth_user_id,
         'user_id': product.user_id,
         'business_id': product.business_id,
@@ -182,7 +184,7 @@ async def get_daily_available_slots(db: DBSession, day: str, user_id: int, slot_
 
     return slots
 
-async def get_calendar_available_slots(db: DBSession, start_date: str, end_date: str, user_id: int):
+async def get_calendar_available_slots(db: DBSession, start_date: str, end_date: str, user_id: int, slot_duration: int):
     start_dt = datetime.strptime(start_date, "%Y-%m-%d").date()
     end_dt = datetime.strptime(end_date, "%Y-%m-%d").date()
 
@@ -193,7 +195,8 @@ async def get_calendar_available_slots(db: DBSession, start_date: str, end_date:
 
     current_date = start_dt
     while current_date <= end_dt:
-        timeslots = await get_daily_available_slots(db, current_date.strftime("%Y-%m-%d"), user_id)
+        timeslots = await get_daily_available_slots(db, current_date.strftime("%Y-%m-%d"), user_id, slot_duration)
         calendar[current_date.isoformat()] = timeslots
         current_date += timedelta(days=1)
+
     return calendar

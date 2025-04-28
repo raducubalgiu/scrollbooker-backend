@@ -1,16 +1,18 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from starlette.requests import Request
 
 from app.core.crud_helpers import PaginatedResponse
 from app.core.dependencies import DBSession
 from app.schema.booking.business import BusinessResponse
+from app.schema.booking.employment_request import EmploymentRequestResponse
 from app.schema.booking.product import ProductWithSubFiltersResponse
 from app.schema.user.notification import NotificationResponse
 from app.schema.user.user import UserBaseMinimum
 from app.service.booking.review import get_business_and_employee_reviews
 from app.service.user.user import get_user_schedules_by_id, get_user_followers_by_user_id, \
     get_user_followings_by_user_id, get_user_dashboard_summary_by_id, get_user_products_by_id, \
-    get_available_professions_by_user_id, get_user_business_by_id, search_users_clients, get_user_notifications_by_id
+    get_available_professions_by_user_id, get_user_business_by_id, search_users_clients, get_user_notifications_by_id, \
+    get_user_employment_requests_by_id
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -22,9 +24,13 @@ async def search_users_as_clients(db: DBSession, q: str):
 async def get_user_business(db: DBSession, user_id: int):
     return await get_user_business_by_id(db, user_id)
 
+@router.get("/{user_id}/employment-requests", response_model=list[EmploymentRequestResponse])
+async def get_user_employment_requests(db: DBSession, user_id: int, request: Request):
+    return await get_user_employment_requests_by_id(db, user_id, request)
+
 @router.get("/{user_id}/dashboard-summary")
-async def get_user_dashboard_summary(db: DBSession, user_id: int, start_date: str, end_date: str):
-    return await get_user_dashboard_summary_by_id(db, user_id, start_date, end_date)
+async def get_user_dashboard_summary(db: DBSession, user_id: int, start_date: str, end_date: str, all_employees: bool = Query(False)):
+    return await get_user_dashboard_summary_by_id(db, user_id, start_date, end_date, all_employees)
 
 @router.get("/{user_id}/products", response_model=PaginatedResponse[ProductWithSubFiltersResponse])
 async def get_user_products(db: DBSession, user_id: int, page: int, limit: int):
