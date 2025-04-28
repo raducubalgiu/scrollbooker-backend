@@ -14,6 +14,7 @@ from app.models import Appointment, Schedule, User, Product
 from sqlalchemy import select, and_, or_
 from app.core.logger import logger
 import random
+from collections import defaultdict
 
 async def create_appointment_scheduler(db: DBSession):
     # Get All Clients
@@ -245,27 +246,36 @@ async def get_user_calendar_events(db: DBSession, start_date: str, end_date: str
     appointments = appointment_results.all()
 
     # Group appointments by date and slot duration
-    grouped_appointments = defaultdict(lambda: defaultdict(list))
-
+    grouped_appointments = defaultdict(list)
     for a_start, a_end, customer_id, username, fullname, avatar in appointments:
         appointment_date = a_start.date()
-        start_date = a_start
+        #start_date = a_start
         # Group by the slot duration
-        while start_date < a_end:
-            end_date = start_date + timedelta(minutes=slot_duration)
-            if end_date > a_end:
-                end_date = a_end
-            grouped_appointments[appointment_date][start_date].append({
-                "start_date": start_date,
-                "end_date": end_date,
-                "customer": {
-                    "id": customer_id,
-                    "username": username,
-                    "fullname": fullname,
-                    "avatar": avatar
-                }
-            })
-            start_date = end_date
+        # while start_date < a_end:
+        #     end_date = start_date + timedelta(minutes=slot_duration)
+        #     if end_date > a_end:
+        #         end_date = a_end
+        #     grouped_appointments[appointment_date][start_date].append({
+        #         "start_date": start_date,
+        #         "end_date": end_date,
+        #         "customer": {
+        #             "id": customer_id,
+        #             "username": username,
+        #             "fullname": fullname,
+        #             "avatar": avatar
+        #         }
+        #     })
+        #     start_date = end_date
+        grouped_appointments[appointment_date].append({
+            "start_date": a_start,
+            "end_date": a_end,
+            "customer": {
+                "id": customer_id,
+                "username": username,
+                "fullname": fullname,
+                "avatar": avatar
+            }
+        })
 
     slots = []
     min_slot_time = None
@@ -289,37 +299,59 @@ async def get_user_calendar_events(db: DBSession, start_date: str, end_date: str
             end_time_local = datetime.combine(current_date, schedule.end_time, tzinfo=tz)
 
             current_slot_start = start_time_local
-            while current_slot_start + timedelta(minutes=slot_duration) <= end_time_local:
+
+            day_appointments = sorted(grouped_appointments.get(current_date, []), key=lambda x: x["start_date"])
+
+            a_index = 0
+            while current_slot_start < end_time_local:
                 current_slot_end = current_slot_start + timedelta(minutes=slot_duration)
 
-                # Convert to UTC
+                if a_index < len(day_appointments):
+                    a = day_appointments[a_index]
+                    booked_start_time = a["start_date"].astimezone(tz)
+                    booked_end_time = a["end_date"].astimezone(tz)
+
+                    if booked_start_time <= current_slot_start < booked_end_time:
+                        slot_start_utc = booked_start_time.astimezone(ZoneInfo('UTC'))
+                        slot_end_utc = booked_end_time.astimezone(ZoneInfo('UTC'))
+
+                        day_slots.append({
+                            "start_date_locale": booked_start_time.strftime('%Y-%m-%dT%H:%M:%S'),
+                            "end_date_locale": booked_end_time.strftime('%Y-%m-%dT%H:%M:%S'),
+                            "start_date_utc": slot_start_utc.isoformat(),
+                            "end_date_utc": slot_end_utc.isoformat(),
+                            "is_booked": True,
+                            "customer": a["customer"],
+                        })
+
+                        # Update minSlot and maxSlot
+                        if min_slot_time is None or current_slot_start < min_slot_time:
+                            min_slot_time = current_slot_start
+                        if max_slot_time is None or current_slot_end > max_slot_time:
+                            max_slot_time = current_slot_end
+
+                        # Move current_slot_start to after the booked appointment
+                        current_slot_start = booked_end_time
+                        a_index += 1
+                        continue
+
                 slot_start_utc = current_slot_start.astimezone(ZoneInfo("UTC"))
                 slot_end_utc = current_slot_end.astimezone(ZoneInfo("UTC"))
-
-                # Update minSlot and maxSlot
-                if min_slot_time is None or current_slot_start < min_slot_time:
-                    min_slot_time = current_slot_start
-                if max_slot_time is None or current_slot_end > max_slot_time:
-                    max_slot_time = current_slot_end
-
-                # Check if slot is booked by checking grouped appointments
-                booked_customer = None
-                if current_date in grouped_appointments:
-                    if current_slot_start in grouped_appointments[current_date]:
-                        for a in grouped_appointments[current_date][current_slot_start]:
-                            a_start, a_end = a['start_date'], a['end_date']
-                            if a_start < slot_end_utc and a_end > slot_start_utc:
-                                booked_customer = a['customer']
-                                break
 
                 day_slots.append({
                     "start_date_locale": current_slot_start.strftime('%Y-%m-%dT%H:%M:%S'),
                     "end_date_locale": current_slot_end.strftime('%Y-%m-%dT%H:%M:%S'),
                     "start_date_utc": slot_start_utc.isoformat(),
                     "end_date_utc": slot_end_utc.isoformat(),
-                    "is_booked": booked_customer is not None,
-                    "customer": booked_customer if booked_customer else None,
+                    "is_booked": False,
+                    "customer": None,
                 })
+
+                # Update minSlot and maxSlot
+                if min_slot_time is None or current_slot_start < min_slot_time:
+                    min_slot_time = current_slot_start
+                if max_slot_time is None or current_slot_end > max_slot_time:
+                    max_slot_time = current_slot_end
 
                 current_slot_start = current_slot_end
 
