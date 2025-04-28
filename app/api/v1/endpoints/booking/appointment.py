@@ -5,7 +5,8 @@ from starlette.requests import Request
 from app.core.dependencies import DBSession
 from app.schema.booking.appointment import AppointmentResponse, AppointmentCreate
 from app.service.booking.appointment import create_new_appointment, change_appointment_status, \
-    get_daily_available_slots, get_calendar_available_slots, create_appointment_scheduler
+    get_daily_available_slots, get_calendar_available_slots, create_appointment_scheduler, \
+    get_user_calendar_events
 
 router = APIRouter(prefix="/appointments", tags=["Appointments"])
 
@@ -28,3 +29,7 @@ async def get_daily_timeslots(db: DBSession, day: str, user_id: int, slot_durati
 @router.get("/calendar-timeslots", status_code=status.HTTP_200_OK)
 async def get_available_calendar_timeslots(db: DBSession, start_date: str, end_date: str, user_id: int, slot_duration: int):
     return await get_calendar_available_slots(db, start_date, end_date, user_id, slot_duration)
+
+@router.get("/calendar-events", status_code=status.HTTP_200_OK)
+async def get_calendar_events(db: DBSession, start_date: str, end_date: str, user_id: int, slot_duration: int, user_timezone: str):
+    return await get_user_calendar_events(db, start_date, end_date, user_id, slot_duration, user_timezone)

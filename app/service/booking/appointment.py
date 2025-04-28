@@ -1,9 +1,12 @@
+from collections import defaultdict
+
 from fastapi import HTTPException
 from datetime import datetime, timedelta, time, timezone
+from zoneinfo import ZoneInfo
 import pytz #type: ignore
 from starlette.requests import Request
 from starlette import status
-from app.core.crud_helpers import db_create, db_get_one
+from app.core.crud_helpers import db_create, db_get_one, db_get_all
 from app.core.data_utils import utc_to_local
 from app.schema.booking.appointment import AppointmentCreate
 from app.core.dependencies import DBSession
@@ -200,3 +203,142 @@ async def get_calendar_available_slots(db: DBSession, start_date: str, end_date:
         current_date += timedelta(days=1)
 
     return calendar
+
+async def get_user_calendar_events(db: DBSession, start_date: str, end_date: str, user_id: int, slot_duration: int, user_timezone: str):
+    start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
+    end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
+
+    # Create Timezone object
+    tz = ZoneInfo(user_timezone)
+
+    # Create Local datetimes
+    local_start = datetime.combine(start_date_obj, time.min).replace(tzinfo=tz)
+    local_end = datetime.combine(end_date_obj, time.max).replace(tzinfo=tz)
+
+    # Convert to UTC
+    start_utc = local_start.astimezone(ZoneInfo('UTC'))
+    end_utc = local_end.astimezone(ZoneInfo('UTC'))
+
+    # if start_date_obj > end_date_obj:
+    #      raise ValueError("start date cannot be after end date")
+
+    schedules_stmt = select(Schedule).where(Schedule.user_id == user_id) #type: ignore
+    schedules_result = await db.execute(schedules_stmt)
+    schedules = {schedule.day_of_week: schedule for schedule in schedules_result.scalars().all()}
+
+    appointments_stmt = (select(
+        Appointment.start_date,
+        Appointment.end_date,
+        User.id,
+        User.username,
+        User.fullname,
+        User.avatar,
+    )
+        .join(User, User.id == Appointment.customer_id) #type: ignore
+        .where(
+            Appointment.user_id == user_id, # type: ignore
+            Appointment.start_date >= start_utc,
+            Appointment.end_date <= end_utc
+        ))
+
+    appointment_results = await db.execute(appointments_stmt)
+    appointments = appointment_results.all()
+
+    # Group appointments by date and slot duration
+    grouped_appointments = defaultdict(lambda: defaultdict(list))
+
+    for a_start, a_end, customer_id, username, fullname, avatar in appointments:
+        appointment_date = a_start.date()
+        start_date = a_start
+        # Group by the slot duration
+        while start_date < a_end:
+            end_date = start_date + timedelta(minutes=slot_duration)
+            if end_date > a_end:
+                end_date = a_end
+            grouped_appointments[appointment_date][start_date].append({
+                "start_date": start_date,
+                "end_date": end_date,
+                "customer": {
+                    "id": customer_id,
+                    "username": username,
+                    "fullname": fullname,
+                    "avatar": avatar
+                }
+            })
+            start_date = end_date
+
+    slots = []
+    min_slot_time = None
+    max_slot_time = None
+    current_date = start_date_obj
+
+    while current_date <= end_date_obj:
+        day_name = current_date.strftime("%A")
+        schedule = schedules.get(day_name)
+
+        if not schedule or not schedule.start_time or not schedule.end_time:
+            slots.append({
+                "date": current_date.isoformat(),
+                "is_closed": True,
+                "slots": []
+            })
+        else:
+            day_slots = []
+
+            start_time_local = datetime.combine(current_date, schedule.start_time, tzinfo=tz)
+            end_time_local = datetime.combine(current_date, schedule.end_time, tzinfo=tz)
+
+            current_slot_start = start_time_local
+            while current_slot_start + timedelta(minutes=slot_duration) <= end_time_local:
+                current_slot_end = current_slot_start + timedelta(minutes=slot_duration)
+
+                # Convert to UTC
+                slot_start_utc = current_slot_start.astimezone(ZoneInfo("UTC"))
+                slot_end_utc = current_slot_end.astimezone(ZoneInfo("UTC"))
+
+                # Update minSlot and maxSlot
+                if min_slot_time is None or current_slot_start < min_slot_time:
+                    min_slot_time = current_slot_start
+                if max_slot_time is None or current_slot_end > max_slot_time:
+                    max_slot_time = current_slot_end
+
+                # Check if slot is booked by checking grouped appointments
+                booked_customer = None
+                if current_date in grouped_appointments:
+                    if current_slot_start in grouped_appointments[current_date]:
+                        for a in grouped_appointments[current_date][current_slot_start]:
+                            a_start, a_end = a['start_date'], a['end_date']
+                            if a_start < slot_end_utc and a_end > slot_start_utc:
+                                booked_customer = a['customer']
+                                break
+
+                day_slots.append({
+                    "start_date_locale": current_slot_start.strftime('%Y-%m-%dT%H:%M:%S'),
+                    "end_date_locale": current_slot_end.strftime('%Y-%m-%dT%H:%M:%S'),
+                    "start_date_utc": slot_start_utc.isoformat(),
+                    "end_date_utc": slot_end_utc.isoformat(),
+                    "is_booked": booked_customer is not None,
+                    "customer": booked_customer if booked_customer else None,
+                })
+
+                current_slot_start = current_slot_end
+
+            slots.append({
+                "date": current_date.isoformat(),
+                "is_closed": False,
+                "slots": day_slots
+            })
+
+        current_date += timedelta(days=1)
+
+    return {
+        "min_slot_time": min_slot_time.strftime('%H:%M:%S') if min_slot_time else None,
+        "max_slot_time": max_slot_time.strftime('%H:%M:%S') if max_slot_time else None,
+        "data": slots
+    }
+
+
+
+
+
+
