@@ -8,8 +8,14 @@ class CurrencyBase(BaseModel):
 class CurrencyCreate(CurrencyBase):
     pass
 
+class CurrencyUpdate(CurrencyBase):
+    active: bool
+
 class CurrencyResponse(CurrencyBase):
     id: int
     active: bool
     created_at: datetime
     updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
