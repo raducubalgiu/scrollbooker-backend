@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Float, String, ForeignKey, TIMESTAMP, func, Index
+from sqlalchemy import Column, Integer, String, ForeignKey, TIMESTAMP, func, Index, DECIMAL
 from sqlalchemy.orm import relationship
 
 from app.models import Base
@@ -11,9 +11,10 @@ class Product(Base):
     name = Column(String, nullable=False, index=True)
     description = Column(String, nullable=True)
     duration = Column(Integer, nullable=False, index=True)
-    price = Column(Float, nullable=False, index=True)
-    price_with_discount = Column(Float, nullable=True)
-    discount = Column(Float, nullable=False, index=True)
+    price = Column(DECIMAL, nullable=False, index=True)
+    price_with_discount = Column(DECIMAL, nullable=True)
+    discount = Column(DECIMAL, nullable=False, index=True)
+    currency = Column(String(3))
 
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
@@ -21,8 +22,6 @@ class Product(Base):
     # Foreign keys
     service_id = Column(Integer, ForeignKey("services.id", ondelete="CASCADE"), nullable=False, index=True)
     business_id = Column(Integer, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=False, index=True)
-
-    # User with role Business or Employee
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
 
     # Relations

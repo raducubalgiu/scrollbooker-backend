@@ -1,14 +1,16 @@
 from datetime import datetime, timezone
-from fastapi import HTTPException
+from typing import Optional
+
+from fastapi import HTTPException, Query
 from sqlalchemy.orm import joinedload
 from starlette import status
 from starlette.requests import Request
 from app.core.crud_helpers import db_get_all, db_get_all_paginate, db_get_one
-from app.core.dependencies import DBSession
+from app.core.dependencies import DBSession, Pagination
 from app.core.enums.enums import RoleEnum
 from app.models import Schedule, Review, User, Follow, Appointment, Product, Business, BusinessType, SubFilter, \
-    Notification, EmploymentRequest, Profession
-from sqlalchemy import select, func, case, and_, or_
+    Notification, EmploymentRequest, Profession, Service
+from sqlalchemy import select, func, case, and_, or_, distinct
 from app.schema.booking.product import ProductWithSubFiltersResponse
 from app.schema.booking.business import BusinessResponse
 from geoalchemy2.shape import to_shape # type: ignore
@@ -63,13 +65,29 @@ async def get_user_business_by_id(db: DBSession, user_id: int):
         coordinates=(longitude, latitude)
     )
 
-async def get_user_schedules_by_id(db: DBSession, user_id: int):
+async def get_schedules_by_user_id(db: DBSession, user_id: int):
     await get_user_business_by_id(db, user_id)
     schedules = await db_get_all(db, model=Schedule, filters={Schedule.user_id: user_id}, order_by="day_week_index")
 
     return schedules
 
-async def get_user_employment_requests_by_id(db: DBSession, user_id: int, request: Request):
+async def get_services_by_user_id(db: DBSession, user_id: int):
+    business_result = await db.execute(
+        select(Business)
+        .join(User, User.id == user_id) #type: ignore
+        .where(or_(
+            User.employee_business_id == Business.id,
+            Business.owner_id == User.id
+        ))
+        .options(joinedload(Business.services))
+    )
+    business = business_result.scalars().first()
+    return business.services
+
+async def get_products_by_user_id_and_service_id(db:DBSession, user_id: int, service_id: int):
+    return await db_get_all(db, model=Product, filters={Product.user_id: user_id, Product.service_id: service_id})
+
+async def get_employment_requests_by_user_id(db: DBSession, user_id: int, request: Request):
     auth_user_id = request.state.user.get("id")
     user = await db_get_one(db, model=User, filters={User.id: user_id}, joins=[joinedload(User.role)])
 
@@ -89,12 +107,19 @@ async def get_user_employment_requests_by_id(db: DBSession, user_id: int, reques
                                            ])
     return employment_requests
 
+async def get_user_products_by_id(db: DBSession, user_id: int, pagination: Pagination):
+    return await db_get_all(db,
+                            model=Product,
+                            filters={Product.user_id: user_id},
+                            schema=ProductWithSubFiltersResponse,
+                            page=pagination.page,
+                            limit=pagination.limit,
+                            unique=True,
+                            joins=[joinedload(Product.sub_filters).joinedload(SubFilter.filter)])
 
-async def get_user_products_by_id(db: DBSession, user_id: int, page: int, limit: int):
-    return await db_get_all_paginate(db,
-                model=Product, filters={Product.user_id: user_id}, schema=ProductWithSubFiltersResponse , page=page, limit=limit,
-                unique=True, joins=[joinedload(Product.sub_filters).joinedload(SubFilter.filter)])
-
+async def get_product_durations_by_user_id(db: DBSession, user_id):
+    durations_results = await db.execute(select(distinct(Product.duration)).where(Product.user_id == user_id)) #type: ignore
+    return [row[0] for row in durations_results]
 
 async def get_user_dashboard_summary_by_id(db: DBSession, user_id: int, start_date: str, end_date:str, all_employees: bool):
     try:

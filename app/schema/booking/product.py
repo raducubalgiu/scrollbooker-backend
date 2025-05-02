@@ -1,23 +1,25 @@
 from typing import Optional, List
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, condecimal
 from datetime import datetime
-
-from app.schema.booking.nomenclature.sub_filter import SubFilterResponse, SubFilterWithFilterResponse
+from decimal import Decimal
+from app.schema.booking.nomenclature.sub_filter import SubFilterWithFilterResponse
 
 class ProductBase(BaseModel):
     name: str = Field(min_length=3, max_length=100)
     description: str = Field(min_length=3, max_length=255)
     duration: int
-    price: float
     service_id: int
     business_id: int
-    discount: Optional[float] = Field(default=0)
+    price: condecimal(gt=0, max_digits=10, decimal_places=2)
+    price_with_discount: condecimal(gt=0, max_digits=10, decimal_places=2)
+    discount: condecimal(lt=100, max_digits=5, decimal_places=2) = Decimal("00.00")
+    currency: str
 
 class ProductUpdate(ProductBase):
     pass
 
 class ProductCreate(ProductBase):
-    price_with_discount: Optional[float] = Field(default=0)
+    pass
 
 class ProductCreateWithSubFilters(BaseModel):
     product: ProductCreate
@@ -26,8 +28,6 @@ class ProductCreateWithSubFilters(BaseModel):
 class ProductResponse(ProductBase):
     id: int
     user_id: int
-    price_with_discount: float
-    discount: float
     created_at: datetime
     updated_at: Optional[datetime] = None
 

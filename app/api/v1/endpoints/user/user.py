@@ -1,18 +1,23 @@
+from typing import Union
+
 from fastapi import APIRouter, Query
 from starlette.requests import Request
 
 from app.core.crud_helpers import PaginatedResponse
-from app.core.dependencies import DBSession
+from app.core.dependencies import DBSession, Pagination
 from app.schema.booking.business import BusinessResponse
 from app.schema.booking.employment_request import EmploymentRequestResponse
-from app.schema.booking.product import ProductWithSubFiltersResponse
+from app.schema.booking.nomenclature.service import ServiceResponse
+from app.schema.booking.product import ProductWithSubFiltersResponse, ProductResponse
+from app.schema.booking.schedule import ScheduleResponse
 from app.schema.user.notification import NotificationResponse
 from app.schema.user.user import UserBaseMinimum
 from app.service.booking.review import get_business_and_employee_reviews
-from app.service.user.user import get_user_schedules_by_id, get_user_followers_by_user_id, \
+from app.service.user.user import get_schedules_by_user_id, get_user_followers_by_user_id, \
     get_user_followings_by_user_id, get_user_dashboard_summary_by_id, get_user_products_by_id, \
     get_available_professions_by_user_id, get_user_business_by_id, search_users_clients, get_user_notifications_by_id, \
-    get_user_employment_requests_by_id
+    get_employment_requests_by_user_id, get_product_durations_by_user_id, get_services_by_user_id, \
+    get_products_by_user_id_and_service_id
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -26,19 +31,31 @@ async def get_user_business(db: DBSession, user_id: int):
 
 @router.get("/{user_id}/employment-requests", response_model=list[EmploymentRequestResponse])
 async def get_user_employment_requests(db: DBSession, user_id: int, request: Request):
-    return await get_user_employment_requests_by_id(db, user_id, request)
+    return await get_employment_requests_by_user_id(db, user_id, request)
 
 @router.get("/{user_id}/dashboard-summary")
 async def get_user_dashboard_summary(db: DBSession, user_id: int, start_date: str, end_date: str, all_employees: bool = Query(False)):
     return await get_user_dashboard_summary_by_id(db, user_id, start_date, end_date, all_employees)
 
-@router.get("/{user_id}/products", response_model=PaginatedResponse[ProductWithSubFiltersResponse])
-async def get_user_products(db: DBSession, user_id: int, page: int, limit: int):
-    return await get_user_products_by_id(db, user_id, page, limit)
+@router.get("/{user_id}/services", response_model=list[ServiceResponse])
+async def get_user_services(db: DBSession, user_id: int):
+    return await get_services_by_user_id(db, user_id)
 
-@router.get("/{user_id}/schedules")
+@router.get("/{user_id}/products", response_model=Union[PaginatedResponse[ProductWithSubFiltersResponse], list[ProductWithSubFiltersResponse]])
+async def get_user_products(db: DBSession, user_id: int, pagination: Pagination):
+    return await get_user_products_by_id(db, user_id, pagination)
+
+@router.get("/{user_id}/services/{service_id}/products", response_model=list[ProductResponse])
+async def get_user_products_by_service_id(db: DBSession, user_id: int, service_id: int):
+    return await get_products_by_user_id_and_service_id(db, user_id, service_id)
+
+@router.get("/{user_id}/product-durations", response_model=list[int])
+async def get_user_product_durations(db:DBSession, user_id: int):
+    return await get_product_durations_by_user_id(db, user_id)
+
+@router.get("/{user_id}/schedules", response_model=list[ScheduleResponse])
 async def get_user_schedules(db: DBSession, user_id: int):
-    return await get_user_schedules_by_id(db, user_id)
+    return await get_schedules_by_user_id(db, user_id)
 
 @router.get("/{user_id}/reviews/owner-reviews")
 async def get_author_reviews(db: DBSession, user_id: int, page: int, limit: int, request: Request):
