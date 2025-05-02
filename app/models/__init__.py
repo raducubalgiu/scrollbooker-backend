@@ -9,6 +9,7 @@ from app.models.booking.nomenclature.sub_filter import SubFilter
 from app.models.booking.nomenclature.service import Service
 from app.models.booking.nomenclature.service_domain import ServiceDomain
 from app.models.booking.nomenclature.service_business_types import service_business_types
+from app.models.booking.nomenclature.currency import Currency
 from app.models.booking.product import Product
 from app.models.booking.product_sub_filters import product_sub_filters
 from app.models.booking.business import Business

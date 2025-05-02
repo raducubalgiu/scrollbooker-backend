@@ -9,7 +9,7 @@ from app.api.v1.endpoints.user import user, role, permission, consent, notificat
 from app.api.v1.endpoints.auth import auth
 from app.api.v1.endpoints.social import follow, hashtag, post
 from app.api.v1.endpoints.booking import business, product, appointment, schedule, review, employment_request
-from app.api.v1.endpoints.booking.nomenclature import business_domain, business_type, service, filter, sub_filter, service_domain, profession
+from app.api.v1.endpoints.booking.nomenclature import business_domain, business_type, service, filter, sub_filter, service_domain, profession, currency
 from app.core.middlewares.auth_middleware import AuthMiddleware
 from app.core.exceptions import global_exception_handler, http_exception_handler, validation_exception_handler
 
@@ -39,6 +39,7 @@ app.include_router(consent.router, dependencies=[UserSession])
 app.include_router(notification.router, dependencies=[UserSession])
 
 # Booking
+app.include_router(currency.router, dependencies=[UserSession])
 app.include_router(business_domain.router, dependencies=[UserSession])
 app.include_router(business_type.router, dependencies=[UserSession])
 app.include_router(profession.router, dependencies=[UserSession])
