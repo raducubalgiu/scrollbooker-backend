@@ -8,102 +8,108 @@ from starlette.requests import Request
 from starlette import status
 from app.core.crud_helpers import db_create, db_get_one, db_get_all
 from app.core.data_utils import utc_to_local
-from app.schema.booking.appointment import AppointmentCreate
+from app.core.enums.enums import AppointmentStatusEnum
+from app.schema.booking.appointment import AppointmentCreate, AppointmentBlockedCreate
 from app.core.dependencies import DBSession
-from app.models import Appointment, Schedule, User, Product
+from app.models import Appointment, Schedule, User, Product, Business
 from sqlalchemy import select, and_, or_
 from app.core.logger import logger
-import random
-from collections import defaultdict
 
-async def create_appointment_scheduler(db: DBSession):
-    # Get All Clients
-    stmt_users = await db.execute(select(User.id).where(User.role_id == 2)) #type: ignore
-    all_users_ids = stmt_users.scalars().all()
+async def create_new_blocked_appointment(db: DBSession, appointments_create: list[AppointmentBlockedCreate], request: Request):
+    auth_user_id = request.state.user.get("id")
 
-    all_appointments_stmt = await db.execute(select(Appointment))
-    all_appointments = all_appointments_stmt.scalars().all()
-    data = []
+    for appointment_create in appointments_create:
+        if auth_user_id != appointment_create.user_id:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                                detail="You do not have permission to perform this action")
 
-    for user_id in all_users_ids:
-        data.append({
-            "user_id": user_id,
-            "appointments": [appointment.id for appointment in all_appointments if appointment.customer_id == user_id],
+        is_slot_booked = await db_get_one(db, model=Appointment, raise_not_found=False, filters={
+            Appointment.user_id: auth_user_id,
+            Appointment.start_date: appointment_create.start_date,
+            Appointment.end_date: appointment_create.end_date
         })
 
-    users_with_low_appointments = sorted(data, key=lambda x: len(x["appointments"]), reverse=True)[:1]
+        if is_slot_booked:
+            logger.error(
+                f"Business/Employee with id: {auth_user_id} already has an appointment starting at: {appointment_create.start_date}, ending at: {appointment_create.end_date}")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail="This slot is already booked")
 
-    for user in users_with_low_appointments:
-        if len(user["appointments"]) == 0:
-            print('Hello World')
-        else:
-            # Create a new appointment based on the previous one
-            random_appointment_id = random.choice(user["appointments"])
-            appointment = await db.get(Appointment, random_appointment_id)
+        business_result = await db.execute(
+            select(Business)
+            .join(User, User.id == auth_user_id) #type: ignore
+            .where(or_(
+                Business.owner_id == User.id,
+                User.employee_business_id == Business.id
+            ))
+        )
+        business = business_result.scalar_one_or_none()
+        if not business:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                detail='Business not found')
 
-            new_start_date = appointment.start_date + timedelta(days=1)
-            new_end_date = appointment.end_date + timedelta(days=1)
-
-            # Check if there exists an appointment for next day
-            existing_appointment = await db_get_one(db, model=Appointment, filters={
-                Appointment.user_id: appointment.user_id,
-                Appointment.start_date: new_start_date,
-                Appointment.end_date: new_end_date
-            }, raise_not_found=False)
-
-            # Check if is in the User Schedule
-
-            # Create a new reservation adding 1 DAY to start_time * end_time
-            if not existing_appointment:
-                new_appointment = Appointment(
-                    start_date=new_start_date,
-                    end_date=new_end_date,
-                    product_id=appointment.product_id,
-                    service_id=appointment.service_id,
-                    business_id=appointment.business_id,
-                    customer_id=appointment.customer_id,
-                    user_id=appointment.user_id
-                )
-
-                db.add(new_appointment)
-                await db.commit()
-                await db.refresh(new_appointment)
-                return new_appointment
-            else:
-                return {"detail": "Could not create any appointment"}
-    return {"detail": "Nothing happened!"}
-
+        return await db_create(db, model=Appointment, create_data=appointment_create, extra_params={
+            "status": AppointmentStatusEnum.FINISHED,
+            "instant_booking": True,
+            "is_blocked": True,
+            "business_id": business.id,
+            "customer_username": "Blocked",
+            "service_name": "Blocked",
+            "product_price": 1,
+            "currency": "RON"
+        })
 
 async def create_new_appointment(db: DBSession, appointment_create: AppointmentCreate, request: Request):
     auth_user_id = request.state.user.get("id")
+
+    if auth_user_id != appointment_create.user_id or auth_user_id != appointment_create.customer_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="You do not have permission to perform this action"
+        )
+
     product = await db_get_one(db, model=Product, filters={Product.id: appointment_create.product_id})
 
-    # TODO: Add Validation for not be able to create appointment in the past
+    # If Customer Books
+    if auth_user_id == appointment_create.customer_id:
+        stmt = await db.execute(
+            select(Appointment).where(
+                or_(
+                    and_(
+                        Appointment.user_id == product.user_id,
+                        Appointment.start_date == appointment_create.start_date
+                    ),
+                    and_(
+                        Appointment.customer_id == auth_user_id,
+                        Appointment.start_date == appointment_create.start_date
+                    )
+                )
+            ))
+        is_slot_booked = stmt.scalars().first()
 
-    stmt = await db.execute(
-        select(Appointment).where(
-            or_(
+        if is_slot_booked:
+            logger.error(
+                f"Business/Employee with id: {product.user_id} already has an appointment starting at: {appointment_create.start_date}")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail="This slot is already booked")
+    else:
+        # If Business/Employee Books
+        is_slot_booked_result = await db.execute(
+            select(Appointment).where(
                 and_(
-                    Appointment.user_id == product.user_id,
+                    Appointment.user_id == auth_user_id,
                     Appointment.start_date == appointment_create.start_date
-                ),
-                and_(Appointment.customer_id == auth_user_id,
-                    Appointment.start_date == appointment_create.start_date)
-            )
-        ))
-    is_slot_booked = stmt.scalars().first()
+                )
+            ))
+        is_slot_booked = is_slot_booked_result.scalars().first()
 
-    if is_slot_booked:
-        logger.error(f"Business/Employee with id: {product.user_id} already has an appointment starting at: {appointment_create.start_date}")
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-            detail="This slot is already booked")
+        if is_slot_booked:
+            logger.error(
+                f"Business/Employee with id: {auth_user_id} already has an appointment starting at: {appointment_create.start_date}")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail="This slot is already booked")
 
-    return await db_create(db, model=Appointment, create_data=appointment_create, extra_params={
-        "customer_id": auth_user_id,
-        'user_id': product.user_id,
-        'business_id': product.business_id,
-        'service_id': product.service_id
-    })
+    return await db_create(db, model=Appointment, create_data=appointment_create)
 
 async def change_appointment_status(db: DBSession, appointment_id: int, appointment_status: str, request: Request):
     return
@@ -205,12 +211,26 @@ async def get_calendar_available_slots(db: DBSession, start_date: str, end_date:
 
     return calendar
 
-async def get_user_calendar_events(db: DBSession, start_date: str, end_date: str, user_id: int, slot_duration: int, user_timezone: str):
+async def get_user_calendar_events(db: DBSession, start_date: str, end_date: str, user_id: int, slot_duration: int):
     start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
     end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
 
+    business_timezone_result = await db.execute(
+        select(Business.timezone)
+        .join(User, or_(
+            Business.owner_id == User.id,
+            Business.id == User.employee_business_id
+        ))
+        .where(User.id == user_id)) #type: ignore
+
+    business_timezone = business_timezone_result.scalar_one_or_none()
+
+    if not business_timezone:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail='Business Timezone Not Found')
+
     # Create Timezone object
-    tz = ZoneInfo(user_timezone)
+    tz = ZoneInfo(business_timezone)
 
     # Create Local datetimes
     local_start = datetime.combine(start_date_obj, time.min).replace(tzinfo=tz)
@@ -220,22 +240,31 @@ async def get_user_calendar_events(db: DBSession, start_date: str, end_date: str
     start_utc = local_start.astimezone(ZoneInfo('UTC'))
     end_utc = local_end.astimezone(ZoneInfo('UTC'))
 
-    # if start_date_obj > end_date_obj:
-    #      raise ValueError("start date cannot be after end date")
-
     schedules_stmt = select(Schedule).where(Schedule.user_id == user_id) #type: ignore
     schedules_result = await db.execute(schedules_stmt)
     schedules = {schedule.day_of_week: schedule for schedule in schedules_result.scalars().all()}
 
+    global_start_time = time.max
+    global_end_time = time.min
+    for schedule in schedules.values():
+        if schedule.start_time and schedule.start_time < global_start_time:
+            global_start_time = schedule.start_time
+        if schedule.end_time and schedule.end_time > global_end_time:
+            global_end_time = schedule.end_time
+
     appointments_stmt = (select(
+        Appointment.service_name,
+        Appointment.product_price,
         Appointment.start_date,
         Appointment.end_date,
+        Appointment.channel,
+        Appointment.customer_username,
+        Appointment.currency,
+        Appointment.is_blocked,
         User.id,
-        User.username,
-        User.fullname,
         User.avatar,
     )
-        .join(User, User.id == Appointment.customer_id) #type: ignore
+        .join(User, User.id == Appointment.user_id) #type: ignore
         .where(
             Appointment.user_id == user_id, # type: ignore
             Appointment.start_date >= start_utc,
@@ -247,33 +276,21 @@ async def get_user_calendar_events(db: DBSession, start_date: str, end_date: str
 
     # Group appointments by date and slot duration
     grouped_appointments = defaultdict(list)
-    for a_start, a_end, customer_id, username, fullname, avatar in appointments:
+    for a_serv_name, a_prod_price, a_start, a_end, a_channel, a_customer_username, a_currency, a_is_blocked, customer_id, customer_avatar in appointments:
         appointment_date = a_start.date()
-        #start_date = a_start
-        # Group by the slot duration
-        # while start_date < a_end:
-        #     end_date = start_date + timedelta(minutes=slot_duration)
-        #     if end_date > a_end:
-        #         end_date = a_end
-        #     grouped_appointments[appointment_date][start_date].append({
-        #         "start_date": start_date,
-        #         "end_date": end_date,
-        #         "customer": {
-        #             "id": customer_id,
-        #             "username": username,
-        #             "fullname": fullname,
-        #             "avatar": avatar
-        #         }
-        #     })
-        #     start_date = end_date
+
         grouped_appointments[appointment_date].append({
             "start_date": a_start,
             "end_date": a_end,
+            "channel": a_channel,
+            "service_name": a_serv_name,
+            "product_price": a_prod_price,
+            "currency": a_currency,
+            "is_blocked": a_is_blocked,
             "customer": {
                 "id": customer_id,
-                "username": username,
-                "fullname": fullname,
-                "avatar": avatar
+                "username": a_customer_username,
+                "avatar": customer_avatar
             }
         })
 
@@ -285,6 +302,7 @@ async def get_user_calendar_events(db: DBSession, start_date: str, end_date: str
     while current_date <= end_date_obj:
         day_name = current_date.strftime("%A")
         schedule = schedules.get(day_name)
+        is_booked_day = True
 
         if not schedule or not schedule.start_time or not schedule.end_time:
             slots.append({
@@ -295,9 +313,11 @@ async def get_user_calendar_events(db: DBSession, start_date: str, end_date: str
         else:
             day_slots = []
 
-            start_time_local = datetime.combine(current_date, schedule.start_time, tzinfo=tz)
-            end_time_local = datetime.combine(current_date, schedule.end_time, tzinfo=tz)
+            day_start_time = schedule.start_time
+            day_end_time = schedule.end_time
 
+            start_time_local = datetime.combine(current_date, global_start_time, tzinfo=tz)
+            end_time_local = datetime.combine(current_date, global_end_time, tzinfo=tz)
             current_slot_start = start_time_local
 
             day_appointments = sorted(grouped_appointments.get(current_date, []), key=lambda x: x["start_date"])
@@ -306,7 +326,9 @@ async def get_user_calendar_events(db: DBSession, start_date: str, end_date: str
             while current_slot_start < end_time_local:
                 current_slot_end = current_slot_start + timedelta(minutes=slot_duration)
 
-                if a_index < len(day_appointments):
+                is_within_schedule = day_start_time <= current_slot_start.time() < day_end_time
+
+                if is_within_schedule and a_index < len(day_appointments):
                     a = day_appointments[a_index]
                     booked_start_time = a["start_date"].astimezone(tz)
                     booked_end_time = a["end_date"].astimezone(tz)
@@ -321,14 +343,22 @@ async def get_user_calendar_events(db: DBSession, start_date: str, end_date: str
                             "start_date_utc": slot_start_utc.isoformat(),
                             "end_date_utc": slot_end_utc.isoformat(),
                             "is_booked": True,
-                            "customer": a["customer"],
+                            "is_closed": False,
+                            "is_blocked": a["is_blocked"],
+                            "info": {
+                                "channel": a["channel"],
+                                "service_name": a["service_name"],
+                                "product_price": a["product_price"],
+                                "currency": a["currency"],
+                                "customer": a["customer"],
+                            }
                         })
 
                         # Update minSlot and maxSlot
-                        if min_slot_time is None or current_slot_start < min_slot_time:
-                            min_slot_time = current_slot_start
-                        if max_slot_time is None or current_slot_end > max_slot_time:
-                            max_slot_time = current_slot_end
+                        if min_slot_time is None or booked_start_time < min_slot_time:
+                            min_slot_time = booked_start_time
+                        if max_slot_time is None or booked_end_time > max_slot_time:
+                            max_slot_time = booked_end_time
 
                         # Move current_slot_start to after the booked appointment
                         current_slot_start = booked_end_time
@@ -338,13 +368,18 @@ async def get_user_calendar_events(db: DBSession, start_date: str, end_date: str
                 slot_start_utc = current_slot_start.astimezone(ZoneInfo("UTC"))
                 slot_end_utc = current_slot_end.astimezone(ZoneInfo("UTC"))
 
+                is_closed = not is_within_schedule
+                day_appointments = grouped_appointments[current_slot_start.date()]
+
                 day_slots.append({
                     "start_date_locale": current_slot_start.strftime('%Y-%m-%dT%H:%M:%S'),
                     "end_date_locale": current_slot_end.strftime('%Y-%m-%dT%H:%M:%S'),
                     "start_date_utc": slot_start_utc.isoformat(),
                     "end_date_utc": slot_end_utc.isoformat(),
                     "is_booked": False,
-                    "customer": None,
+                    "is_closed": is_closed,
+                    "is_blocked": False,
+                    "info": None,
                 })
 
                 # Update minSlot and maxSlot
@@ -355,8 +390,14 @@ async def get_user_calendar_events(db: DBSession, start_date: str, end_date: str
 
                 current_slot_start = current_slot_end
 
+            if all(slot["is_booked"] or slot["is_closed"] for slot in day_slots):
+                is_booked_day = True
+            else:
+                is_booked_day = False
+
             slots.append({
                 "date": current_date.isoformat(),
+                "is_booked": is_booked_day,
                 "is_closed": False,
                 "slots": day_slots
             })

@@ -3,16 +3,16 @@ from starlette import status
 from starlette.requests import Request
 
 from app.core.dependencies import DBSession
-from app.schema.booking.appointment import AppointmentResponse, AppointmentCreate
+from app.schema.booking.appointment import AppointmentResponse, AppointmentCreate, AppointmentBlockedCreate
 from app.service.booking.appointment import create_new_appointment, change_appointment_status, \
-    get_daily_available_slots, get_calendar_available_slots, create_appointment_scheduler, \
-    get_user_calendar_events
+    get_daily_available_slots, get_calendar_available_slots, \
+    get_user_calendar_events, create_new_blocked_appointment
 
 router = APIRouter(prefix="/appointments", tags=["Appointments"])
 
-@router.post("/appointment-scheduler")
-async def create_appointment_sched(db: DBSession):
-    return await create_appointment_scheduler(db)
+@router.post("/blocked-appointment", status_code=status.HTTP_201_CREATED)
+async def create_blocked_appointment(db: DBSession, appointments_create: list[AppointmentBlockedCreate], request: Request):
+    return await create_new_blocked_appointment(db, appointments_create, request)
 
 @router.post("/", response_model=AppointmentResponse)
 async def create_appointment(db: DBSession, appointment_create: AppointmentCreate, request: Request):
@@ -31,5 +31,5 @@ async def get_available_calendar_timeslots(db: DBSession, start_date: str, end_d
     return await get_calendar_available_slots(db, start_date, end_date, user_id, slot_duration)
 
 @router.get("/calendar-events", status_code=status.HTTP_200_OK)
-async def get_calendar_events(db: DBSession, start_date: str, end_date: str, user_id: int, slot_duration: int, user_timezone: str):
-    return await get_user_calendar_events(db, start_date, end_date, user_id, slot_duration, user_timezone)
+async def get_calendar_events(db: DBSession, start_date: str, end_date: str, user_id: int, slot_duration: int):
+    return await get_user_calendar_events(db, start_date, end_date, user_id, slot_duration)

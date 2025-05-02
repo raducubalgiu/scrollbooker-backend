@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, TIMESTAMP, ForeignKey, func, String, UniqueConstraint, Index, Boolean
+from sqlalchemy import Column, Integer, TIMESTAMP, ForeignKey, func, String, UniqueConstraint, Index, Boolean, Float, \
+    DECIMAL
 from sqlalchemy.orm import relationship
 from app.models import Base
 
@@ -8,20 +9,27 @@ class Appointment(Base):
     id = Column(Integer, primary_key=True, index=True)
     start_date = Column(TIMESTAMP(timezone=True), nullable=False, index=True)
     end_date = Column(TIMESTAMP(timezone=True), nullable=False, index=True)
-    status = Column(String, default='in_progress', nullable=False, index=True)
-    channel = Column(String, default='closer_app', nullable=False, index=True)
+    status = Column(String, default='in_progress', nullable=False, index=True) #finished - in_progress
+    channel = Column(String, default='scroll_booker', nullable=False, index=True) #scroll_booker - own_client
     instant_booking = Column(Boolean, nullable=False)
-    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
-    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    is_blocked = Column(Boolean, nullable=False, default=False)
 
     # Foreign keys
-    customer_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=False, index=True)
-    business_id = Column(Integer, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=False, index=True)
-    service_id = Column(Integer, ForeignKey("services.id", ondelete="SET NULL"), nullable=False, index=True)
-    product_id = Column(Integer, ForeignKey("products.id", ondelete="SET NULL"), nullable=False, index=True)
-
-    # User with role Business or Employee
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
+    customer_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    business_id = Column(Integer, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=False, index=True)
+    service_id = Column(Integer, ForeignKey("services.id", ondelete="SET NULL"), nullable=True, index=True)
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="SET NULL"), nullable=True, index=True)
+
+    customer_username = Column(String(50), nullable=False)
+    service_name = Column(String(50), nullable=False)
+    product_price = Column(DECIMAL, nullable=False)
+
+    currency = Column(String(50), nullable=False) # this should be an enum later
+    exchange_rate = Column(DECIMAL, nullable=False, default=1)
+
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     # Relations
     customer = relationship("User", foreign_keys=[customer_id], back_populates="appointments_customer")
