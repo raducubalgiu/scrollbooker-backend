@@ -14,7 +14,6 @@ class Product(Base):
     price = Column(DECIMAL, nullable=False, index=True)
     price_with_discount = Column(DECIMAL, nullable=True)
     discount = Column(DECIMAL, nullable=False, index=True)
-    currency = Column(String(3))
 
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
@@ -23,6 +22,7 @@ class Product(Base):
     service_id = Column(Integer, ForeignKey("services.id", ondelete="CASCADE"), nullable=False, index=True)
     business_id = Column(Integer, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=False, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
+    currency_id = Column(Integer, ForeignKey("currencies.id"), nullable=False)
 
     # Relations
     service = relationship("Service", back_populates="products")
@@ -30,6 +30,7 @@ class Product(Base):
     user = relationship("User", back_populates="products")
     appointments = relationship("Appointment", back_populates="product")
     reviews = relationship("Review", back_populates="product")
+    currency = relationship('Currency', back_populates="products")
     sub_filters = relationship("SubFilter", secondary=product_sub_filters, back_populates="products")
 
     __table_args__ = (
