@@ -41,3 +41,4 @@ from app.models.user.role_permissions import role_permissions
 from app.models.user.user_counters import UserCounters
 from app.models.user.consent import Consent
 from app.models.user.notification import Notification
+from app.models.user.user_currency import UserCurrency
