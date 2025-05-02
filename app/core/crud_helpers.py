@@ -1,8 +1,8 @@
 from typing import TypeVar, Optional, Dict, Union, Generic
-from fastapi import HTTPException
+from fastapi import HTTPException, Query
 from pydantic import BaseModel
 from starlette import status
-from sqlalchemy import select, Table, insert, delete, asc, desc
+from sqlalchemy import select, Table, insert, delete, asc, desc, func
 from app.core.dependencies import DBSession
 from app.models import Base
 from typing import List, Any, Type
@@ -26,7 +26,8 @@ async def db_get_all_paginate(
         order_by: Optional[Union[str, List[str]]] = None,
         descending: Optional[bool] = False,
         unique: Optional[bool] = None,
-        joins: Optional[List] = None
+        joins: Optional[List] = None,
+
 ) -> PaginatedResponse[SchemaOut]:
     query_all = select(model)
 
@@ -64,8 +65,11 @@ async def db_get_all(
         joins: Optional[List] = None,
         unique: Optional[bool] = None,
         order_by: Optional[Union[str, List[str]]] = None,
-        descending: Optional[bool] = False
-        ) -> List[ModelType]:
+        descending: Optional[bool] = False,
+        schema: Optional[Type[SchemaOut]] = None,
+        page: Optional[int] = None,
+        limit: Optional[int] = None
+        ) -> Union[List[ModelType], PaginatedResponse[SchemaOut]]:
 
         query_all = select(model)
 
@@ -87,12 +91,25 @@ async def db_get_all(
                 else:
                     raise ValueError(f"Column '{column_name}' does not exist in {model.__name__}")
 
-        result = await db.execute(query_all)
+        count_query = select(func.count()).select_from(query_all.subquery())
 
-        if unique:
-            return result.scalars().unique().all()
-        else:
-            return result.scalars().all()
+        if page is not None and limit is not None:
+            query_all = query_all.offset((page - 1) * limit).limit(limit)
+
+        result = await db.execute(query_all)
+        data = result.scalars().unique().all() if unique else result.scalars().all()
+
+        if schema:
+            data = [schema.model_validate(obj) for obj in data]
+
+        if page is not None and limit is not None:
+            total_result = await db.execute(count_query)
+            total = total_result.scalar_one()
+
+            return PaginatedResponse[SchemaOut](count=total, results=data)
+
+        return data
+
 
 async def db_get_one(
         db: DBSession,

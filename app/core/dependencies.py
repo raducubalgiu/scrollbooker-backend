@@ -1,6 +1,6 @@
 import os
-from fastapi import HTTPException, Depends
-from typing import Annotated, List, Type
+from fastapi import HTTPException, Depends, Query
+from typing import Annotated, List, Type, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from .database import get_db
@@ -11,7 +11,13 @@ from app.core.enums.enums import RoleEnum
 from starlette.requests import Request
 from app.core.logger import logger
 
+class PaginationParams:
+    def __init__(self, page: Optional[int] = Query(None, ge=1), limit: Optional[int] = Query(None, ge=1)):
+        self.page = page
+        self.limit = limit
+
 DBSession = Annotated[AsyncSession, Depends(get_db)]
+Pagination = Annotated[PaginationParams, Depends()]
 
 async def get_user_by_token(token: str = Depends(oauth2_bearer)):
     payload = await decode_token(token, os.getenv("SECRET_KEY"))

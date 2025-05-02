@@ -1,8 +1,9 @@
-from fastapi import APIRouter
-from starlette import status
+from typing import Optional, Union
 
+from fastapi import APIRouter, Query
+from starlette import status
 from app.core.crud_helpers import PaginatedResponse
-from app.core.dependencies import DBSession
+from app.core.dependencies import DBSession, Pagination
 from app.core.dependencies import SuperAdminSession
 from app.schema.booking.nomenclature.service import ServiceResponse, ServiceCreate, ServiceUpdate
 from app.service.booking.nomenclature.service import create_new_service, \
@@ -11,9 +12,9 @@ from app.service.booking.nomenclature.service import create_new_service, \
 
 router = APIRouter(prefix="/services", tags=["Services"])
 
-@router.get("/", response_model=PaginatedResponse[ServiceResponse])
-async def get_services(db: DBSession, page: int, limit: int):
-    return await get_all_services(db, page, limit)
+@router.get("/", response_model=Union[PaginatedResponse[ServiceResponse], list[ServiceResponse]])
+async def get_services(db: DBSession, pagination: Pagination):
+    return await get_all_services(db, pagination)
 
 @router.post("/", response_model=ServiceResponse, dependencies=[SuperAdminSession])
 async def create_service(db: DBSession, new_service: ServiceCreate):
