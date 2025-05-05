@@ -14,10 +14,11 @@ from app.schema.user.notification import NotificationResponse
 from app.schema.user.user import UserBaseMinimum
 from app.service.booking.review import get_business_and_employee_reviews
 from app.service.user.user import get_schedules_by_user_id, get_user_followers_by_user_id, \
-    get_user_followings_by_user_id, get_user_dashboard_summary_by_id, \
+    get_user_followings_by_user_id, get_user_dashboard_summary_by_id, get_products_by_user_id, \
     get_available_professions_by_user_id, get_user_business_by_id, search_users_clients, get_user_notifications_by_id, \
     get_employment_requests_by_user_id, get_product_durations_by_user_id, get_services_by_user_id, \
-    get_products_by_user_id_and_service_id, get_currencies_by_user_id, get_products_by_user_id
+    get_products_by_user_id_and_service_id, get_currencies_by_user_id
+
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
