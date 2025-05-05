@@ -5,7 +5,7 @@ from app.core.database import async_engine
 from app.core.dependencies import UserSession
 from app.core.middlewares.cors_middleware import CORSCustomMiddleware
 from app.models import Base
-from app.api.v1.endpoints.user import user, role, permission, consent, notification
+from app.api.v1.endpoints.user import user, role, permission, consent, notification, user_currency
 from app.api.v1.endpoints.auth import auth
 from app.api.v1.endpoints.social import follow, hashtag, post
 from app.api.v1.endpoints.booking import business, product, appointment, schedule, review, employment_request
@@ -37,6 +37,7 @@ app.include_router(role.router, dependencies=[UserSession])
 app.include_router(permission.router, dependencies=[UserSession])
 app.include_router(consent.router, dependencies=[UserSession])
 app.include_router(notification.router, dependencies=[UserSession])
+app.include_router(user_currency.router, dependencies=[UserSession])
 
 # Booking
 app.include_router(currency.router, dependencies=[UserSession])

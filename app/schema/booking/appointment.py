@@ -25,6 +25,7 @@ class AppointmentCreate(AppointmentBase):
         from_attributes = True
 
 class AppointmentBlockedCreate(BaseModel):
+    block_message: str = Field(min_length=3, max_length=50)
     start_date: datetime
     end_date: datetime
     user_id: int

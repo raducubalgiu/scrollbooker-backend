@@ -9,6 +9,7 @@ class Appointment(Base):
     id = Column(Integer, primary_key=True, index=True)
     start_date = Column(TIMESTAMP(timezone=True), nullable=False, index=True)
     end_date = Column(TIMESTAMP(timezone=True), nullable=False, index=True)
+    block_message = Column(String(50), nullable=True)
     status = Column(String, default='in_progress', nullable=False, index=True) #finished - in_progress
     channel = Column(String, default='scroll_booker', nullable=False, index=True) #scroll_booker - own_client
     instant_booking = Column(Boolean, nullable=False)
@@ -39,7 +40,6 @@ class Appointment(Base):
     user = relationship("User", foreign_keys=[user_id], back_populates="appointments_user")
 
     __table_args__ = (
-        UniqueConstraint("user_id", "created_at", name="unique_user_created_at"),
         Index("idx_appointments_customer_id", "customer_id"),
         Index("idx_appointments_business_id", "business_id"),
         Index("idx_appointments_service_id", "service_id"),

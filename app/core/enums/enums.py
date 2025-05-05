@@ -11,10 +11,11 @@ class RoleEnum(str, Enum):
     BUSINESS = "business",
     SUPER_ADMIN = "superadmin"
 
-class ChannelEnum(str, Enum):
+class AppointmentChannelEnum(str, Enum):
     OWN_CLIENT = "own_client",
     SCROLL_BOOKER = "scroll_booker"
 
 class AppointmentStatusEnum(str, Enum):
-    IN_PROGRESS = "in_progress",
+    IN_PROGRESS = "in_progress"
     FINISHED = "finished"
+    CANCELED = "canceled"

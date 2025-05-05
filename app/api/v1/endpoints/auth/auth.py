@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 from app.core.security import oauth2_bearer
 from app.schema.auth.auth import UserRegister, UserRegisterResponse, UserInfoResponse, UserInfoUpdate
 from app.schema.auth.token import Token
-from app.schema.user.permission import PermissionResponse
 from app.service.auth.auth import login_user, register_user, get_refresh_token, get_user_info, update_user_info, \
     get_user_permissions
 from app.core.dependencies import DBSession

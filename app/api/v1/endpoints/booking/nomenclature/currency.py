@@ -1,5 +1,4 @@
 from typing import Union
-
 from fastapi import APIRouter
 
 from app.core.crud_helpers import PaginatedResponse

@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, Date, ForeignKey, Float, TIMESTAMP, func
+from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import relationship
 from app.models import Base, Business, EmploymentRequest
 
@@ -42,6 +43,8 @@ class User(Base):
     schedules = relationship("Schedule", back_populates="user")
 
     products = relationship("Product", back_populates="user")
+    currencies_assoc = relationship("UserCurrency", back_populates="user")
+    currencies = association_proxy("currencies_assoc", "currency")
 
     customer_reviews = relationship("Review", foreign_keys="[Review.customer_id]", back_populates="customer")
     business_or_employee_reviews = relationship("Review", foreign_keys="[Review.user_id]", back_populates="business_or_employee")

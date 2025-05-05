@@ -19,6 +19,7 @@ class UserInfoResponse(BaseModel):
     fullname: Optional[str]
     avatar: Optional[str] = None
     business_id: Optional[int] = None
+    business_type_id: Optional[int] = None
     email: EmailStr
     counters: UserCountersBase
     profession: str

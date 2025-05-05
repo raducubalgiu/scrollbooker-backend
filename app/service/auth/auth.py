@@ -120,19 +120,20 @@ async def get_user_info(db: DBSession, token: str):
                                 filters={User.username: username},
                                 joins=[
                                     joinedload(User.counters),
-                                    joinedload(User.owner_business).load_only(Business.id),
-                                    joinedload(User.role).load_only(Role.name)
+                                    joinedload(User.owner_business).load_only(Business.id, Business.business_type_id),
+                                    joinedload(User.employee_business).load_only(Business.id, Business.business_type_id)
                                 ])
 
-        if not user:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
-
-        if user.role.name == RoleEnum.EMPLOYEE:
-            business_id = user.employee_business_id
-        elif user.role.name == RoleEnum.BUSINESS:
-            business_id = user.owner_business.id
-        else:
-            business_id = None
+        business_id = (
+            user.owner_business.id if user.owner_business
+            else user.employee_business.id if user.employee_business
+            else None
+        )
+        business_type_id = (
+            user.owner_business.business_type_id if user.owner_business
+            else user.employee_business.business_type_id if user.employee_business
+            else None
+        )
 
         return UserInfoResponse(
             id=user.id,
@@ -140,6 +141,7 @@ async def get_user_info(db: DBSession, token: str):
             fullname=user.fullname,
             avatar=user.avatar,
             business_id=business_id,
+            business_type_id=business_type_id,
             email=user.email,
             counters=user.counters,
             profession=user.profession
