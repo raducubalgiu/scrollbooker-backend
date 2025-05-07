@@ -8,7 +8,7 @@ from app.core.crud_helpers import db_get_all, db_get_all_paginate, db_get_one
 from app.core.dependencies import DBSession, Pagination
 from app.core.enums.enums import RoleEnum, AppointmentStatusEnum
 from app.models import Schedule, Review, User, Follow, Appointment, Product, Business, BusinessType, SubFilter, \
-    Notification, EmploymentRequest, Profession, Service, UserCurrency
+    Notification, EmploymentRequest, Profession, UserCurrency
 from sqlalchemy import select, func, case, and_, or_, distinct
 from app.schema.booking.product import ProductWithSubFiltersResponse
 from app.schema.booking.business import BusinessResponse
