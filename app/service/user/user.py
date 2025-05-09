@@ -1,16 +1,15 @@
 from datetime import datetime, timezone
 
-from fastapi import HTTPException, Query
-from sqlalchemy.orm import joinedload, selectinload
+from fastapi import HTTPException
+from sqlalchemy.orm import joinedload
 from starlette import status
 from starlette.requests import Request
 from app.core.crud_helpers import db_get_all, db_get_all_paginate, db_get_one
-from app.core.dependencies import DBSession, Pagination
+from app.core.dependencies import DBSession
 from app.core.enums.enums import RoleEnum, AppointmentStatusEnum
-from app.models import Schedule, Review, User, Follow, Appointment, Product, Business, BusinessType, SubFilter, \
-    Notification, EmploymentRequest, Profession, UserCurrency
+from app.models import Schedule, Review, User, Follow, Appointment, Product, Business, BusinessType, \
+    Notification, EmploymentRequest, Profession
 from sqlalchemy import select, func, case, and_, or_, distinct
-from app.schema.booking.product import ProductWithSubFiltersResponse
 from app.schema.booking.business import BusinessResponse
 from geoalchemy2.shape import to_shape # type: ignore
 
@@ -102,22 +101,6 @@ async def get_employment_requests_by_user_id(db: DBSession, user_id: int, reques
                                                joinedload(EmploymentRequest.profession).load_only(Profession.id, Profession.name)
                                            ])
     return employment_requests
-
-async def get_currencies_by_user_id(db: DBSession, user_id: int):
-    user_result = await db.execute(
-        select(User)
-        .options(
-            selectinload(User.currencies_assoc).selectinload(UserCurrency.currency)
-        )
-        .where(User.id == user_id) #type: ignore
-    )
-    user = user_result.scalar_one_or_none()
-
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User not found')
-
-    currencies = [assoc.currency for assoc in user.currencies_assoc if assoc.active]
-    return currencies
 
 async def get_product_durations_by_user_id(db: DBSession, user_id):
     durations_results = await db.execute(select(distinct(Product.duration)).where(Product.user_id == user_id)) #type: ignore

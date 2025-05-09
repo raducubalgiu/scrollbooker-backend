@@ -3,12 +3,10 @@ from typing import Union
 from fastapi import APIRouter, Query
 from starlette.requests import Request
 from app.core.crud_helpers import PaginatedResponse
-from app.core.dependencies import DBSession, Pagination
+from app.core.dependencies import DBSession
 from app.schema.booking.business import BusinessResponse
 from app.schema.booking.employment_request import EmploymentRequestResponse
-from app.schema.booking.nomenclature.currency import CurrencyResponse
 from app.schema.booking.nomenclature.service import ServiceResponse
-from app.schema.booking.product import ProductWithSubFiltersResponse, ProductResponse
 from app.schema.booking.schedule import ScheduleResponse
 from app.schema.user.notification import NotificationResponse
 from app.schema.user.user import UserBaseMinimum
@@ -16,7 +14,7 @@ from app.service.booking.review import get_business_and_employee_reviews
 from app.service.user.user import get_schedules_by_user_id, get_user_followers_by_user_id, \
     get_user_followings_by_user_id, get_user_dashboard_summary_by_id, \
     get_available_professions_by_user_id, get_user_business_by_id, search_users_clients, get_user_notifications_by_id, \
-    get_employment_requests_by_user_id, get_product_durations_by_user_id, get_services_by_user_id, get_currencies_by_user_id
+    get_employment_requests_by_user_id, get_product_durations_by_user_id, get_services_by_user_id
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -35,10 +33,6 @@ async def get_user_employment_requests(db: DBSession, user_id: int, request: Req
 @router.get("/{user_id}/dashboard-summary")
 async def get_user_dashboard_summary(db: DBSession, user_id: int, start_date: str, end_date: str, all_employees: bool = Query(False)):
     return await get_user_dashboard_summary_by_id(db, user_id, start_date, end_date, all_employees)
-
-@router.get("/{user_id}/currencies", response_model=list[CurrencyResponse])
-async def get_user_currencies(db: DBSession, user_id: int):
-    return await get_currencies_by_user_id(db, user_id)
 
 @router.get("/{user_id}/services", response_model=list[ServiceResponse])
 async def get_user_services(db: DBSession, user_id: int):
