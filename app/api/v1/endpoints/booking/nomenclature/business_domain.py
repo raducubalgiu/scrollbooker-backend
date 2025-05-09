@@ -8,18 +8,33 @@ from app.service.booking.nomenclature.business_domain import create_new_business
 
 router = APIRouter(prefix="/business-domains", tags=["Businesses Domain"])
 
-@router.get("/", response_model=PaginatedResponse[BusinessDomainResponse])
+@router.get(
+    "/",
+    summary='List All Business Domains',
+    response_model=PaginatedResponse[BusinessDomainResponse])
 async def get_business_domain(db: DBSession, page: int, limit: int):
     return await get_all_business_domain(db, page, limit)
 
-@router.post("/", response_model=BusinessDomainResponse, dependencies=[SuperAdminSession])
+@router.post(
+    "/",
+    summary='Create New Business Domain',
+    response_model=BusinessDomainResponse,
+    dependencies=[SuperAdminSession])
 async def create_business_domain(db: DBSession, business_domain_create: BusinessDomainCreate):
     return await create_new_business_domain(db, business_domain_create)
 
-@router.put("/{business_domain_id}", response_model=BusinessDomainResponse, dependencies=[SuperAdminSession])
+@router.put(
+    "/{business_domain_id}",
+    response_model=BusinessDomainResponse,
+    summary='Update Business Domain',
+    dependencies=[SuperAdminSession])
 async def update_business_domain(db: DBSession, business_domain_update: BusinessDomainUpdate, business_domain_id: int):
     return await update_business_domain_by_id(db, business_domain_update, business_domain_id)
 
-@router.delete("/{business_domain_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[SuperAdminSession])
+@router.delete(
+    "/{business_domain_id}",
+    summary='Delete Business Domain',
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[SuperAdminSession])
 async def delete_business_domain(db: DBSession, business_domain_id: int):
     return await delete_business_domain_by_id(db, business_domain_id)
