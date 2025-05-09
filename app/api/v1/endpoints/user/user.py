@@ -14,11 +14,9 @@ from app.schema.user.notification import NotificationResponse
 from app.schema.user.user import UserBaseMinimum
 from app.service.booking.review import get_business_and_employee_reviews
 from app.service.user.user import get_schedules_by_user_id, get_user_followers_by_user_id, \
-    get_user_followings_by_user_id, get_user_dashboard_summary_by_id, get_products_by_user_id, \
+    get_user_followings_by_user_id, get_user_dashboard_summary_by_id, \
     get_available_professions_by_user_id, get_user_business_by_id, search_users_clients, get_user_notifications_by_id, \
-    get_employment_requests_by_user_id, get_product_durations_by_user_id, get_services_by_user_id, \
-    get_products_by_user_id_and_service_id, get_currencies_by_user_id
-
+    get_employment_requests_by_user_id, get_product_durations_by_user_id, get_services_by_user_id, get_currencies_by_user_id
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -45,14 +43,6 @@ async def get_user_currencies(db: DBSession, user_id: int):
 @router.get("/{user_id}/services", response_model=list[ServiceResponse])
 async def get_user_services(db: DBSession, user_id: int):
     return await get_services_by_user_id(db, user_id)
-
-@router.get("/{user_id}/products")
-async def get_user_products(db: DBSession, user_id: int, pagination: Pagination):
-    return await get_products_by_user_id(db, user_id, pagination)
-
-@router.get("/{user_id}/services/{service_id}/products", response_model=list[ProductResponse])
-async def get_user_products_by_service_id(db: DBSession, user_id: int, service_id: int):
-    return await get_products_by_user_id_and_service_id(db, user_id, service_id)
 
 @router.get("/{user_id}/product-durations", response_model=list[int])
 async def get_user_product_durations(db:DBSession, user_id: int):

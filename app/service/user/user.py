@@ -83,9 +83,6 @@ async def get_services_by_user_id(db: DBSession, user_id: int):
     business = business_result.scalars().first()
     return business.services
 
-async def get_products_by_user_id_and_service_id(db:DBSession, user_id: int, service_id: int):
-    return await db_get_all(db, model=Product, filters={Product.user_id: user_id, Product.service_id: service_id})
-
 async def get_employment_requests_by_user_id(db: DBSession, user_id: int, request: Request):
     auth_user_id = request.state.user.get("id")
     user = await db_get_one(db, model=User, filters={User.id: user_id}, joins=[joinedload(User.role)])
@@ -105,16 +102,6 @@ async def get_employment_requests_by_user_id(db: DBSession, user_id: int, reques
                                                joinedload(EmploymentRequest.profession).load_only(Profession.id, Profession.name)
                                            ])
     return employment_requests
-
-async def get_products_by_user_id(db: DBSession, user_id: int, pagination: Pagination):
-    return await db_get_all(db,
-                            model=Product,
-                            filters={Product.user_id: user_id},
-                            schema=ProductWithSubFiltersResponse,
-                            page=pagination.page,
-                            limit=pagination.limit,
-                            unique=True,
-                            joins=[joinedload(Product.sub_filters).joinedload(SubFilter.filter)])
 
 async def get_currencies_by_user_id(db: DBSession, user_id: int):
     user_result = await db.execute(

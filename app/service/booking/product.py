@@ -1,13 +1,28 @@
 from fastapi import HTTPException
+from sqlalchemy.orm import joinedload
 from starlette.requests import Request
 from starlette import status
 from app.core.crud_helpers import db_delete, db_get_all, db_update
-from app.core.dependencies import DBSession, check_resource_ownership
+from app.core.dependencies import DBSession, check_resource_ownership, Pagination
 from app.core.logger import logger
-from app.models import Product, Schedule, product_sub_filters, business_services
-from app.schema.booking.product import ProductCreateWithSubFilters, ProductUpdate, ProductCreate
+from app.models import Product, Schedule, product_sub_filters, business_services, SubFilter
+from app.schema.booking.product import ProductCreateWithSubFilters, ProductUpdate, ProductCreate, \
+    ProductWithSubFiltersResponse
 from app.core.logger import logger
 from sqlalchemy import insert,select
+
+async def get_by_user(db: DBSession, user_id: int, pagination: Pagination):
+    return await db_get_all(db,
+                            model=Product,
+                            filters={Product.user_id: user_id},
+                            schema=ProductWithSubFiltersResponse,
+                            page=pagination.page,
+                            limit=pagination.limit,
+                            unique=True,
+                            joins=[joinedload(Product.sub_filters).joinedload(SubFilter.filter)])
+
+async def get_by_user_and_service(db:DBSession, user_id: int, service_id: int):
+    return await db_get_all(db, model=Product, filters={Product.user_id: user_id, Product.service_id: service_id})
 
 async def create_new_product(db: DBSession, product_with_sub_filters: ProductCreateWithSubFilters, request: Request):
     auth_user_id = request.state.user.get("id")
@@ -52,12 +67,12 @@ async def create_new_product(db: DBSession, product_with_sub_filters: ProductCre
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail='Something went wrong')
 
-async def update_product_by_id(db: DBSession, product_id: int, product_update: ProductUpdate, request: Request):
+async def update_by_id(db: DBSession, product_id: int, product_update: ProductUpdate, request: Request):
     await check_resource_ownership(db, resource_model=Product, resource_id=product_id, request=request)
 
     return await db_update(db, model=Product, resource_id=product_id, update_data=product_update)
 
-async def delete_product_by_id(db: DBSession, product_id: int, request: Request):
+async def delete_by_id(db: DBSession, product_id: int, request: Request):
     await check_resource_ownership(db, Product, product_id, request)
     return await db_delete(db, model=Product, resource_id=product_id)
 
