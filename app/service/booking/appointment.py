@@ -378,10 +378,6 @@ async def get_user_calendar_events(db: DBSession, start_date: str, end_date: str
 
     Customer = aliased(User)
 
-    print('START UTC!!!', start_utc)
-    print('END UTC!!!!!', end_utc)
-    print('--------------------------------------')
-
     appointments_stmt = (
         select(
             Appointment.id,

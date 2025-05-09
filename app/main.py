@@ -12,12 +12,17 @@ from app.api.v1.endpoints.booking import business, product, appointment, schedul
 from app.api.v1.endpoints.booking.nomenclature import business_domain, business_type, service, filter, sub_filter, service_domain, profession, currency
 from app.core.middlewares.auth_middleware import AuthMiddleware
 from app.core.exceptions import global_exception_handler, http_exception_handler, validation_exception_handler
+from app.core.scheduler import start as start_scheduler, scheduler
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    yield
+    start_scheduler()
+    try:
+        yield
+    finally:
+        scheduler.shutdown(wait=False)
 
 app = FastAPI(lifespan=lifespan, root_path="/api/v1")
 
