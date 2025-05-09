@@ -7,7 +7,7 @@ from starlette.requests import Request
 from app.core.crud_helpers import db_get_all, db_get_one
 from app.core.dependencies import DBSession
 from app.core.enums.enums import RoleEnum, AppointmentStatusEnum
-from app.models import Schedule, Review, User, Follow, Appointment, Product, Business, BusinessType
+from app.models import Schedule, User, Follow, Appointment, Product, Business, BusinessType
 from sqlalchemy import select, func, case, and_, or_, distinct
 from geoalchemy2.shape import to_shape # type: ignore
 from app.service.booking.business import get_business_by_user_id
@@ -122,35 +122,6 @@ async def get_user_dashboard_summary_by_id(db: DBSession, user_id: int, start_da
         })
 
     return response
-
-
-async def get_user_reviews_by_user_id(db: DBSession, user_id: int, page: int, size: int):
-    stmt = await db.execute(
-        select(User)
-        .filter(User.id == user_id) # type: ignore
-        .options(joinedload(User.role))
-    )
-    user = stmt.scalars().first()
-    role = user.role
-
-    if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail='User not found!')
-
-    field = 'customer_id' if role == 'client' else 'user_id'
-
-    stmt = await db.execute(
-        select(Review)
-        .where(getattr(Review, field) == user_id) #type: ignore
-        .options(
-            joinedload(Review.service),
-        )
-        .offset((page - 1) * size)
-        .limit(size)
-    )
-
-    reviews = stmt.scalars().unique().all()
-    return reviews
 
 async def get_user_followers_by_user_id(db: DBSession, user_id: int, page: int, limit: int, request: Request):
    auth_user_id = request.state.user.get("id")

@@ -47,6 +47,34 @@ async def update_review_counters(db: DBSession, user_id: int, rating: int):
     user_counters.ratings_average = new_ratings_average
     user_counters.ratings_count = new_ratings_count
 
+async def get_user_reviews_by_user_id(db: DBSession, user_id: int, page: int, size: int):
+    stmt = await db.execute(
+        select(User)
+        .filter(User.id == user_id) # type: ignore
+        .options(joinedload(User.role))
+    )
+    user = stmt.scalars().first()
+    role = user.role
+
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail='User not found!')
+
+    field = 'customer_id' if role == 'client' else 'user_id'
+
+    stmt = await db.execute(
+        select(Review)
+        .where(getattr(Review, field) == user_id) #type: ignore
+        .options(
+            joinedload(Review.service),
+        )
+        .offset((page - 1) * size)
+        .limit(size)
+    )
+
+    reviews = stmt.scalars().unique().all()
+    return reviews
+
 async def create_new_review(db: DBSession, review_data: ReviewCreate, request: Request):
     auth_user_id = request.state.user.get("id")
     await restrict_employee_and_business(db, review_data, request)
