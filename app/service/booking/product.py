@@ -11,7 +11,7 @@ from app.schema.booking.product import ProductCreateWithSubFilters, ProductUpdat
 from app.core.logger import logger
 from sqlalchemy import insert,select
 
-async def get_by_user(db: DBSession, user_id: int, pagination: Pagination):
+async def get_products_by_user_id(db: DBSession, user_id: int, pagination: Pagination):
     return await db_get_all(db,
                             model=Product,
                             filters={Product.user_id: user_id},
@@ -21,7 +21,7 @@ async def get_by_user(db: DBSession, user_id: int, pagination: Pagination):
                             unique=True,
                             joins=[joinedload(Product.sub_filters).joinedload(SubFilter.filter)])
 
-async def get_by_user_and_service(db:DBSession, user_id: int, service_id: int):
+async def get_products_by_user_id_and_service_id(db:DBSession, user_id: int, service_id: int):
     return await db_get_all(db, model=Product, filters={Product.user_id: user_id, Product.service_id: service_id})
 
 async def create_new_product(db: DBSession, product_with_sub_filters: ProductCreateWithSubFilters, request: Request):

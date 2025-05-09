@@ -261,15 +261,6 @@ async def get_user_followings_by_user_id(db: DBSession, user_id: int, page: int,
    followings = query.mappings().all()
    return followings
 
-async def get_user_notifications_by_id(db: DBSession, page: int, limit: int):
-    return await db_get_all_paginate(db,
-                                     model=Notification,
-                                     schema=NotificationResponse,
-                                     filters={Notification.is_deleted: False},
-                                     joins=[joinedload(Notification.sender)],
-                                     page=page,
-                                     limit=limit)
-
 
 # If Business - return Business Types, if employee - return Professions
 async def get_available_professions_by_user_id(db: DBSession, user_id: int):

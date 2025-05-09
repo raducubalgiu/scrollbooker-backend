@@ -18,13 +18,16 @@ async def update_appointment_status():
             )
             appointments = appointments_result.scalars().all()
 
-            logger.info(f"[Scheduler] {now.isoformat()} - Found {len(appointments)} appointments to update")
+            if len(appointments) > 1:
+                logger.info(f"[Scheduler] {now.isoformat()} - Found {len(appointments)} appointments to update")
 
-            for a in appointments:
-                a.status = AppointmentStatusEnum.FINISHED
+                for a in appointments:
+                    a.status = AppointmentStatusEnum.FINISHED
 
-            await db.commit()
-            logger.info(f"[Scheduler] Appointments updated successfully.")
+                await db.commit()
+                logger.info(f"[Scheduler] Appointments updated successfully.")
+            else:
+                logger.info(f"[Scheduler] {now.isoformat()} - Not Found appointments to update")
 
         except Exception as e:
             logger.error(f"[Scheduler] Error while updating appointments: {str(e)}")

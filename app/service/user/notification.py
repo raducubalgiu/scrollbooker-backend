@@ -1,7 +1,20 @@
 from fastapi import Request, HTTPException
+from sqlalchemy.orm import joinedload
 from starlette import status
+
+from app.core.crud_helpers import db_get_all
 from app.core.dependencies import DBSession
 from app.models import Notification
+from app.schema.user.notification import NotificationResponse
+
+async def get_notifications_by_user_id(db: DBSession, page: int, limit: int):
+    return await db_get_all(db,
+                             model=Notification,
+                             schema=NotificationResponse,
+                             filters={Notification.is_deleted: False},
+                             joins=[joinedload(Notification.sender)],
+                             page=page,
+                             limit=limit)
 
 async def delete_notification_by_id(db: DBSession, notification_id, request: Request):
     auth_user_id = request.state.user.get("id")
