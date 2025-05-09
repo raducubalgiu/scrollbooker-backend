@@ -4,16 +4,14 @@ from fastapi import HTTPException
 from sqlalchemy.orm import joinedload
 from starlette import status
 from starlette.requests import Request
-from app.core.crud_helpers import db_get_all, db_get_all_paginate, db_get_one
+from app.core.crud_helpers import db_get_all, db_get_one
 from app.core.dependencies import DBSession
 from app.core.enums.enums import RoleEnum, AppointmentStatusEnum
 from app.models import Schedule, Review, User, Follow, Appointment, Product, Business, BusinessType, \
-    Notification, EmploymentRequest, Profession
+    EmploymentRequest, Profession
 from sqlalchemy import select, func, case, and_, or_, distinct
 from app.schema.booking.business import BusinessResponse
 from geoalchemy2.shape import to_shape # type: ignore
-
-from app.schema.user.notification import NotificationResponse
 
 async def search_users_clients(db: DBSession, q: str):
     query = select(User).filter(User.role_id == 2) #type: ignore
@@ -68,26 +66,6 @@ async def get_schedules_by_user_id(db: DBSession, user_id: int):
     schedules = await db_get_all(db, model=Schedule, filters={Schedule.user_id: user_id}, order_by="day_week_index")
 
     return schedules
-
-async def get_employment_requests_by_user_id(db: DBSession, user_id: int, request: Request):
-    auth_user_id = request.state.user.get("id")
-    user = await db_get_one(db, model=User, filters={User.id: user_id}, joins=[joinedload(User.role)])
-
-    if user.id != auth_user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail='You do not have permission to perform this action')
-
-    field_name = "employer_id" if user.role.name == RoleEnum.BUSINESS else "employee_id"
-
-    employment_requests = await db_get_all(db,
-                                           model=EmploymentRequest,
-                                           filters={getattr(EmploymentRequest, field_name): user_id, EmploymentRequest.status: 'pending'},
-                                           joins=[
-                                               joinedload(EmploymentRequest.employer).load_only(User.id, User.username, User.fullname, User.avatar),
-                                               joinedload(EmploymentRequest.employee).load_only(User.id, User.username, User.fullname, User.avatar),
-                                               joinedload(EmploymentRequest.profession).load_only(Profession.id, Profession.name)
-                                           ])
-    return employment_requests
 
 async def get_product_durations_by_user_id(db: DBSession, user_id):
     durations_results = await db.execute(select(distinct(Product.duration)).where(Product.user_id == user_id)) #type: ignore

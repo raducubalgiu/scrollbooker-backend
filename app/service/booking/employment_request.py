@@ -4,11 +4,31 @@ from starlette.requests import Request
 from sqlalchemy import select, or_
 from starlette import status
 from app.core.enums.enums import RoleEnum
-from app.core.crud_helpers import db_create, db_get_one, db_delete
+from app.core.crud_helpers import db_create, db_get_one, db_delete, db_get_all
 from app.core.dependencies import DBSession
 from app.models import EmploymentRequest, Business, User, Role, Notification, Profession
 from app.schema.booking.employment_request import EmploymentRequestCreate, EmploymentRequestUpdate
 from app.core.logger import logger
+
+async def get_employment_requests_by_user_id(db: DBSession, user_id: int, request: Request):
+    auth_user_id = request.state.user.get("id")
+    user = await db_get_one(db, model=User, filters={User.id: user_id}, joins=[joinedload(User.role)])
+
+    if user.id != auth_user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail='You do not have permission to perform this action')
+
+    field_name = "employer_id" if user.role.name == RoleEnum.BUSINESS else "employee_id"
+
+    employment_requests = await db_get_all(db,
+                                           model=EmploymentRequest,
+                                           filters={getattr(EmploymentRequest, field_name): user_id, EmploymentRequest.status: 'pending'},
+                                           joins=[
+                                               joinedload(EmploymentRequest.employer).load_only(User.id, User.username, User.fullname, User.avatar),
+                                               joinedload(EmploymentRequest.employee).load_only(User.id, User.username, User.fullname, User.avatar),
+                                               joinedload(EmploymentRequest.profession).load_only(Profession.id, Profession.name)
+                                           ])
+    return employment_requests
 
 async def send_employment_request(db: DBSession, employment_create: EmploymentRequestCreate,  request: Request):
     auth_user_id = request.state.user.get("id")
