@@ -7,11 +7,10 @@ from starlette.requests import Request
 from app.core.crud_helpers import db_get_all, db_get_one
 from app.core.dependencies import DBSession
 from app.core.enums.enums import RoleEnum, AppointmentStatusEnum
-from app.models import Schedule, Review, User, Follow, Appointment, Product, Business, BusinessType, \
-    EmploymentRequest, Profession
+from app.models import Schedule, Review, User, Follow, Appointment, Product, Business, BusinessType
 from sqlalchemy import select, func, case, and_, or_, distinct
-from app.schema.booking.business import BusinessResponse
 from geoalchemy2.shape import to_shape # type: ignore
+from app.service.booking.business import get_business_by_user_id
 
 async def search_users_clients(db: DBSession, q: str):
     query = select(User).filter(User.role_id == 2) #type: ignore
@@ -29,40 +28,8 @@ async def search_users_clients(db: DBSession, q: str):
     users = users_stmt.scalars().all()
     return users
 
-async def get_user_business_by_id(db: DBSession, user_id: int):
-    business_query = await db.execute(select(Business, User.id).where(
-        and_(
-            User.id == user_id,
-            or_(
-                Business.owner_id == user_id,
-                Business.id == User.employee_business_id
-            )
-        )).options(joinedload(Business.services))
-    )
-
-    business = business_query.unique().scalar_one_or_none()
-
-    if not business:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail='Business not found')
-
-    point = to_shape(business.coordinates)
-    latitude = point.y
-    longitude = point.x
-
-    return BusinessResponse(
-        id=business.id,
-        business_type_id=business.business_type_id,
-        owner_id=business.owner_id,
-        description=business.description,
-        timezone=business.timezone,
-        address=business.address,
-        services=business.services,
-        coordinates=(longitude, latitude)
-    )
-
 async def get_schedules_by_user_id(db: DBSession, user_id: int):
-    await get_user_business_by_id(db, user_id)
+    await get_business_by_user_id(db, user_id)
     schedules = await db_get_all(db, model=Schedule, filters={Schedule.user_id: user_id}, order_by="day_week_index")
 
     return schedules

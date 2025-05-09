@@ -3,7 +3,6 @@ from sqlalchemy.orm import joinedload
 from starlette.requests import Request
 from fastapi import HTTPException, Query
 from app.core.logger import logger
-from app.core.crud_helpers import db_get_one
 from app.core.data_utils import local_to_utc_fulldate
 from app.core.dependencies import DBSession
 from starlette import status
@@ -21,11 +20,22 @@ from app.schema.booking.business import BusinessCreate, BusinessResponse
 from datetime import timedelta,datetime
 from app.schema.booking.nomenclature.service import ServiceIdsUpdate
 
-async def get_business_by_id(db: DBSession, business_id: int):
-    business = await db_get_one(db,
-                                model=Business,
-                                filters={Business.id: business_id},
-                                joins=[joinedload(Business.services).load_only(Service.id, Service.name)])
+async def get_business_by_user_id(db: DBSession, user_id: int):
+    business_query = await db.execute(select(Business, User.id).where(
+        and_(
+            User.id == user_id,
+            or_(
+                Business.owner_id == user_id,
+                Business.id == User.employee_business_id
+            )
+        )).options(joinedload(Business.services))
+    )
+
+    business = business_query.unique().scalar_one_or_none()
+
+    if not business:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail='Business not found')
 
     point = to_shape(business.coordinates)
     latitude = point.y
@@ -33,8 +43,9 @@ async def get_business_by_id(db: DBSession, business_id: int):
 
     return BusinessResponse(
         id=business.id,
+        business_type_id=business.business_type_id,
         owner_id=business.owner_id,
-        description= business.description,
+        description=business.description,
         timezone=business.timezone,
         address=business.address,
         services=business.services,
