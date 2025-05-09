@@ -28,12 +28,6 @@ async def search_users_clients(db: DBSession, q: str):
     users = users_stmt.scalars().all()
     return users
 
-async def get_schedules_by_user_id(db: DBSession, user_id: int):
-    await get_business_by_user_id(db, user_id)
-    schedules = await db_get_all(db, model=Schedule, filters={Schedule.user_id: user_id}, order_by="day_week_index")
-
-    return schedules
-
 async def get_product_durations_by_user_id(db: DBSession, user_id):
     durations_results = await db.execute(select(distinct(Product.duration)).where(Product.user_id == user_id)) #type: ignore
     return [row[0] for row in durations_results]

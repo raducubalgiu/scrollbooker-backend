@@ -4,11 +4,14 @@ from fastapi import HTTPException
 from starlette.requests import Request
 from starlette import status
 from sqlalchemy import select, or_
-from app.core.crud_helpers import db_get_one
+from app.core.crud_helpers import db_get_one, db_get_all
 from app.core.dependencies import DBSession, check_resource_ownership
 from app.schema.booking.schedule import ScheduleCreate, ScheduleUpdate
 from app.models import Schedule, Business, User
 import calendar
+
+from app.service.booking.business import get_business_by_user_id
+
 
 async def get_business(db: DBSession, auth_user_id: int):
     business_stmt = await db.execute(
@@ -27,6 +30,12 @@ async def get_business(db: DBSession, auth_user_id: int):
                             detail='You do not have permissions to perform this action')
 
     return business
+
+async def get_schedules_by_user_id(db: DBSession, user_id: int):
+    await get_business_by_user_id(db, user_id)
+    schedules = await db_get_all(db, model=Schedule, filters={Schedule.user_id: user_id}, order_by="day_week_index")
+
+    return schedules
 
 async def create_user_schedule(db: DBSession, schedule_create: ScheduleCreate, request: Request):
     auth_user_id = request.state.user.get("id")
