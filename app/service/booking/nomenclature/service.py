@@ -1,5 +1,8 @@
+from sqlalchemy import select, or_
+from sqlalchemy.orm import joinedload
+
 from app.core.dependencies import DBSession, Pagination
-from app.models import Service, BusinessType
+from app.models import Service, BusinessType, Business, User
 from app.schema.booking.nomenclature.service import ServiceCreate, ServiceUpdate, ServiceResponse
 from app.core.crud_helpers import db_create, db_delete, db_update, db_get_all, db_insert_many_to_many, \
     db_remove_many_to_many
@@ -8,6 +11,19 @@ from app.models.booking.nomenclature.service_business_types import service_busin
 async def get_all_services(db: DBSession, pagination: Pagination):
     return await db_get_all(db,
         model=Service, schema=ServiceResponse, page=pagination.page, limit=pagination.limit, order_by="created_at", descending=True)
+
+async def get_services_by_user_id(db: DBSession, user_id: int):
+    business_result = await db.execute(
+        select(Business)
+        .join(User, User.id == user_id) #type: ignore
+        .where(or_(
+            User.employee_business_id == Business.id,
+            Business.owner_id == User.id
+        ))
+        .options(joinedload(Business.services))
+    )
+    business = business_result.scalars().first()
+    return business.services
 
 async def create_new_service(db: DBSession, new_service: ServiceCreate):
     return await db_create(db, model=Service, create_data=new_service)

@@ -69,19 +69,6 @@ async def get_schedules_by_user_id(db: DBSession, user_id: int):
 
     return schedules
 
-async def get_services_by_user_id(db: DBSession, user_id: int):
-    business_result = await db.execute(
-        select(Business)
-        .join(User, User.id == user_id) #type: ignore
-        .where(or_(
-            User.employee_business_id == Business.id,
-            Business.owner_id == User.id
-        ))
-        .options(joinedload(Business.services))
-    )
-    business = business_result.scalars().first()
-    return business.services
-
 async def get_employment_requests_by_user_id(db: DBSession, user_id: int, request: Request):
     auth_user_id = request.state.user.get("id")
     user = await db_get_one(db, model=User, filters={User.id: user_id}, joins=[joinedload(User.role)])
