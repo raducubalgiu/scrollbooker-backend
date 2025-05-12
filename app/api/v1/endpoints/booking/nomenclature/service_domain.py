@@ -1,31 +1,40 @@
+from typing import Union
+
 from fastapi import APIRouter
 from starlette import status
 
 from app.core.crud_helpers import PaginatedResponse
-from app.core.dependencies import DBSession, SuperAdminSession
+from app.core.dependencies import DBSession, SuperAdminSession, Pagination
 from app.schema.booking.nomenclature.service_domain import ServiceDomainCreate, \
-    ServiceDomainUpdate, ServiceDomainResponse, ServiceDomainWithServices
+    ServiceDomainUpdate, ServiceDomainResponse
 from app.service.booking.nomenclature.service_domain import get_all_service_domains, create_new_service_domain, \
-    update_service_domain_by_id, delete_service_domain_by_id, get_all_service_domains_with_services
+    update_service_domain_by_id, delete_service_domain_by_id
 
 router = APIRouter(prefix="/service-domains", tags=["Service Domains"])
 
-@router.get("/", response_model=list[ServiceDomainResponse])
-async def get_service_domains(db: DBSession):
-    return await get_all_service_domains(db)
+@router.get("/",
+    summary='List All Service Domains',
+    response_model=Union[PaginatedResponse[ServiceDomainResponse], list[ServiceDomainResponse]])
+async def get_service_domains(db: DBSession, pagination: Pagination):
+    return await get_all_service_domains(db, pagination)
 
-@router.get("/with-services", response_model=PaginatedResponse[ServiceDomainWithServices])
-async def get_service_domains_with_services(db: DBSession, page: int, limit: int):
-    return await get_all_service_domains_with_services(db, page, limit)
-
-@router.post("/", response_model=ServiceDomainResponse, dependencies=[SuperAdminSession])
+@router.post("/",
+    summary='Create New Service Domain',
+    response_model=ServiceDomainResponse,
+    dependencies=[SuperAdminSession])
 async def create_service_domain(db: DBSession, service_domain_create: ServiceDomainCreate):
     return await create_new_service_domain(db, service_domain_create)
 
-@router.put("/{service_domain_id}", response_model=ServiceDomainResponse, dependencies=[SuperAdminSession])
+@router.put("/{service_domain_id}",
+    summary='Update Service Domain',
+    response_model=ServiceDomainResponse,
+    dependencies=[SuperAdminSession])
 async def update_service_domain(db: DBSession, service_domain_update: ServiceDomainUpdate, service_domain_id: int):
     return await update_service_domain_by_id(db, service_domain_update, service_domain_id)
 
-@router.delete("/{service_domain_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[SuperAdminSession])
+@router.delete("/{service_domain_id}",
+    summary='Delete Service Domain',
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[SuperAdminSession])
 async def delete_service_domain(db: DBSession, service_domain_id: int):
     return await delete_service_domain_by_id(db, service_domain_id)

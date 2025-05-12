@@ -8,6 +8,9 @@ class ServiceDomainBase(BaseModel):
 class ServiceDomainCreate(ServiceDomainBase):
     pass
 
+class ServiceDomainUpdate(BaseModel):
+    name: Optional[str] = None
+
 class ServiceDomainResponse(ServiceDomainBase):
     id: int
     created_at: datetime
@@ -15,16 +18,3 @@ class ServiceDomainResponse(ServiceDomainBase):
 
     class Config:
         from_attributes = True
-
-class ServiceDomainUpdate(BaseModel):
-    name: Optional[str] = None
-
-class ServiceLoadOnly(BaseModel):
-    id: int
-    name: str
-
-    class Config:
-        from_attributes = True
-
-class ServiceDomainWithServices(ServiceDomainResponse):
-    services: Optional[List[ServiceLoadOnly]] = []

@@ -12,6 +12,9 @@ async def get_all_services(db: DBSession, pagination: Pagination):
     return await db_get_all(db,
         model=Service, schema=ServiceResponse, page=pagination.page, limit=pagination.limit, order_by="created_at", descending=True)
 
+async def get_services_by_service_domain_id(db: DBSession, service_domain_id: int, pagination: Pagination):
+    return await db_get_all(db, model=Service, schema=ServiceResponse, filters={Service.service_domain_id: service_domain_id}, page=pagination.page, limit=pagination.limit)
+
 async def get_services_by_user_id(db: DBSession, user_id: int):
     business_result = await db.execute(
         select(Business)
