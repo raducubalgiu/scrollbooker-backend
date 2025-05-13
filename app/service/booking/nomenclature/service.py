@@ -5,12 +5,19 @@ from app.core.dependencies import DBSession, Pagination
 from app.models import Service, BusinessType, Business, User
 from app.schema.booking.nomenclature.service import ServiceCreate, ServiceUpdate, ServiceResponse
 from app.core.crud_helpers import db_create, db_delete, db_update, db_get_all, db_insert_many_to_many, \
-    db_remove_many_to_many
+    db_remove_many_to_many, db_get_one
 from app.models.booking.nomenclature.service_business_types import service_business_types
 
 async def get_all_services(db: DBSession, pagination: Pagination):
     return await db_get_all(db,
         model=Service, schema=ServiceResponse, page=pagination.page, limit=pagination.limit, order_by="created_at", descending=True)
+
+async def get_services_by_business_type_id(db: DBSession, business_type_id: int):
+    business_type = await db_get_one(db,
+                                     model=BusinessType,
+                                     filters={BusinessType.id: business_type_id},
+                                     joins=[joinedload(BusinessType.services)])
+    return business_type.services
 
 async def get_services_by_service_domain_id(db: DBSession, service_domain_id: int, pagination: Pagination):
     return await db_get_all(db, model=Service, schema=ServiceResponse, filters={Service.service_domain_id: service_domain_id}, page=pagination.page, limit=pagination.limit)

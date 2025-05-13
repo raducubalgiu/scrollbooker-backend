@@ -32,13 +32,6 @@ async def get_professions_by_business_type_id(db: DBSession, business_type_id: i
                             joins=[joinedload(BusinessType.professions)])
     return business_type.professions
 
-async def get_services_by_business_type_id(db: DBSession, business_type_id: int):
-    business_type = await db_get_one(db,
-                                     model=BusinessType,
-                                     filters={BusinessType.id: business_type_id},
-                                     joins=[joinedload(BusinessType.services)])
-    return business_type.services
-
 async def get_business_type_filters_and_sub_filters_by_id(db: DBSession, business_type_id: int):
     business_type = await db_get_one(db, model=BusinessType, filters={BusinessType.id: business_type_id},
                             joins=[joinedload(BusinessType.filters).joinedload(Filter.sub_filters)])

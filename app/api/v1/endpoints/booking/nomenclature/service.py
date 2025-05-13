@@ -8,7 +8,8 @@ from app.core.dependencies import SuperAdminSession
 from app.schema.booking.nomenclature.service import ServiceResponse, ServiceCreate, ServiceUpdate
 from app.service.booking.nomenclature.service import create_new_service, \
     delete_service_by_id, update_service_by_id, get_all_services, attach_services_to_business_type, \
-    detach_services_from_business_type, get_services_by_user_id, get_services_by_service_domain_id
+    detach_services_from_business_type, get_services_by_user_id, get_services_by_service_domain_id, \
+    get_services_by_business_type_id
 
 router = APIRouter(tags=["Services"])
 
@@ -18,6 +19,13 @@ router = APIRouter(tags=["Services"])
     list[ServiceResponse]])
 async def get_services(db: DBSession, pagination: Pagination):
     return await get_all_services(db, pagination)
+
+@router.get(
+    "/business-types/{business_type_id}/services",
+    summary='List All Services Filtered By Business Type Id',
+    response_model=list[ServiceResponse])
+async def get_services_by_business_type(db: DBSession, business_type_id: int):
+    return await get_services_by_business_type_id(db, business_type_id)
 
 @router.get("/service-domains/{service_domain_id}/services",
     summary='List All Services Filtered by Service Domain Id',
