@@ -1,19 +1,38 @@
 from sqlalchemy.orm import joinedload
 
-from app.core.crud_helpers import db_create, db_update, db_get_all_paginate, db_delete
+from app.core.crud_helpers import db_create, db_update, db_get_all_paginate, db_delete, db_get_one
 from app.core.dependencies import DBSession
 from app.schema.booking.nomenclature.filter import FilterCreate, FilterUpdate, FilterWithSubFiltersResponse
-from app.models import Filter, SubFilter
+from app.models import Filter, SubFilter, BusinessType
 from app.schema.booking.nomenclature.sub_filter import SubFilterResponse
 
+async def get_business_type_filters_and_sub_filters_by_id(db: DBSession, business_type_id: int):
+    business_type = await db_get_one(db,
+                                     model=BusinessType,
+                                     filters={BusinessType.id: business_type_id},
+                                     joins=[joinedload(BusinessType.filters).joinedload(Filter.sub_filters)])
+    return business_type.filters
+
 async def get_filters_with_sub_filters(db: DBSession, page: int, limit: int):
-    return await db_get_all_paginate(db, model=Filter, schema= FilterWithSubFiltersResponse,
-            unique=True, page=page, limit=limit, joins=[joinedload(Filter.sub_filters).load_only(SubFilter.name)],
-            order_by="created_at", descending=True)
+    return await db_get_all_paginate(db,
+                                     model=Filter,
+                                     schema= FilterWithSubFiltersResponse,
+                                     joins=[joinedload(Filter.sub_filters).load_only(SubFilter.name)],
+                                     unique=True,
+                                     page=page,
+                                     limit=limit,
+                                     order_by="created_at",
+                                     descending=True)
 
 async def get_sub_filters_by_filter_id(db: DBSession, filter_id: int, page: int, limit: int):
-    return await db_get_all_paginate(db, model=SubFilter, schema=SubFilterResponse, page=page, limit=limit,
-           filters={SubFilter.filter_id: filter_id}, order_by="created_at", descending=True)
+    return await db_get_all_paginate(db,
+                                     model=SubFilter,
+                                     schema=SubFilterResponse,
+                                     filters={SubFilter.filter_id: filter_id},
+                                     page=page,
+                                     limit=limit,
+                                     order_by="created_at",
+                                     descending=True)
 
 async def create_new_filter(db: DBSession, filter_create: FilterCreate):
     return await db_create(db, model=Filter, create_data=filter_create)

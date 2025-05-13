@@ -5,27 +5,38 @@ from app.core.dependencies import DBSession, SuperAdminSession
 from app.schema.booking.nomenclature.filter import FilterResponse, FilterCreate, FilterUpdate, \
     FilterWithSubFiltersResponse
 from app.service.booking.nomenclature.filter import create_new_filter, get_filters_with_sub_filters, \
-    update_filter_by_id, delete_filter_by_id, get_sub_filters_by_filter_id
+    update_filter_by_id, delete_filter_by_id, get_sub_filters_by_filter_id, \
+    get_business_type_filters_and_sub_filters_by_id
 from app.schema.booking.nomenclature.sub_filter import SubFilterResponse
 
-router = APIRouter(prefix="/filters", tags=["Filters"])
+router = APIRouter(tags=["Filters"])
 
-@router.get('/with-sub-filters', response_model=PaginatedResponse[FilterWithSubFiltersResponse])
+@router.get(
+    '/filters/with-sub-filters',
+    summary='List All Filters with SubFilters',
+    response_model=PaginatedResponse[FilterWithSubFiltersResponse])
 async def get_filters_sub_filters(db: DBSession, page: int, limit: int):
     return await get_filters_with_sub_filters(db, page, limit)
 
-@router.get("/{filter_id}/sub-filters", response_model=PaginatedResponse[SubFilterResponse])
+@router.get(
+    "/business-types/{business_type_id}/filters",
+    summary='List All Filters - Filtered By Business Type Id',
+    response_model=list[FilterWithSubFiltersResponse])
+async def get_business_type_filters_and_sub_filters(db: DBSession, business_type_id: int):
+    return await get_business_type_filters_and_sub_filters_by_id(db, business_type_id)
+
+@router.get("/filters/{filter_id}/sub-filters", response_model=PaginatedResponse[SubFilterResponse])
 async def get_sub_filters_by_filter(db: DBSession, filter_id: int, page: int, limit: int):
     return await get_sub_filters_by_filter_id(db, filter_id, page, limit)
 
-@router.post("/", response_model=FilterResponse, dependencies=[SuperAdminSession])
+@router.post("/filters/", response_model=FilterResponse, dependencies=[SuperAdminSession])
 async def create_filter(db: DBSession, filter_create: FilterCreate):
     return await create_new_filter(db, filter_create)
 
-@router.put("/{filter_id}", response_model=FilterResponse, dependencies=[SuperAdminSession])
+@router.put("/filters/{filter_id}", response_model=FilterResponse, dependencies=[SuperAdminSession])
 async def update_filter(db: DBSession, filter_update: FilterUpdate, filter_id: int):
     return await update_filter_by_id(db, filter_update, filter_id)
 
-@router.delete("/{filter_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[SuperAdminSession])
+@router.delete("/filters/{filter_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[SuperAdminSession])
 async def delete_filter(db: DBSession, filter_id: int):
     return await delete_filter_by_id(db, filter_id)

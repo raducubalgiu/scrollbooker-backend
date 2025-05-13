@@ -18,12 +18,19 @@ async def update_business_type_by_id(db: DBSession, business_type_update: Busine
     return await db_update(db, model=BusinessType, update_data=business_type_update, resource_id=business_type_id)
 
 async def get_all_business_type_with_services(db: DBSession, page: int, limit: int):
-    return await db_get_all_paginate(db, model=BusinessType, schema=BusinessTypeWithServicesAndFiltersResponse,
-                joins=[
-                    joinedload(BusinessType.services).load_only(Service.name),
-                    joinedload(BusinessType.filters).load_only(Filter.name)
-                    .joinedload(Filter.sub_filters).load_only(SubFilter.name)
-                ], unique=True, page=page, limit=limit, order_by=["id"], descending=True)
+    return await db_get_all_paginate(db,
+                                     model=BusinessType,
+                                     schema=BusinessTypeWithServicesAndFiltersResponse,
+                                     joins=[
+                                        joinedload(BusinessType.services).load_only(Service.name),
+                                        joinedload(BusinessType.filters).load_only(Filter.name)
+                                        .joinedload(Filter.sub_filters).load_only(SubFilter.name)
+                                     ],
+                                     unique=True,
+                                     page=page,
+                                     limit=limit,
+                                     order_by=["id"],
+                                     descending=True)
 
 async def get_professions_by_business_type_id(db: DBSession, business_type_id: int):
     business_type = await db_get_one(db,
@@ -32,15 +39,14 @@ async def get_professions_by_business_type_id(db: DBSession, business_type_id: i
                             joins=[joinedload(BusinessType.professions)])
     return business_type.professions
 
-async def get_business_type_filters_and_sub_filters_by_id(db: DBSession, business_type_id: int):
-    business_type = await db_get_one(db, model=BusinessType, filters={BusinessType.id: business_type_id},
-                            joins=[joinedload(BusinessType.filters).joinedload(Filter.sub_filters)])
-    return business_type.filters
-
 async def get_all_business_types_with_professions(db: DBSession, page: int, limit: 10):
-    return await db_get_all_paginate(db, model=BusinessType, schema=BusinessTypeWithProfessionsResponse,
-                joins=[joinedload(BusinessType.professions).load_only(Profession.name)],
-                unique=True, page=page, limit=limit)
+    return await db_get_all_paginate(db,
+                                     model=BusinessType,
+                                     schema=BusinessTypeWithProfessionsResponse,
+                                     joins=[joinedload(BusinessType.professions).load_only(Profession.name)],
+                                     unique=True,
+                                     page=page,
+                                     limit=limit)
 
 async def attach_filters_to_business_type(db: DBSession, business_type_id: int, filter_id: int):
     return await db_insert_many_to_many(db,
