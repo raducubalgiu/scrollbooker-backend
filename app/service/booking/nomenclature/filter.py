@@ -6,23 +6,22 @@ from app.schema.booking.nomenclature.filter import FilterCreate, FilterUpdate, F
 from app.models import Filter, SubFilter, BusinessType
 from app.schema.booking.nomenclature.sub_filter import SubFilterResponse
 
-async def get_business_type_filters_and_sub_filters_by_id(db: DBSession, business_type_id: int):
-    business_type = await db_get_one(db,
-                                     model=BusinessType,
-                                     filters={BusinessType.id: business_type_id},
-                                     joins=[joinedload(BusinessType.filters).joinedload(Filter.sub_filters)])
-    return business_type.filters
-
-async def get_filters_with_sub_filters(db: DBSession, page: int, limit: int):
+async def get_all_filters(db: DBSession, page: int, limit: int):
     return await db_get_all_paginate(db,
                                      model=Filter,
                                      schema= FilterWithSubFiltersResponse,
-                                     joins=[joinedload(Filter.sub_filters).load_only(SubFilter.name)],
                                      unique=True,
                                      page=page,
                                      limit=limit,
                                      order_by="created_at",
                                      descending=True)
+
+async def get_filters_by_business_type_id(db: DBSession, business_type_id: int):
+    business_type = await db_get_one(db,
+                                     model=BusinessType,
+                                     filters={BusinessType.id: business_type_id},
+                                     joins=[joinedload(BusinessType.filters)])
+    return business_type.filters
 
 async def get_sub_filters_by_filter_id(db: DBSession, filter_id: int, page: int, limit: int):
     return await db_get_all_paginate(db,

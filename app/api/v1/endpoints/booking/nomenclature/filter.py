@@ -4,26 +4,26 @@ from app.core.crud_helpers import PaginatedResponse
 from app.core.dependencies import DBSession, SuperAdminSession
 from app.schema.booking.nomenclature.filter import FilterResponse, FilterCreate, FilterUpdate, \
     FilterWithSubFiltersResponse
-from app.service.booking.nomenclature.filter import create_new_filter, get_filters_with_sub_filters, \
+from app.service.booking.nomenclature.filter import create_new_filter, get_all_filters, \
     update_filter_by_id, delete_filter_by_id, get_sub_filters_by_filter_id, \
-    get_business_type_filters_and_sub_filters_by_id
+    get_filters_by_business_type_id
 from app.schema.booking.nomenclature.sub_filter import SubFilterResponse
 
 router = APIRouter(tags=["Filters"])
 
 @router.get(
-    '/filters/with-sub-filters',
-    summary='List All Filters with SubFilters',
+    '/filters',
+    summary='List All Filters',
     response_model=PaginatedResponse[FilterWithSubFiltersResponse])
-async def get_filters_sub_filters(db: DBSession, page: int, limit: int):
-    return await get_filters_with_sub_filters(db, page, limit)
+async def get_filters(db: DBSession, page: int, limit: int):
+    return await get_all_filters(db, page, limit)
 
 @router.get(
     "/business-types/{business_type_id}/filters",
     summary='List All Filters - Filtered By Business Type Id',
     response_model=list[FilterWithSubFiltersResponse])
-async def get_business_type_filters_and_sub_filters(db: DBSession, business_type_id: int):
-    return await get_business_type_filters_and_sub_filters_by_id(db, business_type_id)
+async def get_filters_by_business_type(db: DBSession, business_type_id: int):
+    return await get_filters_by_business_type_id(db, business_type_id)
 
 @router.get("/filters/{filter_id}/sub-filters", response_model=PaginatedResponse[SubFilterResponse])
 async def get_sub_filters_by_filter(db: DBSession, filter_id: int, page: int, limit: int):

@@ -7,7 +7,7 @@ from app.service.booking.schedule import create_user_schedule, update_user_sched
     get_schedules_by_user_id
 from app.core.dependencies import DBSession, BusinessAndEmployeesSession
 
-router = APIRouter(prefix="/schedules", tags=["Schedules"])
+router = APIRouter(tags=["Schedules"])
 
 @router.get(
     "/users/{user_id}/schedules",
@@ -17,7 +17,7 @@ async def get_user_schedules(db: DBSession, user_id: int):
     return await get_schedules_by_user_id(db, user_id)
 
 @router.post(
-    "/",
+    "/schedules",
     summary='Create New Schedule',
     response_model=ScheduleResponse,
     dependencies=[BusinessAndEmployeesSession])
@@ -25,14 +25,14 @@ async def create_schedule(db: DBSession, schedule_update: ScheduleCreate, reques
     return await create_user_schedule(db, schedule_update, request)
 
 @router.put(
-    "/{schedule_id}",
+    "/schedules/{schedule_id}",
     summary='Update One Schedule',
     dependencies=[BusinessAndEmployeesSession])
 async def update_schedule(db: DBSession, schedule_id: int, schedule_update: ScheduleUpdate, request: Request):
     return await update_user_schedule(db, schedule_id, schedule_update, request)
 
 @router.put(
-    "/",
+    "/schedules",
     summary='Update Many Schedules',
     response_model=list[ScheduleResponse],
     dependencies=[BusinessAndEmployeesSession])
