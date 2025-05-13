@@ -7,7 +7,8 @@ from app.core.dependencies import DBSession
 from app.models import Follow, User, UserCounters, Notification
 from app.core.logger import logger
 
-async def is_user_follow(db: DBSession, follower_id: int, followee_id: int):
+async def is_user_follow(db: DBSession, followee_id: int, request: Request):
+    follower_id = request.state.user.get("id")
     follower = await db.get(User, follower_id)
     followee = await db.get(User, followee_id)
 
@@ -26,13 +27,9 @@ async def is_user_follow(db: DBSession, follower_id: int, followee_id: int):
     else:
         raise HTTPException(status_code=404, detail='User not found')
 
-async def follow_user(db :DBSession, follower_id: int, followee_id: int, request: Request):
-    is_follow = await is_user_follow(db, follower_id, followee_id)
-    auth_user_id = request.state.user.get("id")
-
-    if auth_user_id != follower_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                            detail='You do not have permission to perform this action')
+async def follow_user(db :DBSession, followee_id: int, request: Request):
+    follower_id = request.state.user.get("id")
+    is_follow = await is_user_follow(db, follower_id, request)
 
     if is_follow:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Already followed!')
@@ -64,16 +61,13 @@ async def follow_user(db :DBSession, follower_id: int, followee_id: int, request
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail='Something went wrong')
 
-async def unfollow_user(db :DBSession, follower_id: int, followee_id: int, request: Request):
-    is_follow = await is_user_follow(db, follower_id, followee_id)
-    auth_user_id = request.state.user.get("id")
-
-    if auth_user_id != follower_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                            detail='You do not have permission to perform this action')
+async def unfollow_user(db :DBSession, followee_id: int, request: Request):
+    is_follow = await is_user_follow(db, followee_id, request)
+    follower_id = request.state.user.get("id")
 
     if not is_follow:
         raise HTTPException(status_code=400, detail='Not follow this user!')
+
 
     try:
         await db.delete(is_follow)
