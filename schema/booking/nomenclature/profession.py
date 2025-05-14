@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 class ProfessionBase(BaseModel):
     name: str = Field(min_length=3, max_length=50)
+    business_domain_id: int
 
 class ProfessionCreate(ProfessionBase):
     pass

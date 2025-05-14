@@ -12,7 +12,6 @@ import calendar
 
 from backend.service.booking.business import get_business_by_user_id
 
-
 async def get_business(db: DBSession, auth_user_id: int):
     business_stmt = await db.execute(
         select(Business)
@@ -39,17 +38,21 @@ async def get_schedules_by_user_id(db: DBSession, user_id: int):
 
 async def create_user_schedule(db: DBSession, schedule_create: ScheduleCreate, request: Request):
     auth_user_id = request.state.user.get("id")
+    business = await get_business(db, auth_user_id)
 
-    existing_schedule = await db_get_one(db, model=Schedule,
-        filters={Schedule.user_id: auth_user_id, Schedule.day_of_week: schedule_create.day_of_week}, raise_not_found=False)
+    if not business:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Business not found')
+
+    existing_schedule = await db_get_one(db, model=Schedule, raise_not_found=False,
+                            filters={
+                                Schedule.user_id: auth_user_id,
+                                Schedule.day_of_week: schedule_create.day_of_week})
 
     if existing_schedule:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail='Schedule is already defined')
 
     day_week_index = list(calendar.day_name).index(schedule_create.day_of_week)
-
-    business = await get_business(db, auth_user_id)
 
     new_schedule = Schedule(
         user_id=auth_user_id,
@@ -59,6 +62,7 @@ async def create_user_schedule(db: DBSession, schedule_create: ScheduleCreate, r
         end_time=schedule_create.end_time,
         day_week_index=day_week_index
     )
+
 
     db.add(new_schedule)
     await db.commit()

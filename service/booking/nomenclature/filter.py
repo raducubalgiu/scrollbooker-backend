@@ -23,16 +23,6 @@ async def get_filters_by_business_type_id(db: DBSession, business_type_id: int):
                                      joins=[joinedload(BusinessType.filters)])
     return business_type.filters
 
-async def get_sub_filters_by_filter_id(db: DBSession, filter_id: int, page: int, limit: int):
-    return await db_get_all_paginate(db,
-                                     model=SubFilter,
-                                     schema=SubFilterResponse,
-                                     filters={SubFilter.filter_id: filter_id},
-                                     page=page,
-                                     limit=limit,
-                                     order_by="created_at",
-                                     descending=True)
-
 async def create_new_filter(db: DBSession, filter_create: FilterCreate):
     return await db_create(db, model=Filter, create_data=filter_create)
 

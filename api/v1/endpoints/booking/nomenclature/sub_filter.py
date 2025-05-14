@@ -1,11 +1,20 @@
+from typing import Union
+
 from fastapi import APIRouter
 from starlette import status
-from backend.core.dependencies import DBSession, SuperAdminSession
+
+from backend.core.crud_helpers import PaginatedResponse
+from backend.core.dependencies import DBSession, SuperAdminSession, Pagination
 from backend.schema.booking.nomenclature.sub_filter import SubFilterCreate, SubFilterResponse, SubFilterUpdate
 from backend.service.booking.nomenclature.sub_filter import create_new_sub_filter, update_sub_filter_by_id, \
-    delete_sub_filters_by_id
+    delete_sub_filters_by_id, get_sub_filters_by_filter_id
 
 router = APIRouter(prefix="/sub-filters", tags=["SubFilters"])
+
+@router.get("/filters/{filter_id}/sub-filters",
+    response_model=Union[PaginatedResponse[SubFilterResponse], list[SubFilterResponse]])
+async def get_sub_filters_by_filter(db: DBSession, filter_id: int, pagination: Pagination):
+    return await get_sub_filters_by_filter_id(db, filter_id, pagination)
 
 @router.post("/", response_model=SubFilterResponse, dependencies=[SuperAdminSession])
 async def create_sub_filter(db: DBSession, sub_filter_create: SubFilterCreate):

@@ -9,6 +9,7 @@ class BusinessBase(BaseModel):
     coordinates: tuple[float, float]
     owner_id: int = None
     business_type_id: int
+    has_employees: Optional[bool] = None
 
 class BusinessCreate(BusinessBase):
     pass
@@ -29,6 +30,7 @@ class BusinessEmployeesResponse(BaseModel):
     ratings_count: int
     ratings_average: float
     hire_date: str
+    has_employees: bool
 
     class Config:
         from_attributes = True

@@ -7,13 +7,15 @@ from starlette.requests import Request
 from backend.core.crud_helpers import db_get_all, db_get_one
 from backend.core.dependencies import DBSession
 from backend.core.enums.enums import RoleEnum, AppointmentStatusEnum
-from backend.models import Schedule, User, Follow, Appointment, Product, Business, BusinessType
+from backend.models import User, Follow, Appointment, Product, Business, BusinessType, Role
 from sqlalchemy import select, func, case, and_, or_, distinct
 from geoalchemy2.shape import to_shape # type: ignore
-from backend.service.booking.business import get_business_by_user_id
 
 async def search_users_clients(db: DBSession, q: str):
-    query = select(User).filter(User.role_id == 2) #type: ignore
+    query = (select(User)
+             .join(User.role)
+             .options(joinedload(User.role))
+             .filter(Role.name == RoleEnum.CLIENT)) #type: ignore
 
     if q:
         search_term = f"%{q}%"

@@ -11,10 +11,8 @@ class EmploymentRequestBase(BaseModel):
 
 class EmploymentRequestCreate(EmploymentRequestBase):
     consent_id: int
-    pass
 
 class EmploymentRequestUpdate(BaseModel):
-    consent_id: int
     status: str
 
 class ProfessionLoadOnly(BaseModel):

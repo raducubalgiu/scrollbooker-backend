@@ -239,8 +239,8 @@ async def create_new_business(db: DBSession, business_data: BusinessCreate):
                             detail='You already have a business attached')
 
     stmt = text("""
-        INSERT INTO businesses (description, address, coordinates, timezone, owner_id) 
-        VALUES (:description, :address, ST_SetSRID(ST_Point(:longitude, :latitude), 4326), :timezone, :owner_id)
+        INSERT INTO businesses (description, address, coordinates, timezone, owner_id, business_type_id) 
+        VALUES (:description, :address, ST_SetSRID(ST_Point(:longitude, :latitude), 4326), :timezone, :owner_id, :business_type_id)
         RETURNING id
     """)
 
@@ -250,11 +250,13 @@ async def create_new_business(db: DBSession, business_data: BusinessCreate):
         "longitude": longitude,
         "latitude": latitude,
         "timezone": timezone,
-        "owner_id": business_data.owner_id
+        "owner_id": business_data.owner_id,
+        "business_type_id": business_data.business_type_id
     }
     result = await db.execute(stmt, params)
     business_id = result.scalar()
     await db.commit()
+
     return { "detail": "Business created", "id": business_id }
 
 async def delete_business_by_id(db: DBSession, business_id: int, request: Request):

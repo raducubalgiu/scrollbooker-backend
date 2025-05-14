@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, TIMESTAMP, func, Index
+from sqlalchemy import Column, Integer, String, Boolean, TIMESTAMP, func, Index, ForeignKey
 from sqlalchemy.orm import relationship
 
 from backend.models import Base
@@ -10,11 +10,13 @@ class Profession(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(50), nullable=False, unique=True, index=True)
     active = Column(Boolean, nullable=False, default=True)
+    business_domain_id = Column(Integer, ForeignKey("business_domains.id", ondelete="CASCADE"), nullable=False)
 
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     business_types = relationship("BusinessType", secondary=business_type_professions, back_populates="professions")
+    business_domain = relationship("BusinessDomain", back_populates="professions")
     employment_requests = relationship("EmploymentRequest", back_populates="profession")
 
     __table_args__ = (

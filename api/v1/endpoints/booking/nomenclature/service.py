@@ -23,7 +23,7 @@ async def get_services(db: DBSession, pagination: Pagination):
 @router.get(
     "/business-types/{business_type_id}/services",
     summary='List All Services Filtered By Business Type Id',
-    response_model=list[ServiceResponse])
+    response_model=Union[PaginatedResponse[ServiceResponse], list[ServiceResponse]])
 async def get_services_by_business_type(db: DBSession, business_type_id: int):
     return await get_services_by_business_type_id(db, business_type_id)
 

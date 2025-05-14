@@ -6,9 +6,10 @@ from starlette import status
 from backend.core.enums.enums import RoleEnum
 from backend.core.crud_helpers import db_create, db_get_one, db_delete, db_get_all
 from backend.core.dependencies import DBSession
-from backend.models import EmploymentRequest, Business, User, Role, Notification, Profession
+from backend.models import EmploymentRequest, Business, User, Role, Notification, Profession, Schedule
 from backend.schema.booking.employment_request import EmploymentRequestCreate, EmploymentRequestUpdate
 from backend.core.logger import logger
+import calendar
 
 async def get_employment_requests_by_user_id(db: DBSession, user_id: int, request: Request):
     auth_user_id = request.state.user.get("id")
@@ -135,6 +136,12 @@ async def accept_employment_request(db: DBSession,
             business = await db.get(Business, employment_request.business_id)
             if not business.has_employees:
                 business.has_employees = True
+
+            # Create Employees Schedules
+            day_names = list(calendar.day_name)
+            for day in day_names:
+                new_schedule = Schedule(day_of_week=day, user_id=auth_user_id, start_time=None, end_time=None)
+                db.add(new_schedule)
 
             await db.commit()
             return {"detail": "Employment request Accepted"}
