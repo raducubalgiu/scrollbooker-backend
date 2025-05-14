@@ -1,10 +1,7 @@
 /.env
 /.idea
-/alembic
-/alembic.ini
 /docker-compose.yml
 /frontend
 /venv
 __pycache__/
-app/data
-app/logs
+/logs

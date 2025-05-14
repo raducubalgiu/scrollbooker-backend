@@ -12,6 +12,8 @@ class Service(Base):
     name = Column(String(50), unique=True, index=True)
     keywords = Column(JSONB, nullable=True, server_default="[]", index=True)
     active = Column(Boolean, default=True, index=True)
+
+    business_domain_id = Column(Integer, ForeignKey("business_domains.id", ondelete="CASCADE"), nullable=False, index=True)
     service_domain_id = Column(Integer, ForeignKey("service_domains.id", ondelete="CASCADE"), index=True)
 
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
@@ -27,6 +29,7 @@ class Service(Base):
 
     __table_args__ = (
         Index("idx_services_name", "name"),
+        Index("idx_services_business_domain_id", "business_domain_id"),
         Index("idx_services_service_domain_id", "service_domain_id"),
         Index("idx_services_keywords_active", "name", "keywords", "active")
     )

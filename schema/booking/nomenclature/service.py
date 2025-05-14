@@ -4,6 +4,7 @@ from datetime import datetime
 
 class ServiceBase(BaseModel):
     name: str = Field(min_length=3, max_length=50)
+    business_domain_id: int
     keywords: List[str] = []
 
     class Config:
