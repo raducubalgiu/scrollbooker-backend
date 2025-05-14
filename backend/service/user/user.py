@@ -1,0 +1,188 @@
+from datetime import datetime, timezone
+
+from fastapi import HTTPException
+from sqlalchemy.orm import joinedload
+from starlette import status
+from starlette.requests import Request
+from backend.core.crud_helpers import db_get_all, db_get_one
+from backend.core.dependencies import DBSession
+from backend.core.enums.enums import RoleEnum, AppointmentStatusEnum
+from backend.models import Schedule, User, Follow, Appointment, Product, Business, BusinessType
+from sqlalchemy import select, func, case, and_, or_, distinct
+from geoalchemy2.shape import to_shape # type: ignore
+from backend.service.booking.business import get_business_by_user_id
+
+async def search_users_clients(db: DBSession, q: str):
+    query = select(User).filter(User.role_id == 2) #type: ignore
+
+    if q:
+        search_term = f"%{q}%"
+        query = query.filter(
+            or_(
+                User.username.ilike(search_term),
+                User.fullname.ilike(search_term)
+            )
+        )
+
+    users_stmt = await db.execute(query.order_by(User.username.asc()).limit(50))
+    users = users_stmt.scalars().all()
+    return users
+
+async def get_product_durations_by_user_id(db: DBSession, user_id):
+    durations_results = await db.execute(select(distinct(Product.duration)).where(Product.user_id == user_id)) #type: ignore
+    return [row[0] for row in durations_results]
+
+async def get_user_dashboard_summary_by_id(db: DBSession, user_id: int, start_date: str, end_date:str, all_employees: bool):
+    try:
+        start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+        end_date_obj = datetime.strptime(end_date, '%Y-%m-%d')
+        end_date_obj = end_date_obj.replace(hour=23, minute=59, second=59, microsecond=999999, tzinfo=timezone.utc)
+
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"Start date and end date should use the format - %Y-%m-%d")
+
+    days_diff = end_date_obj - start_date_obj
+    previous_start_date = start_date_obj - days_diff
+    previous_end_date = end_date_obj - days_diff
+    previous_end_date = previous_end_date.replace(hour=23, minute=59, second=59, microsecond=999999, tzinfo=timezone.utc)
+
+    user = await db_get_one(db, model=User, filters={User.id: user_id},
+                            joins=[joinedload(User.role), joinedload(User.owner_business).load_only(Business.id)])
+    is_super_admin = user.role.name == RoleEnum.SUPER_ADMIN
+    is_business = user.role.name == RoleEnum.BUSINESS
+
+    def calculate_dashboard_summary(s_date, e_date, is_bs, is_sa, all_emp, u_id):
+        return (
+            select(
+                User.id.label("user_id"),
+                func.coalesce(func.sum(Product.price), 0).label("total_sales"),
+                func.coalesce(func.count(Appointment.id), 0).label("total_bookings"),
+                func.coalesce(
+                    func.sum(case((Appointment.channel == "closer_app", 1), else_=0)), 0 #type: ignore
+                ).label("closer_bookings"),
+                func.coalesce(
+                    func.sum(case((Appointment.channel == "own_client", 1), else_=0)), 0 #type: ignore
+                ).label("own_bookings"),
+            )
+            .outerjoin(Appointment, Appointment.user_id == User.id)  # type: ignore
+            .outerjoin(Product, Product.id == Appointment.product_id)
+            .where(
+                and_(
+                    *( [Appointment.user_id == u_id] if not is_sa and not all_emp else []),
+                    *( [Appointment.business_id == user.owner_business.id] if all_emp and is_bs else []),
+                    Appointment.created_at >= s_date,
+                    Appointment.created_at <= e_date,
+                    Appointment.is_blocked == False,
+                    Appointment.status == AppointmentStatusEnum.FINISHED
+                )
+            )
+            .group_by(User.id)
+        )
+
+    current_result = await db.execute(calculate_dashboard_summary(start_date_obj, end_date_obj, is_business, is_super_admin, all_employees, user_id))
+    previous_result = await db.execute(calculate_dashboard_summary(previous_start_date, previous_end_date, is_business, is_super_admin, all_employees, user_id))
+
+    current_data = current_result.mappings().first()
+    previous_data = previous_result.mappings().first()
+
+    def calculate_trend(current, previous):
+        if previous == 0:
+            return "up" if current > 0 else "no_change", "100%" if current > 0 else "%0"
+
+        percentage_change = ((current - previous) / previous) * 100 if previous else 0
+        trend = "up" if percentage_change > 0 else "down"
+        return trend, f"{percentage_change:.2f}%"
+
+
+    response = []
+
+    for key, title in [
+        ('total_bookings', 'Total Bookings'),
+        ('own_bookings', 'Own bookings'),
+        ('closer_bookings', 'Closer Bookings'),
+        ('total_sales', 'Total Sales'),
+    ]:
+        current_value = current_data[key] if current_data else 0
+        previous_value = previous_data[key] if previous_data else 0
+        trend, percentage = calculate_trend(current_value, previous_value)
+
+        response.append({
+            'title': title,
+            'amount': current_value,
+            'trend': trend,
+            'percentage': percentage,
+            "days_diff": days_diff.days
+        })
+
+    return response
+
+async def get_user_followers_by_user_id(db: DBSession, user_id: int, page: int, limit: int, request: Request):
+   auth_user_id = request.state.user.get("id")
+
+   subquery = (
+       select(Follow)
+       .where(Follow.follower_id == auth_user_id, Follow.followee_id == User.id) #type: ignore
+       .correlate(User)
+       .exists()
+   )
+
+   query = await db.execute((
+       select(User.id, User.username, User.fullname, User.avatar, subquery.label("is_follow"))
+       .join(Follow, Follow.follower_id == User.id) # type: ignore
+       .where(Follow.followee_id == user_id)
+       .offset((page - 1) * limit)
+       .limit(limit)
+   ))
+   followers = query.mappings().all()
+   return followers
+
+async def get_user_followings_by_user_id(db: DBSession, user_id: int, page: int, limit: int, request: Request):
+   auth_user_id = request.state.user.get("id")
+
+   subquery = (
+       select(Follow)
+       .where(Follow.follower_id == auth_user_id, Follow.followee_id == User.id) # type: ignore
+       .correlate(User)
+       .exists()
+   )
+
+   query = await db.execute(
+       select(User.id, User.username, User.avatar, subquery.label("is_follow"))
+       .join(Follow, Follow.followee_id == User.id) #type: ignore
+       .where(Follow.follower_id == user_id)
+       .offset((page - 1) * limit)
+       .limit(limit)
+   )
+
+   followings = query.mappings().all()
+   return followings
+
+
+# If Business - return Business Types, if employee - return Professions
+async def get_available_professions_by_user_id(db: DBSession, user_id: int):
+    user = await db_get_one(db,
+                            model=User,
+                            filters={User.id: user_id},
+                            joins=[joinedload(User.role),
+                                   joinedload(User.owner_business),
+                                   joinedload(User.employee_business)]
+                            )
+
+    if user.role.name == RoleEnum.BUSINESS:
+        business = await db_get_one(db, model=Business, filters={Business.owner_id: user.id},
+                        joins=[joinedload(Business.business_type).load_only(BusinessType.business_domain_id)])
+
+        business_types = await db_get_all(db, model=BusinessType,
+                            filters={BusinessType.business_domain_id: business.business_type.business_domain_id})
+        return business_types
+
+    if user.role.name == RoleEnum.EMPLOYEE:
+        stmt = await db.execute(
+            select(BusinessType)
+            .options(joinedload(BusinessType.professions))
+            .where(BusinessType.id == user.employee_business.business_type_id) #type: ignore
+        )
+        business_type = stmt.scalars().first()
+        professions = business_type.professions
+        return professions
