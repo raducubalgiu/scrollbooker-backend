@@ -1,15 +1,17 @@
 from backend.core.database import Base
 
+#NOMENCLATURES
+from backend.models.nomenclature.business_domain import BusinessDomain
+from backend.models.nomenclature.business_type import BusinessType
+from backend.models.nomenclature.currency import Currency
+from backend.models.nomenclature.filter import Filter
+from backend.models.nomenclature.profession import Profession
+from backend.models.nomenclature.service import Service
+from backend.models.nomenclature.service_domain import ServiceDomain
+from backend.models.nomenclature.sub_filter import SubFilter
+
 # BOOKING
-from backend.models.booking.nomenclature.business_domain import BusinessDomain
-from backend.models.booking.nomenclature.business_type import BusinessType
-from backend.models.booking.nomenclature.profession import Profession
-from backend.models.booking.nomenclature.filter import Filter
-from backend.models.booking.nomenclature.sub_filter import SubFilter
-from backend.models.booking.nomenclature.service import Service
-from backend.models.booking.nomenclature.service_domain import ServiceDomain
-from backend.models.booking.nomenclature.service_business_types import service_business_types
-from backend.models.booking.nomenclature.currency import Currency
+from backend.models.nomenclature.service_business_types import service_business_types
 from backend.models.booking.product import Product
 from backend.models.booking.product_sub_filters import product_sub_filters
 from backend.models.booking.business import Business
@@ -39,6 +41,6 @@ from backend.models.user.role import Role
 from backend.models.user.permission import Permission
 from backend.models.user.role_permissions import role_permissions
 from backend.models.user.user_counters import UserCounters
-from backend.models.user.consent import Consent
+from backend.models.nomenclature.consent import Consent
 from backend.models.user.notification import Notification
 from backend.models.user.user_currency import UserCurrency

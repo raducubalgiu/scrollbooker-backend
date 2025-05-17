@@ -17,6 +17,7 @@ async def create_new_user_currency(db: DBSession, user_currency_create: UserCurr
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='You do not have permissions to perform this action')
 
+
     user_currency_result = await db.execute(
         select(UserCurrency)
         .where(and_(

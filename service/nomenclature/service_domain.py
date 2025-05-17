@@ -1,6 +1,6 @@
 from backend.core.crud_helpers import db_create, db_update, db_delete, db_get_all
 from backend.core.dependencies import DBSession, Pagination
-from backend.schema.booking.nomenclature.service_domain import ServiceDomainCreate, ServiceDomainUpdate, \
+from backend.schema.nomenclature.service_domain import ServiceDomainCreate, ServiceDomainUpdate, \
     ServiceDomainResponse
 from backend.models import ServiceDomain
 

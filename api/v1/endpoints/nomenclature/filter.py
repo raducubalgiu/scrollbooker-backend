@@ -1,16 +1,18 @@
+from typing import Union
+
 from fastapi import APIRouter
 from starlette import status
 from backend.core.crud_helpers import PaginatedResponse
 from backend.core.dependencies import DBSession, SuperAdminSession
-from backend.schema.booking.nomenclature.filter import FilterResponse, FilterCreate, FilterUpdate, FilterWithSubFiltersResponse
-from backend.service.booking.nomenclature.filter import create_new_filter, get_all_filters, \
-    update_filter_by_id, delete_filter_by_id, get_filters_by_business_type_id
+from backend.schema.nomenclature.filter import FilterResponse, FilterCreate, FilterUpdate, FilterWithSubFiltersResponse
+from backend.service.nomenclature.filter import create_new_filter, get_all_filters, \
+    update_filter_by_id, delete_filter_by_id, get_filters_by_business_type_id, attach_filters_to_business_type, detach_filters_from_business_type
 
 router = APIRouter(tags=["Filters"])
 
 @router.get('/filters',
     summary='List All Filters',
-    response_model=PaginatedResponse[FilterWithSubFiltersResponse])
+    response_model=Union[PaginatedResponse[FilterWithSubFiltersResponse], list[FilterWithSubFiltersResponse]])
 async def get_filters(db: DBSession, page: int, limit: int):
     return await get_all_filters(db, page, limit)
 
@@ -40,3 +42,17 @@ async def update_filter(db: DBSession, filter_update: FilterUpdate, filter_id: i
     dependencies=[SuperAdminSession])
 async def delete_filter(db: DBSession, filter_id: int):
     return await delete_filter_by_id(db, filter_id)
+
+@router.post("/filters/{filter_id}/business-types/{business_type_id}",
+    summary='Attach Filter - Business Type',
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[SuperAdminSession])
+async def attach_filters_business_type(db: DBSession, business_type_id: int, filter_id: int):
+    return await attach_filters_to_business_type(db, business_type_id, filter_id)
+
+@router.delete("/filters/{filter_id}/business-types/{business_type_id}",
+    summary='Detach Filter - Business Type',
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[SuperAdminSession])
+async def detach_filters_business_type(db: DBSession, business_type_id: int, filter_id: int):
+    return await detach_filters_from_business_type(db, business_type_id, filter_id)

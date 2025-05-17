@@ -7,7 +7,6 @@ from backend.models import Permission, Role
 from backend.models.user.role_permissions import role_permissions
 from backend.schema.user.permission import PermissionCreate, PermissionWithRolesResponse, RoleAssignment, PermissionUpdate
 
-
 async def get_all_permissions(db: DBSession, page: int, limit: int):
     roles_result = await db.scalars(select(Role))
     roles = roles_result.all()

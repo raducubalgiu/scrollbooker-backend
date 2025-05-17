@@ -2,7 +2,6 @@ from typing import Optional
 from pydantic import BaseModel
 from datetime import datetime
 
-from backend.schema.booking.nomenclature.profession import ProfessionResponse
 from backend.schema.user.user import UserBaseMinimum
 
 class EmploymentRequestBase(BaseModel):

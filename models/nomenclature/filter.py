@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, TIMESTAMP, func, Boolean, Index
 from sqlalchemy.orm import relationship
 
 from backend.models import Base
-from backend.models.booking.nomenclature.business_type_filters import business_type_filters
+from backend.models.nomenclature.business_type_filters import business_type_filters
 
 class Filter(Base):
     __tablename__ = "filters"

@@ -6,7 +6,7 @@ from sqlalchemy.orm import selectinload
 from backend.core.crud_helpers import db_create, db_get_all, db_update
 from backend.core.dependencies import DBSession, Pagination
 from backend.models import Currency, User, UserCurrency
-from backend.schema.booking.nomenclature.currency import CurrencyCreate, CurrencyResponse, CurrencyUpdate
+from backend.schema.nomenclature.currency import CurrencyCreate, CurrencyResponse, CurrencyUpdate
 
 
 async def get_all_currencies(db: DBSession, pagination: Pagination):

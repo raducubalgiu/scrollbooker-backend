@@ -139,8 +139,16 @@ async def accept_employment_request(db: DBSession,
 
             # Create Employees Schedules
             day_names = list(calendar.day_name)
+
             for day in day_names:
-                new_schedule = Schedule(day_of_week=day, user_id=auth_user_id, start_time=None, end_time=None)
+                day_of_week = day_names.index(day)
+                new_schedule = Schedule(
+                    day_of_week=day,
+                    day_week_index=day_of_week,
+                    user_id=auth_user_id,
+                    business_id=employment_request.business_id,
+                    start_time=None,
+                    end_time=None)
                 db.add(new_schedule)
 
             await db.commit()

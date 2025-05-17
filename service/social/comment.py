@@ -17,6 +17,7 @@ async def create_new_comment(db: DBSession, post_id: int, comment_data: CommentC
     await db.refresh(new_comment)
     return new_comment
 
+
 async def like_post_comment(db: DBSession, post_id: int, comment_id: int, request: Request):
     auth_user_id = request.state.user.get("id")
     comment = await db.get(Comment, comment_id)

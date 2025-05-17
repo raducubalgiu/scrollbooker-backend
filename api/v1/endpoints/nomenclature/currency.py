@@ -3,8 +3,8 @@ from fastapi import APIRouter
 
 from backend.core.crud_helpers import PaginatedResponse
 from backend.core.dependencies import DBSession, SuperAdminSession, Pagination
-from backend.schema.booking.nomenclature.currency import CurrencyResponse, CurrencyCreate, CurrencyUpdate
-from backend.service.booking.nomenclature.currency import create_new_currency, update_currency_by_id, \
+from backend.schema.nomenclature.currency import CurrencyResponse, CurrencyCreate, CurrencyUpdate
+from backend.service.nomenclature.currency import create_new_currency, update_currency_by_id, \
     get_currencies_by_user_id, get_all_currencies
 
 router = APIRouter(tags=["Currencies"])

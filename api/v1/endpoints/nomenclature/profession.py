@@ -5,9 +5,9 @@ from starlette import status
 
 from backend.core.crud_helpers import PaginatedResponse
 from backend.core.dependencies import DBSession, SuperAdminSession, Pagination
-from backend.schema.booking.nomenclature.profession import ProfessionCreate, ProfessionResponse, ProfessionUpdate, \
+from backend.schema.nomenclature.profession import ProfessionCreate, ProfessionResponse, ProfessionUpdate, \
     ProfessionWithBusinessTypesResponse
-from backend.service.booking.nomenclature.profession import create_new_profession, \
+from backend.service.nomenclature.profession import create_new_profession, \
     update_profession_by_id, delete_profession_by_id, get_all_professions_with_business_types, \
     get_professions_by_business_type_id, get_all_professions, attach_professions_to_business_type, \
     detach_professions_from_business_type

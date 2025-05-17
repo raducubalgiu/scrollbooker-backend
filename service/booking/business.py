@@ -18,7 +18,7 @@ from timezonefinder import TimezoneFinder # type: ignore
 from backend.models.booking.product_sub_filters import product_sub_filters
 from backend.schema.booking.business import BusinessCreate, BusinessResponse
 from datetime import timedelta,datetime
-from backend.schema.booking.nomenclature.service import ServiceIdsUpdate
+from backend.schema.nomenclature.service import ServiceIdsUpdate
 
 async def get_business_by_user_id(db: DBSession, user_id: int):
     business_query = await db.execute(select(Business, User.id).where(

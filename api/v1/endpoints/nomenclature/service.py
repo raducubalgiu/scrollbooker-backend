@@ -5,8 +5,8 @@ from starlette import status
 from backend.core.crud_helpers import PaginatedResponse
 from backend.core.dependencies import DBSession, Pagination
 from backend.core.dependencies import SuperAdminSession
-from backend.schema.booking.nomenclature.service import ServiceResponse, ServiceCreate, ServiceUpdate
-from backend.service.booking.nomenclature.service import create_new_service, \
+from backend.schema.nomenclature.service import ServiceResponse, ServiceCreate, ServiceUpdate
+from backend.service.nomenclature.service import create_new_service, \
     delete_service_by_id, update_service_by_id, get_all_services, attach_services_to_business_type, \
     detach_services_from_business_type, get_services_by_user_id, get_services_by_service_domain_id, \
     get_services_by_business_type_id

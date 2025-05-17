@@ -3,10 +3,10 @@ from sqlalchemy.orm import joinedload
 
 from backend.core.dependencies import DBSession, Pagination
 from backend.models import Service, BusinessType, Business, User
-from backend.schema.booking.nomenclature.service import ServiceCreate, ServiceUpdate, ServiceResponse
+from backend.schema.nomenclature.service import ServiceCreate, ServiceUpdate, ServiceResponse
 from backend.core.crud_helpers import db_create, db_delete, db_update, db_get_all, db_insert_many_to_many, \
     db_remove_many_to_many, db_get_one
-from backend.models.booking.nomenclature.service_business_types import service_business_types
+from backend.models.nomenclature.service_business_types import service_business_types
 
 async def get_all_services(db: DBSession, pagination: Pagination):
     return await db_get_all(db,

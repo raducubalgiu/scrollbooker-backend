@@ -3,7 +3,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from backend.models import Base
 from backend.models.booking.business_services import business_services
-from backend.models.booking.nomenclature.service_business_types import service_business_types
+from backend.models.nomenclature.service_business_types import service_business_types
 
 class Service(Base):
     __tablename__ = "services"

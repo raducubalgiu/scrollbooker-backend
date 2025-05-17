@@ -9,7 +9,7 @@ from backend.api.v1.endpoints.user import user, role, permission, consent, notif
 from backend.api.v1.endpoints.auth import auth
 from backend.api.v1.endpoints.social import follow, hashtag, post
 from backend.api.v1.endpoints.booking import business, product, appointment, schedule, review, employment_request
-from backend.api.v1.endpoints.booking.nomenclature import business_domain, business_type, service, filter, sub_filter, service_domain, profession, currency
+from backend.api.v1.endpoints.nomenclature import business_domain, business_type, service, filter, sub_filter, service_domain, profession, currency
 from backend.core.middlewares.auth_middleware import AuthMiddleware
 from backend.core.exceptions import global_exception_handler, http_exception_handler, validation_exception_handler
 from backend.core.scheduler import start as start_scheduler, scheduler

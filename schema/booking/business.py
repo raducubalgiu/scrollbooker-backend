@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional, List
 
-from backend.schema.booking.nomenclature.service import ServiceResponse
+from backend.schema.nomenclature.service import ServiceResponse
 
 class BusinessBase(BaseModel):
     description: Optional[str] = None

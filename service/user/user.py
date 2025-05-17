@@ -7,7 +7,7 @@ from starlette.requests import Request
 from backend.core.crud_helpers import db_get_all, db_get_one
 from backend.core.dependencies import DBSession
 from backend.core.enums.enums import RoleEnum, AppointmentStatusEnum
-from backend.models import User, Follow, Appointment, Product, Business, BusinessType, Role
+from backend.models import User, Follow, Appointment, Product, Business, Role, BusinessType
 from sqlalchemy import select, func, case, and_, or_, distinct
 from geoalchemy2.shape import to_shape # type: ignore
 

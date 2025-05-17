@@ -1,6 +1,6 @@
 from backend.core.crud_helpers import db_create, db_get_one
 from backend.core.dependencies import DBSession
-from backend.schema.user.consent import ConsentCreate
+from backend.schema.nomenclature.consent import ConsentCreate
 from backend.models import Consent
 
 async def get_consent_by_name(db: DBSession, consent_name: str):
