@@ -40,7 +40,7 @@ async def get_business_types_by_service(db: DBSession, service_id: int):
 async def get_business_types_by_filter(db: DBSession, filter_id: int):
     return await get_business_types_by_filter_id(db, filter_id)
 
-@router.post("/business-types/",
+@router.post("/business-types",
     summary='Create New Business Type',
     response_model=BusinessTypeResponse,
     dependencies=[SuperAdminSession])

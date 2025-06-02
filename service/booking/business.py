@@ -230,7 +230,7 @@ async def create_new_business(db: DBSession, business_data: BusinessCreate):
 
     stmt_owner_has_business = await db.execute(
         select(Business).
-        filter(Business.owner_id == business_data.owner_id) # type: ignore
+        filter(Business.owner_id == business_data.owner_id)
     )
     owner_has_business = stmt_owner_has_business.scalars().first()
 
@@ -239,8 +239,8 @@ async def create_new_business(db: DBSession, business_data: BusinessCreate):
                             detail='You already have a business attached')
 
     stmt = text("""
-        INSERT INTO businesses (description, address, coordinates, timezone, owner_id, business_type_id) 
-        VALUES (:description, :address, ST_SetSRID(ST_Point(:longitude, :latitude), 4326), :timezone, :owner_id, :business_type_id)
+        INSERT INTO businesses (description, address, coordinates, timezone, owner_id, business_type_id, has_employees) 
+        VALUES (:description, :address, ST_SetSRID(ST_Point(:longitude, :latitude), 4326), :timezone, :owner_id, :business_type_id, :has_employees)
         RETURNING id
     """)
 
@@ -251,7 +251,8 @@ async def create_new_business(db: DBSession, business_data: BusinessCreate):
         "latitude": latitude,
         "timezone": timezone,
         "owner_id": business_data.owner_id,
-        "business_type_id": business_data.business_type_id
+        "business_type_id": business_data.business_type_id,
+        "has_employees": business_data.has_employees
     }
     result = await db.execute(stmt, params)
     business_id = result.scalar()
@@ -351,7 +352,7 @@ async def detach_service_from_business(db: DBSession, business_id: int, service_
 
         is_present = await db.execute(
             select(business_services).where(
-                (business_services.c.business_id == business_id) & (business_services.c.service_id == service_id) # type: ignore
+                (business_services.c.business_id == business_id) & (business_services.c.service_id == service_id)
             )
         )
 
@@ -360,7 +361,7 @@ async def detach_service_from_business(db: DBSession, business_id: int, service_
                                 detail='This service is not associated with this Business')
 
         await db.execute(delete(business_services).where(
-            (business_services.c.business_id == business_id) & (business_services.c.service_id == service_id) # type: ignore
+            (business_services.c.business_id == business_id) & (business_services.c.service_id == service_id)
         ))
         await db.commit()
 

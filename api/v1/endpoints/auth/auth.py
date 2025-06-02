@@ -4,7 +4,7 @@ from starlette import status
 from dotenv import load_dotenv
 from backend.core.security import oauth2_bearer
 from backend.schema.auth.auth import UserRegister, UserRegisterResponse, UserInfoResponse, UserInfoUpdate
-from backend.schema.auth.token import Token
+from backend.schema.auth.token import Token, RefreshToken
 from backend.service.auth.auth import login_user, register_user, get_refresh_token, get_user_info, update_user_info, \
     get_user_permissions
 from backend.core.dependencies import DBSession
@@ -28,8 +28,8 @@ async def register(db: DBSession, user_register: UserRegister):
 async def login(db: DBSession, form_data: OAuth2PasswordRequestForm = Depends()):
     return await login_user(db, form_data.username, form_data.password)
 
-@router.post("/refresh", response_model=Token)
-async def refresh_token(db: DBSession, token: str):
+@router.post("/refresh")
+async def refresh_token(db: DBSession, token: RefreshToken):
     return await get_refresh_token(db, token)
 
 @router.get("/user-info", response_model=UserInfoResponse)

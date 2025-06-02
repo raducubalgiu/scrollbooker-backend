@@ -1,9 +1,10 @@
 import os
+from logging import Logger
+
 from fastapi import HTTPException
 from sqlalchemy.orm import joinedload
 from starlette import status
 from datetime import timedelta
-from sqlalchemy import select
 from dotenv import load_dotenv
 
 from backend.core.enums.enums import RoleEnum
@@ -13,8 +14,9 @@ from backend.core.security import hash_password, verify_password, create_token, 
 from backend.core.dependencies import DBSession
 from backend.models import User, UserCounters, Role, Business, Permission, Schedule
 from backend.schema.auth.auth import UserRegister, UserInfoResponse, UserInfoUpdate
-from jose import JWTError #type: ignore
-import calendar
+from jose import JWTError
+
+from backend.schema.auth.token import RefreshToken
 
 load_dotenv()
 
@@ -82,31 +84,25 @@ async def generate_tokens(username: str, user_id: int, role: str):
     )
     return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
-async def get_refresh_token(db: DBSession, token: str):
+async def get_refresh_token(db: DBSession, token: RefreshToken):
     try:
-        payload = await decode_token(token, os.getenv("SECRET_KEY"))
+        payload = await decode_token(token.refresh_token, os.getenv("REFRESH_SECRET_KEY"))
 
         if not payload:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
 
         username = payload.get("sub")
-        stmt = await db.execute(
-            select(User).filter(User.username == username))  # type: ignore
-        user = stmt.scalars().first()
+
+        user = await db_get_one(db, model=User, filters={User.username: username}, joins=[joinedload(User.role)])
 
         if not user:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
-        access_token_expires = timedelta(minutes=float(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES")))
+        logger.info(f"The Token was refreshed for user: {username}")
+        return await generate_tokens(username, user.id, user.role.name)
 
-        access_token = await create_token(
-            data={"sub": username},
-            expires_at=access_token_expires,
-            secret_key=os.getenv("SECRET_KEY")
-        )
-
-        return {"access_token": access_token, "refresh_token": token, "token_type": "bearer"}
     except JWTError as e:
+        logger.error(f"Token could not be refreshed.Error: {e}")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Invalid refresh token')
 
@@ -126,6 +122,7 @@ async def get_user_info(db: DBSession, token: str):
                                     joinedload(User.owner_business).load_only(Business.id, Business.business_type_id),
                                     joinedload(User.employee_business).load_only(Business.id, Business.business_type_id)
                                 ])
+
 
         business_id = (
             user.owner_business.id if user.owner_business
