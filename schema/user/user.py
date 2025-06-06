@@ -7,8 +7,8 @@ from backend.schema.booking.schedule import ScheduleResponse
 
 class UserBaseMinimum(BaseModel):
     id: int
-    fullname: Optional[str] = Field(max_length=30)
-    username: str = Field(min_length=3, max_length=35)
+    fullname: Optional[str] = None
+    username: str = None
     avatar: Optional[str] = None
     is_follow: Optional[bool] = None
 
@@ -39,3 +39,12 @@ class UserResponse(UserBase):
 
     class Config:
         from_attributes = True
+
+class FullNameUpdate(BaseModel):
+    fullname: str = Field(max_length=30)
+
+class UsernameUpdate(BaseModel):
+    username: str = Field(max_length=35)
+
+class BioUpdate(BaseModel):
+    bio: str = Field(None, max_length=100)

@@ -1,13 +1,28 @@
 from fastapi import APIRouter, Query
+from starlette import status
 from starlette.requests import Request
+
+from backend.core.crud_helpers import PaginatedResponse
 from backend.core.dependencies import DBSession
-from backend.schema.booking.schedule import ScheduleResponse
-from backend.schema.user.user import UserBaseMinimum
+from backend.schema.user.user import UserBaseMinimum, UsernameUpdate, FullNameUpdate, BioUpdate
 from backend.service.user.user import get_user_followers_by_user_id, \
     get_user_followings_by_user_id, get_user_dashboard_summary_by_id, \
-    get_available_professions_by_user_id, search_users_clients, get_product_durations_by_user_id
+    get_available_professions_by_user_id, search_users_clients, get_product_durations_by_user_id, update_user_fullname, \
+    update_user_username, update_user_bio
 
 router = APIRouter(prefix="/users", tags=["Users"])
+
+@router.patch("/user-info/fullname", status_code=status.HTTP_200_OK)
+async def update_fullname(db: DBSession, fullname_update: FullNameUpdate, request: Request):
+    return await update_user_fullname(db, fullname_update, request)
+
+@router.patch("/user-info/username")
+async def update_username(db: DBSession, username_update: UsernameUpdate, request: Request):
+    return await update_user_username(db, username_update, request)
+
+@router.patch("/user-info/bio")
+async def update_bio(db: DBSession, bio_update: BioUpdate, request: Request):
+    return await update_user_bio(db, bio_update, request)
 
 @router.get("/search", response_model=list[UserBaseMinimum])
 async def search_users_as_clients(db: DBSession, q: str):
@@ -21,11 +36,11 @@ async def get_user_dashboard_summary(db: DBSession, user_id: int, start_date: st
 async def get_user_product_durations(db:DBSession, user_id: int):
     return await get_product_durations_by_user_id(db, user_id)
 
-@router.get("/{user_id}/followers", response_model=list[UserBaseMinimum])
+@router.get("/{user_id}/followers", response_model=PaginatedResponse[UserBaseMinimum])
 async def get_user_followers(db: DBSession, user_id: int, page: int, limit: int, request: Request):
     return await get_user_followers_by_user_id(db, user_id, page, limit, request)
 
-@router.get("/{user_id}/followings", response_model=list[UserBaseMinimum])
+@router.get("/{user_id}/followings", response_model=PaginatedResponse[UserBaseMinimum])
 async def get_user_followings(db: DBSession, user_id: int, page: int, limit: int, request: Request):
     return await get_user_followings_by_user_id(db, user_id, page, limit, request)
 

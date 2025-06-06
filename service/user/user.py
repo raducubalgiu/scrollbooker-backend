@@ -4,12 +4,31 @@ from fastapi import HTTPException
 from sqlalchemy.orm import joinedload
 from starlette import status
 from starlette.requests import Request
-from backend.core.crud_helpers import db_get_all, db_get_one
+from backend.core.crud_helpers import db_get_all, db_get_one, db_update
 from backend.core.dependencies import DBSession
 from backend.core.enums.enums import RoleEnum, AppointmentStatusEnum
 from backend.models import User, Follow, Appointment, Product, Business, Role, BusinessType
 from sqlalchemy import select, func, case, and_, or_, distinct
-from geoalchemy2.shape import to_shape # type: ignore
+
+from backend.schema.user.user import UsernameUpdate, FullNameUpdate, BioUpdate
+
+async def update_user_fullname(db: DBSession, fullname_update: FullNameUpdate, request: Request):
+    auth_user_id = request.state.user.get("id")
+    await db_update(db, model=User, update_data=fullname_update, filters={"id": auth_user_id})
+
+    return { "detail": "Fullname successfully updated" }
+
+async def update_user_username(db: DBSession, username_update: UsernameUpdate, request: Request):
+    auth_user_id = request.state.user.get("id")
+    await db_update(db, model=User, update_data=username_update, filters={"id": auth_user_id})
+
+    return { "detail": "Username successfully updated" }
+
+async def update_user_bio(db: DBSession, bio_update: BioUpdate, request: Request):
+    auth_user_id = request.state.user.get("id")
+    await db_update(db, model=User, update_data=bio_update, filters={"id": auth_user_id})
+
+    return { "detail": "Bio successfully updated" }
 
 async def search_users_clients(db: DBSession, q: str):
     query = (select(User)
@@ -129,36 +148,55 @@ async def get_user_followers_by_user_id(db: DBSession, user_id: int, page: int, 
        .exists()
    )
 
-   query = await db.execute((
+   followers_query = (
        select(User.id, User.username, User.fullname, User.avatar, subquery.label("is_follow"))
-       .join(Follow, Follow.follower_id == User.id) # type: ignore
-       .where(Follow.followee_id == user_id)
-       .offset((page - 1) * limit)
-       .limit(limit)
-   ))
-   followers = query.mappings().all()
-   return followers
+            .join(Follow, Follow.follower_id == User.id)
+            .where(Follow.followee_id == user_id)
+        )
+
+   total_count = await db.execute(followers_query)
+
+   followers_query = followers_query.offset((page - 1) * limit).limit(limit)
+
+   followers_result = await db.execute(followers_query)
+
+   count = len(total_count.scalars().all())
+   data = followers_result.mappings().all()
+
+   return {
+       "count": count,
+       "results": data
+   }
 
 async def get_user_followings_by_user_id(db: DBSession, user_id: int, page: int, limit: int, request: Request):
    auth_user_id = request.state.user.get("id")
 
    subquery = (
        select(Follow)
-       .where(Follow.follower_id == auth_user_id, Follow.followee_id == User.id) # type: ignore
+       .where(Follow.follower_id == auth_user_id, Follow.followee_id == User.id)
        .correlate(User)
        .exists()
    )
 
-   query = await db.execute(
-       select(User.id, User.username, User.avatar, subquery.label("is_follow"))
-       .join(Follow, Follow.followee_id == User.id) #type: ignore
-       .where(Follow.follower_id == user_id)
-       .offset((page - 1) * limit)
-       .limit(limit)
+   followings_query = (
+       select(User.id, User.username, User.fullname, User.avatar, subquery.label("is_follow"))
+           .join(Follow, Follow.followee_id == User.id) #type: ignore
+           .where(Follow.follower_id == user_id)
    )
 
-   followings = query.mappings().all()
-   return followings
+   total_count = await db.execute(followings_query)
+
+   followings_query = followings_query.offset((page - 1) * limit).limit(limit)
+
+   followings_result = await db.execute(followings_query)
+
+   count = len(total_count.scalars().all())
+   data = followings_result.mappings().all()
+
+   return {
+       "count": count,
+       "results": data
+   }
 
 
 # If Business - return Business Types, if employee - return Professions

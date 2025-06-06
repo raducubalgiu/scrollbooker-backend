@@ -2,6 +2,9 @@ from typing import Optional
 from pydantic import BaseModel, condecimal, Field
 from datetime import datetime
 
+from backend.schema.user.user import UserBaseMinimum
+
+
 class AppointmentResponse(BaseModel):
     id: int
     start_date: datetime
@@ -68,3 +71,27 @@ class AppointmentTimeslot(BaseModel):
 class AppointmentTimeslotsResponse(BaseModel):
     is_closed: bool
     available_slots: list[AppointmentTimeslot]
+
+class AppointmentUser(BaseModel):
+    id: Optional[int] = None
+    fullname: str
+    username: Optional[str] = None
+    avatar: Optional[str] = None
+    profession: Optional[str] = None
+
+class AppointmentProduct(BaseModel):
+    id: Optional[int] = None
+    name: str
+    price: condecimal(gt=0, max_digits=10, decimal_places=2)
+    price_with_discount: condecimal(gt=0, max_digits=10, decimal_places=2)
+    discount: condecimal(max_digits=10, decimal_places=2)
+    currency: str
+
+class UserAppointmentResponse(BaseModel):
+    id: int
+    start_date: str
+    end_date: str
+    channel: str
+    status: str
+    product: AppointmentProduct
+    user: UserBaseMinimum

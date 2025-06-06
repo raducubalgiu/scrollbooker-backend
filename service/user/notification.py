@@ -3,18 +3,24 @@ from sqlalchemy.orm import joinedload
 from starlette import status
 
 from backend.core.crud_helpers import db_get_all
-from backend.core.dependencies import DBSession
+from backend.core.dependencies import DBSession, Pagination
 from backend.models import Notification
 from backend.schema.user.notification import NotificationResponse
 
-async def get_notifications_by_user_id(db: DBSession, page: int, limit: int):
+async def get_notifications_by_user_id(db: DBSession, pagination: Pagination, request: Request):
+    auth_user_id = request.state.user.get("id")
     return await db_get_all(db,
                              model=Notification,
                              schema=NotificationResponse,
-                             filters={Notification.is_deleted: False},
+                             filters={
+                                 Notification.is_deleted: False,
+                                 Notification.receiver_id: auth_user_id
+                             },
                              joins=[joinedload(Notification.sender)],
-                             page=page,
-                             limit=limit)
+                             page=pagination.page,
+                             limit=pagination.limit,
+                             order_by="created_at",
+                             descending=True)
 
 async def delete_notification_by_id(db: DBSession, notification_id, request: Request):
     auth_user_id = request.state.user.get("id")

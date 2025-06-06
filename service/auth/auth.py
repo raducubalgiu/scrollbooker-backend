@@ -140,6 +140,7 @@ async def get_user_info(db: DBSession, token: str):
             username=user.username,
             fullname=user.fullname,
             avatar=user.avatar,
+            bio=user.bio,
             business_id=business_id,
             business_type_id=business_type_id,
             email=user.email,

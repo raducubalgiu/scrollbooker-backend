@@ -12,9 +12,71 @@ from backend.core.enums.enums import AppointmentStatusEnum, AppointmentChannelEn
 from backend.schema.booking.appointment import AppointmentBlock, AppointmentCancel, AppointmentUnblock, \
     AppointmentCreateOwnClient
 from backend.core.dependencies import DBSession
-from backend.models import Appointment, Schedule, User, Business, Currency
-from sqlalchemy import select, and_, or_
+from backend.models import Appointment, Schedule, User, Business, Currency, Product
+from sqlalchemy import select, and_, or_, desc, func
 from backend.core.logger import logger
+
+async def get_appointments_by_user_id(db: DBSession, page: int, limit: int, as_customer: bool, request: Request):
+    # user_id can be the id of the business/customer or the id of the customer
+    auth_user_id = request.state.user.get("id")
+
+    query = (select(
+        Appointment,
+        User.id,
+        User.fullname,
+        User.username,
+        User.avatar,
+        User.profession,
+        Currency.name
+    )
+    .outerjoin(Currency, Currency.id == Appointment.currency_id)
+    .where(Appointment.is_blocked == False))
+
+    if as_customer:
+        query = query.where(Appointment.customer_id == auth_user_id)
+        query = query.outerjoin(User, User.id == Appointment.user_id)
+    else:
+        query = query.where(Appointment.user_id == auth_user_id)
+        query = query.outerjoin(User, User.id == Appointment.customer_id)
+
+    query = query.offset((page - 1) * limit).limit(limit).order_by(desc("created_at"))
+
+    appointments_stmt = await db.execute(query)
+    count_query = await db.execute(select(func.count()).select_from(query.subquery()))
+    count = count_query.scalars().first()
+    appointments_result = appointments_stmt.all()
+
+    appointments = []
+
+    for appointment, u_id, u_fullname, u_username, u_avatar, u_profession, curr_name in appointments_result:
+        appointments.append({
+            "start_date": appointment.start_date,
+            "end_date": appointment.end_date,
+            "channel": appointment.channel,
+            "status": appointment.status,
+            "is_customer": True,
+            "product": {
+                "id": appointment.product_id,
+                "name": appointment.product_name,
+                "price": appointment.product_full_price,
+                "price_with_discount": appointment.product_price_with_discount,
+                "discount": appointment.product_discount,
+                "currency": curr_name,
+                "exchange_rate": appointment.exchange_rate
+            },
+            "user": {
+                "id": u_id,
+                "fullname": u_fullname or appointment.customer_fullname,
+                "username": u_username,
+                "avatar": u_avatar,
+                "profession": u_profession
+            }
+        })
+
+    return {
+        "count": count,
+        "results": appointments
+    }
 
 async def create_new_appointment_own_client(db: DBSession, appointment_create: AppointmentCreateOwnClient, request: Request):
     auth_user_id = request.state.user.get("id")

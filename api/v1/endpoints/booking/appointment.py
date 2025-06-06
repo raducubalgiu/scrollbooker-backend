@@ -1,17 +1,23 @@
 from fastapi import APIRouter
 from starlette import status
 from starlette.requests import Request
-
-from backend.core.dependencies import DBSession, BusinessAndEmployeesSession
+from backend.core.dependencies import DBSession, BusinessAndEmployeesSession, Pagination
 from backend.schema.booking.appointment import AppointmentResponse, AppointmentBlock, \
     AppointmentCancel, AppointmentTimeslotsResponse, AppointmentUnblock, AppointmentCreateOwnClient
 from backend.service.booking.appointment import create_new_appointment_own_client, get_daily_available_slots, \
     get_user_calendar_events, create_new_blocked_appointment, get_user_calendar_availability, cancel_user_appointment, \
-    unblock_user_appointment
+    unblock_user_appointment, get_appointments_by_user_id
 
 router = APIRouter(prefix="/appointments", tags=["Appointments"])
 
-@router.post("/create-own-client", response_model=AppointmentResponse, dependencies=[BusinessAndEmployeesSession])
+@router.get("/",
+            summary='List All Appointments Filtered By User')
+async def get_appointments_by_user(db: DBSession, page: int, limit: int, as_customer: bool, request: Request):
+    return await get_appointments_by_user_id(db, page, limit, as_customer, request)
+
+@router.post("/create-own-client",
+             response_model=AppointmentResponse,
+             dependencies=[BusinessAndEmployeesSession])
 async def create_appointment_own_client(db: DBSession, appointment_create: AppointmentCreateOwnClient, request: Request):
     return await create_new_appointment_own_client(db, appointment_create, request)
 
