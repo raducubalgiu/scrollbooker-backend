@@ -198,7 +198,6 @@ async def get_user_followings_by_user_id(db: DBSession, user_id: int, page: int,
        "results": data
    }
 
-
 # If Business - return Business Types, if employee - return Professions
 async def get_available_professions_by_user_id(db: DBSession, user_id: int):
     user = await db_get_one(db,
@@ -226,3 +225,5 @@ async def get_available_professions_by_user_id(db: DBSession, user_id: int):
         business_type = stmt.scalars().first()
         professions = business_type.professions
         return professions
+
+    return None
