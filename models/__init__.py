@@ -9,6 +9,7 @@ from backend.models.nomenclature.profession import Profession
 from backend.models.nomenclature.service import Service
 from backend.models.nomenclature.service_domain import ServiceDomain
 from backend.models.nomenclature.sub_filter import SubFilter
+from backend.models.nomenclature.problem import Problem
 
 # BOOKING
 from backend.models.nomenclature.service_business_types import service_business_types
