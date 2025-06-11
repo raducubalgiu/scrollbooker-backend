@@ -11,7 +11,8 @@ from backend.core.enums.enums import RoleEnum, AppointmentStatusEnum
 from backend.models import User, Follow, Appointment, Product, Business, Role, BusinessType, Schedule
 from sqlalchemy import select, func, case, and_, or_, distinct, asc
 
-from backend.schema.user.user import UsernameUpdate, FullNameUpdate, BioUpdate
+from backend.schema.user.user import UsernameUpdate, FullNameUpdate, BioUpdate, GenderUpdate
+
 
 async def get_user_profile_by_id(db: DBSession, user_id: int):
     schedules = await db_get_all(db,
@@ -40,8 +41,6 @@ async def get_user_profile_by_id(db: DBSession, user_id: int):
         schedules_by_day[sched.day_week_index].append(sched)
 
 
-
-
         # current_day_index = datetime.weekday()
         # current_time = datetime.time()
 
@@ -52,6 +51,12 @@ async def update_user_fullname(db: DBSession, fullname_update: FullNameUpdate, r
     await db_update(db, model=User, update_data=fullname_update, filters={"id": auth_user_id})
 
     return { "detail": "Fullname successfully updated" }
+
+async def update_user_gender(db: DBSession, gender_update: GenderUpdate, request: Request):
+    auth_user_id = request.state.user.get("id")
+    await db_update(db, model=User, update_data=gender_update, filters={"id": auth_user_id})
+
+    return {"detail": "Gender successfully updated"}
 
 async def update_user_username(db: DBSession, username_update: UsernameUpdate, request: Request):
     auth_user_id = request.state.user.get("id")

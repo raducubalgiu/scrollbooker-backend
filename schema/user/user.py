@@ -48,3 +48,6 @@ class UsernameUpdate(BaseModel):
 
 class BioUpdate(BaseModel):
     bio: str = Field(None, max_length=100)
+
+class GenderUpdate(BaseModel):
+    gender: str = Field(max_length=30)
