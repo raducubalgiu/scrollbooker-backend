@@ -8,9 +8,13 @@ from backend.schema.user.user import UserBaseMinimum, UsernameUpdate, FullNameUp
 from backend.service.user.user import get_user_followers_by_user_id, \
     get_user_followings_by_user_id, get_user_dashboard_summary_by_id, \
     get_available_professions_by_user_id, search_users_clients, get_product_durations_by_user_id, update_user_fullname, \
-    update_user_username, update_user_bio
+    update_user_username, update_user_bio, get_user_profile_by_id
 
 router = APIRouter(prefix="/users", tags=["Users"])
+
+@router.get("/{user_id}/user-profile")
+async def get_user_profile(db: DBSession, user_id: int):
+    return await get_user_profile_by_id(db, user_id)
 
 @router.patch("/user-info/fullname", status_code=status.HTTP_200_OK)
 async def update_fullname(db: DBSession, fullname_update: FullNameUpdate, request: Request):

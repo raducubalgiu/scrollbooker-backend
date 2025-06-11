@@ -1,4 +1,5 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, time
+from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
 from sqlalchemy.orm import joinedload
@@ -7,10 +8,44 @@ from starlette.requests import Request
 from backend.core.crud_helpers import db_get_all, db_get_one, db_update
 from backend.core.dependencies import DBSession
 from backend.core.enums.enums import RoleEnum, AppointmentStatusEnum
-from backend.models import User, Follow, Appointment, Product, Business, Role, BusinessType
-from sqlalchemy import select, func, case, and_, or_, distinct
+from backend.models import User, Follow, Appointment, Product, Business, Role, BusinessType, Schedule
+from sqlalchemy import select, func, case, and_, or_, distinct, asc
 
 from backend.schema.user.user import UsernameUpdate, FullNameUpdate, BioUpdate
+
+async def get_user_profile_by_id(db: DBSession, user_id: int):
+    schedules = await db_get_all(db,
+                                 model=Schedule,
+                                 filters={ Schedule.user_id: user_id },
+                                 order_by="day_week_index",
+                                 descending=False)
+
+    now = datetime.now()
+    print('NOW!!!', now)
+
+    # Create Timezone object
+    tz = ZoneInfo('Europe/Bucharest')
+
+    start_date_obj = datetime.strptime(now.astimezone(tz), "%Y-%m-%d:%H-%M-%S").time()
+    end_date_obj = datetime.strptime(now, "%Y-%m-%d:%H-%M-%S").time()
+
+    # Create Local datetimes
+    local_start = datetime.combine(start_date_obj, time.min).replace(tzinfo=tz)
+    local_end = datetime.combine(end_date_obj, time.max).replace(tzinfo=tz)
+
+    return schedules
+
+    schedules_by_day = { i: [] for i in range(7) }
+    for sched in schedules:
+        schedules_by_day[sched.day_week_index].append(sched)
+
+
+
+
+        # current_day_index = datetime.weekday()
+        # current_time = datetime.time()
+
+    return
 
 async def update_user_fullname(db: DBSession, fullname_update: FullNameUpdate, request: Request):
     auth_user_id = request.state.user.get("id")

@@ -2,7 +2,8 @@ from fastapi import APIRouter
 from starlette.requests import Request
 from starlette import status
 from backend.core.dependencies import DBSession, BusinessAndEmployeesSession, Pagination
-from backend.service.booking.product import create_new_product, delete_by_id, update_by_id, get_products_by_user_id,get_products_by_user_id_and_service_id
+from backend.service.booking.product import create_new_product, delete_by_id, update_by_id, get_products_by_user_id, \
+    get_products_by_user_id_and_service_id, get_product_by_id
 from backend.schema.booking.product import ProductResponse, ProductCreateWithSubFilters, ProductUpdate
 
 router = APIRouter(tags=["Products"])
@@ -19,6 +20,11 @@ async def get_products_by_user(db: DBSession, user_id: int, pagination: Paginati
     response_model=list[ProductResponse])
 async def get_products_by_user_and_service(db: DBSession, user_id: int, service_id: int):
     return await get_products_by_user_id_and_service_id(db, user_id, service_id)
+
+@router.get("/products/{product_id}",
+    summary='Get Product By Id')
+async def get_product(db: DBSession, product_id: int):
+    return await get_product_by_id(db, product_id)
 
 @router.post(
     "/products",

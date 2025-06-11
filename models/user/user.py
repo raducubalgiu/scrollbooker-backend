@@ -1,6 +1,8 @@
 from sqlalchemy import Column, Integer, String, Boolean, Date, ForeignKey, Float, TIMESTAMP, func
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import relationship
+
+from backend.core.enums.enums import GenderType
 from backend.models import Base, Business, EmploymentRequest
 
 class User(Base):
@@ -13,6 +15,7 @@ class User(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     bio = Column(String(100), nullable=True)
     profession = Column(String(100), nullable=False, default='Creator')
+    gender = Column(String(String(10)), default=GenderType.OTHER)
     instant_booking = Column(Boolean, nullable=False, default=False)
     avatar = Column(String)
     date_of_birth = Column(Date, nullable=True)

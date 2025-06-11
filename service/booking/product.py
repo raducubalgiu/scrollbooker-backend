@@ -2,9 +2,8 @@ from fastapi import HTTPException
 from sqlalchemy.orm import joinedload
 from starlette.requests import Request
 from starlette import status
-from backend.core.crud_helpers import db_delete, db_get_all, db_update
+from backend.core.crud_helpers import db_delete, db_get_all, db_update, db_get_one
 from backend.core.dependencies import DBSession, check_resource_ownership, Pagination
-from backend.core.logger import logger
 from backend.models import Product, Schedule, product_sub_filters, business_services, SubFilter
 from backend.schema.booking.product import ProductCreateWithSubFilters, ProductUpdate, ProductCreate, \
     ProductWithSubFiltersResponse
@@ -23,6 +22,9 @@ async def get_products_by_user_id(db: DBSession, user_id: int, pagination: Pagin
 
 async def get_products_by_user_id_and_service_id(db:DBSession, user_id: int, service_id: int):
     return await db_get_all(db, model=Product, filters={Product.user_id: user_id, Product.service_id: service_id})
+
+async def get_product_by_id(db: DBSession, product_id: int):
+    return await db_get_one(db, model=Product, filters={Product.id: product_id})
 
 async def create_new_product(db: DBSession, product_with_sub_filters: ProductCreateWithSubFilters, request: Request):
     auth_user_id = request.state.user.get("id")

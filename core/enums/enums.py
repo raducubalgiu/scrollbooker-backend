@@ -19,3 +19,8 @@ class AppointmentStatusEnum(str, Enum):
     IN_PROGRESS = "in_progress"
     FINISHED = "finished"
     CANCELED = "canceled"
+
+class GenderType(str, Enum):
+    MALE = 'male',
+    FEMALE = 'female',
+    OTHER = 'other'
