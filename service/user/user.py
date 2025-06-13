@@ -30,7 +30,10 @@ async def get_user_profile_by_id(db: DBSession, user_id: int):
     today_index = now.weekday()
     start_end_today = schedule_map.get(today_index)
 
-    result_text = None
+    open_now = False
+    closing_time = None
+    next_open_day = None
+    next_open_time = None
 
     # Check today
     if start_end_today:
@@ -40,10 +43,11 @@ async def get_user_profile_by_id(db: DBSession, user_id: int):
         end_dt = datetime.combine(now.date(), end_time, tzinfo=now.tzinfo)
 
         if start_dt <= now <= end_dt:
-            result_text = f"Inchide la: {end_time.strftime('%H:%M')}"
+            open_now = True
+            closing_time = end_time.strftime('%H:%M')
 
     # Find next open day
-    if not result_text:
+    if not open_now:
         for i in range(1, 8):
             next_day_index = (today_index + i) % 7
             next_schedule = schedule_map.get(next_day_index)
@@ -53,22 +57,15 @@ async def get_user_profile_by_id(db: DBSession, user_id: int):
                 next_date = now + timedelta(days=i)
                 weekday_name = next_date.strftime('%A')
 
-                weekday_ro = {
-                    "Monday": "Luni",
-                    "Tuesday": "Marti",
-                    "Wednesday": "Miercuri",
-                    "Thursday": "Joi",
-                    "Friday": "Vineri",
-                    "Saturday": "Sambata",
-                    "Sunday": "Duminica"
-                }[weekday_name]
-
-                if i == 1:
-                    result_text = f"Deschide maine la: {next_start_time.strftime('%H:%M')}"
-                else:
-                    result_text = f"Deschide {weekday_ro} la: {next_start_time.strftime('%H:%M')}"
+                next_open_day = weekday_name
+                next_open_time = next_start_time.strftime('%H:%M')
                 break
-    return result_text
+    return {
+        "open_now": open_now,
+        "closing_time": closing_time,
+        "next_open_day": next_open_day,
+        "next_open_time": next_open_time
+    }
 
 async def update_user_fullname(db: DBSession, fullname_update: FullNameUpdate, request: Request):
     auth_user_id = request.state.user.get("id")
