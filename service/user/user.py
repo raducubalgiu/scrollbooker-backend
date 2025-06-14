@@ -1,4 +1,4 @@
-from datetime import datetime, timezone, time
+from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
@@ -13,7 +13,6 @@ from sqlalchemy import select, func, case, and_, or_, distinct, asc
 
 from backend.schema.user.user import UsernameUpdate, FullNameUpdate, BioUpdate, GenderUpdate
 
-
 async def get_user_profile_by_id(db: DBSession, user_id: int):
     schedules = await db_get_all(db,
                                  model=Schedule,
@@ -21,30 +20,52 @@ async def get_user_profile_by_id(db: DBSession, user_id: int):
                                  order_by="day_week_index",
                                  descending=False)
 
-    now = datetime.now()
-    print('NOW!!!', now)
+    now = datetime.now().astimezone(ZoneInfo('Europe/Bucharest'))
 
-    # Create Timezone object
-    tz = ZoneInfo('Europe/Bucharest')
+    schedule_map = {}
+    for s in schedules:
+        if s.start_time and s.end_time:
+            schedule_map[s.day_week_index] = (s.start_time, s.end_time)
 
-    start_date_obj = datetime.strptime(now.astimezone(tz), "%Y-%m-%d:%H-%M-%S").time()
-    end_date_obj = datetime.strptime(now, "%Y-%m-%d:%H-%M-%S").time()
+    today_index = now.weekday()
+    start_end_today = schedule_map.get(today_index)
 
-    # Create Local datetimes
-    local_start = datetime.combine(start_date_obj, time.min).replace(tzinfo=tz)
-    local_end = datetime.combine(end_date_obj, time.max).replace(tzinfo=tz)
+    open_now = False
+    closing_time = None
+    next_open_day = None
+    next_open_time = None
 
-    return schedules
+    # Check today
+    if start_end_today:
+        start_time, end_time = start_end_today
 
-    schedules_by_day = { i: [] for i in range(7) }
-    for sched in schedules:
-        schedules_by_day[sched.day_week_index].append(sched)
+        start_dt = datetime.combine(now.date(), start_time, tzinfo=now.tzinfo)
+        end_dt = datetime.combine(now.date(), end_time, tzinfo=now.tzinfo)
 
+        if start_dt <= now <= end_dt:
+            open_now = True
+            closing_time = end_time.strftime('%H:%M')
 
-        # current_day_index = datetime.weekday()
-        # current_time = datetime.time()
+    # Find next open day
+    if not open_now:
+        for i in range(1, 8):
+            next_day_index = (today_index + i) % 7
+            next_schedule = schedule_map.get(next_day_index)
 
-    return
+            if next_schedule:
+                next_start_time, _ = next_schedule
+                next_date = now + timedelta(days=i)
+                weekday_name = next_date.strftime('%A')
+
+                next_open_day = weekday_name
+                next_open_time = next_start_time.strftime('%H:%M')
+                break
+    return {
+        "open_now": open_now,
+        "closing_time": closing_time,
+        "next_open_day": next_open_day,
+        "next_open_time": next_open_time
+    }
 
 async def update_user_fullname(db: DBSession, fullname_update: FullNameUpdate, request: Request):
     auth_user_id = request.state.user.get("id")
@@ -85,7 +106,7 @@ async def search_users_clients(db: DBSession, q: str):
             )
         )
 
-    users_stmt = await db.execute(query.order_by(User.username.asc()).limit(50))
+    users_stmt = await db.execute(query.order_by(User.username.asc()).limit(20))
     users = users_stmt.scalars().all()
     return users
 
