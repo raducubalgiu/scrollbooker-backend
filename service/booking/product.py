@@ -6,7 +6,7 @@ from backend.core.crud_helpers import db_delete, db_get_all, db_update, db_get_o
 from backend.core.dependencies import DBSession, check_resource_ownership, Pagination
 from backend.models import Product, Schedule, product_sub_filters, business_services, SubFilter
 from backend.schema.booking.product import ProductCreateWithSubFilters, ProductUpdate, ProductCreate, \
-    ProductWithSubFiltersResponse
+    ProductWithSubFiltersResponse, ProductResponse
 from backend.core.logger import logger
 from sqlalchemy import insert,select
 
@@ -20,8 +20,18 @@ async def get_products_by_user_id(db: DBSession, user_id: int, pagination: Pagin
                             unique=True,
                             joins=[joinedload(Product.sub_filters).joinedload(SubFilter.filter)])
 
-async def get_products_by_user_id_and_service_id(db:DBSession, user_id: int, service_id: int):
-    return await db_get_all(db, model=Product, filters={Product.user_id: user_id, Product.service_id: service_id})
+async def get_products_by_user_id_and_service_id(db:DBSession, user_id: int, service_id: int, pagination: Pagination):
+    return await db_get_all(db,
+                            model=Product,
+                            schema=ProductResponse,
+                            filters={
+                                Product.user_id: user_id,
+                                Product.service_id: service_id
+                            },
+                            page=pagination.page,
+                            limit=pagination.limit,
+                            order_by="created_at",
+                            descending=True)
 
 async def get_product_by_id(db: DBSession, product_id: int):
     return await db_get_one(db, model=Product, filters={Product.id: product_id})
