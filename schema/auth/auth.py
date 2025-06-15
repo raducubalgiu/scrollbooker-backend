@@ -2,7 +2,6 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, EmailStr
 from backend.schema.user.user import UserBase
-from backend.schema.user.user_counters import UserCountersBase
 
 class UserRegister(BaseModel):
     email: EmailStr
@@ -15,16 +14,8 @@ class UserRegisterResponse(UserBase):
 
 class UserInfoResponse(BaseModel):
     id: int
-    username: str
-    fullname: Optional[str]
-    avatar: Optional[str] = None
-    gender: Optional[str] = None
-    bio: Optional[str] = None
     business_id: Optional[int] = None
     business_type_id: Optional[int] = None
-    email: EmailStr
-    counters: UserCountersBase
-    profession: str
 
     class Config:
         from_attributes = True

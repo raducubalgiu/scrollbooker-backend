@@ -47,33 +47,33 @@ async def update_review_counters(db: DBSession, user_id: int, rating: int):
     user_counters.ratings_average = new_ratings_average
     user_counters.ratings_count = new_ratings_count
 
-async def get_user_reviews_by_user_id(db: DBSession, user_id: int, page: int, size: int):
-    stmt = await db.execute(
-        select(User)
-        .filter(User.id == user_id) # type: ignore
-        .options(joinedload(User.role))
-    )
-    user = stmt.scalars().first()
-    role = user.role
-
-    if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail='User not found!')
-
-    field = 'customer_id' if role == 'client' else 'user_id'
-
-    stmt = await db.execute(
-        select(Review)
-        .where(getattr(Review, field) == user_id) #type: ignore
-        .options(
-            joinedload(Review.service),
-        )
-        .offset((page - 1) * size)
-        .limit(size)
-    )
-
-    reviews = stmt.scalars().unique().all()
-    return reviews
+# async def get_user_reviews_by_user_id(db: DBSession, user_id: int, page: int, size: int):
+#     stmt = await db.execute(
+#         select(User)
+#         .filter(User.id == user_id) # type: ignore
+#         .options(joinedload(User.role))
+#     )
+#     user = stmt.scalars().first()
+#     role = user.role
+#
+#     if user is None:
+#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+#                             detail='User not found!')
+#
+#     field = 'customer_id' if role == 'client' else 'user_id'
+#
+#     stmt = await db.execute(
+#         select(Review)
+#         .where(getattr(Review, field) == user_id) #type: ignore
+#         .options(
+#             joinedload(Review.service),
+#         )
+#         .offset((page - 1) * size)
+#         .limit(size)
+#     )
+#
+#     reviews = stmt.scalars().unique().all()
+#     return reviews
 
 async def create_new_review(db: DBSession, review_data: ReviewCreate, request: Request):
     auth_user_id = request.state.user.get("id")
@@ -184,53 +184,58 @@ async def unlike_review_by_id(db: DBSession, review_id: int, request: Request):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail='Something went wrong')
 
-async def get_business_and_employee_reviews(db: DBSession, user_id: int, page: int, limit: int, request: Request):
+async def get_review_by_user_id(db: DBSession, user_id: int, page: int, limit: int, request: Request):
     auth_user_id = request.state.user.get("id")
 
-    query = await db.execute(
-        select(Review)
-        .where((Review.user_id == user_id) & (Review.parent_id.is_(None))) #type: ignore
-        .options(joinedload(Review.customer).load_only(User.id, User.username, User.fullname, User.avatar))
-        .options(joinedload(Review.service).load_only(Service.id, Service.name))
-        .options(joinedload(Review.product).load_only(Product.id, Product.name))
+    reviews_stmt = (select(Review)
+        .where(
+            Review.user_id == user_id,
+            Review.parent_id.is_(None)
+        )
+        .options(
+            joinedload(Review.customer).load_only(User.id, User.username, User.fullname, User.avatar),
+            joinedload(Review.service).load_only(Service.id, Service.name),
+            joinedload(Review.product).load_only(Product.id, Product.name)
+        )
         .offset((page - 1) * limit)
         .limit(limit)
-        .order_by(Review.created_at.asc())
-    )
-    reviews = query.scalars().unique().all()
+        .order_by(Review.created_at.asc()))
 
-    # Get likes by the authenticated user
+    reviews_result = await db.execute(reviews_stmt)
+    reviews = reviews_result.scalars().unique().all()
+
+    # Get Likes by the Authenticated User
     user_likes_query = await db.execute(
         select(ReviewLike.review_id)
-        .where(ReviewLike.user_id == auth_user_id)  # type: ignore
+        .where(ReviewLike.user_id == auth_user_id)
     )
     user_liked_reviews = user_likes_query.scalars().all()
 
-    # Get post author likes
+    # Get Post Author Likes
     product_author_query = await db.execute(
         select(ReviewProductLike.product_author_user_id)
-        .where(Review.user_id == user_id)  # type: ignore
+        .where(Review.user_id == user_id)
     )
     product_author_id = product_author_query.scalar()
 
+    # Get Product Author Likes
     product_author_likes = await db.execute(
         select(ReviewProductLike.review_id)
-        .where(ReviewProductLike.product_author_user_id == product_author_id)  # type: ignore
+        .where(ReviewProductLike.product_author_user_id == product_author_id)
     )
     product_author_liked_reviews = product_author_likes.scalars().all()
 
     return [
-        [
-            {
-                "id": review.id,
-                "review": review.review,
-                "customer": review.customer,
-                "service": review.service,
-                "product": review.product,
-                "like_count": review.like_count,
-                "is_liked": review.id in user_liked_reviews,
-                "is_liked_by_author": review.id in product_author_liked_reviews,
-                "created_at": review.created_at
-            }
-        ] for review in reviews
+        {
+            "id": review.id,
+            "rating": review.rating,
+            "review": review.review,
+            "customer": review.customer,
+            "service": review.service,
+            "product": review.product,
+            "like_count": review.like_count,
+            "is_liked": review.id in user_liked_reviews,
+            "is_liked_by_author": review.id in product_author_liked_reviews,
+            "created_at": review.created_at
+        } for review in reviews
     ]

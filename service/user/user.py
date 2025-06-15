@@ -9,11 +9,59 @@ from backend.core.crud_helpers import db_get_all, db_get_one, db_update
 from backend.core.dependencies import DBSession
 from backend.core.enums.enums import RoleEnum, AppointmentStatusEnum
 from backend.models import User, Follow, Appointment, Product, Business, Role, BusinessType, Schedule
-from sqlalchemy import select, func, case, and_, or_, distinct, asc
+from sqlalchemy import select, func, case, and_, or_, distinct, exists
+from backend.schema.user.user import UsernameUpdate, FullNameUpdate, BioUpdate, GenderUpdate, UserProfileResponse, \
+    OpeningHours, UserBaseMinimum
 
-from backend.schema.user.user import UsernameUpdate, FullNameUpdate, BioUpdate, GenderUpdate
 
-async def get_user_profile_by_id(db: DBSession, user_id: int):
+async def get_user_profile_by_id(db: DBSession, user_id: int, request: Request):
+    auth_user_id = request.state.user.get("id")
+
+    user = await db_get_one(db, model=User,
+                            filters={User.id: user_id},
+                            joins=[
+                                joinedload(User.counters),
+                                joinedload(User.owner_business).load_only(Business.id, Business.business_type_id),
+                                joinedload(User.employee_business).load_only(Business.id, Business.business_type_id)
+                            ])
+    is_own_profile = user.id == auth_user_id
+    is_follow = False
+
+    if not is_own_profile:
+        follow_exists = await db.scalar(
+            select(exists().where(
+                Follow.follower_id == auth_user_id,
+                Follow.followee_id == user_id
+            ))
+        )
+        is_follow = follow_exists
+
+    business_id = (
+        user.owner_business.id if user.owner_business
+        else user.employee_business.id if user.employee_business
+        else None
+    )
+    business_type_id = (
+        user.owner_business.business_type_id if user.owner_business
+        else user.employee_business.business_type_id if user.employee_business
+        else None
+    )
+
+    business_ower = None
+    if business_id is not None:
+        business = await db_get_one(db,
+                                    model=Business,
+                                    filters={Business.id: business_id},
+                                    joins=[joinedload(Business.business_owner)])
+
+        business_ower = UserBaseMinimum(
+            id = business.business_owner.id,
+            fullname=business.business_owner.fullname,
+            username=business.business_owner.username,
+            avatar=business.business_owner.avatar,
+            is_follow=False
+        )
+
     schedules = await db_get_all(db,
                                  model=Schedule,
                                  filters={ Schedule.user_id: user_id },
@@ -60,12 +108,27 @@ async def get_user_profile_by_id(db: DBSession, user_id: int):
                 next_open_day = weekday_name
                 next_open_time = next_start_time.strftime('%H:%M')
                 break
-    return {
-        "open_now": open_now,
-        "closing_time": closing_time,
-        "next_open_day": next_open_day,
-        "next_open_time": next_open_time
-    }
+
+    return UserProfileResponse(
+        id=user.id,
+        username=user.username,
+        fullname=user.fullname,
+        avatar=user.avatar,
+        bio=user.bio,
+        gender=user.gender,
+        business_id=business_id,
+        business_type_id=business_type_id,
+        counters=user.counters,
+        profession=user.profession,
+        opening_hours=OpeningHours(
+            open_now=open_now,
+            closing_time=closing_time,
+            next_open_day=next_open_day,
+            next_open_time=next_open_time
+        ),
+        is_follow=is_follow,
+        business_owner=business_ower
+    )
 
 async def update_user_fullname(db: DBSession, fullname_update: FullNameUpdate, request: Request):
     auth_user_id = request.state.user.get("id")

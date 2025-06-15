@@ -4,6 +4,8 @@ from datetime import datetime
 
 from backend.schema.booking.product import ProductResponse
 from backend.schema.booking.schedule import ScheduleResponse
+from backend.schema.user.user_counters import UserCountersBase
+
 
 class UserBaseMinimum(BaseModel):
     id: int
@@ -51,3 +53,27 @@ class BioUpdate(BaseModel):
 
 class GenderUpdate(BaseModel):
     gender: str = Field(max_length=30)
+
+class OpeningHours(BaseModel):
+    open_now: bool
+    closing_time: Optional[str] = None
+    next_open_day: Optional[str] = None
+    next_open_time: Optional[str] = None
+
+class UserProfileResponse(BaseModel):
+    id: int
+    username: str
+    fullname: Optional[str]
+    avatar: Optional[str] = None
+    gender: Optional[str] = None
+    bio: Optional[str] = None
+    business_id: Optional[int] = None
+    business_type_id: Optional[int] = None
+    counters: UserCountersBase
+    profession: str
+    opening_hours: OpeningHours
+    is_follow: bool
+    business_owner: Optional[UserBaseMinimum] = None
+
+    class Config:
+        from_attributes = True

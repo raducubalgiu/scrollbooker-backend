@@ -13,8 +13,8 @@ from backend.service.user.user import get_user_followers_by_user_id, \
 router = APIRouter(prefix="/users", tags=["Users"])
 
 @router.get("/{user_id}/user-profile")
-async def get_user_profile(db: DBSession, user_id: int):
-    return await get_user_profile_by_id(db, user_id)
+async def get_user_profile(db: DBSession, user_id: int, request: Request):
+    return await get_user_profile_by_id(db, user_id, request)
 
 @router.patch("/user-info/fullname", status_code=status.HTTP_200_OK)
 async def update_fullname(db: DBSession, fullname_update: FullNameUpdate, request: Request):

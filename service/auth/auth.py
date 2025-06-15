@@ -1,6 +1,4 @@
 import os
-from logging import Logger
-
 from fastapi import HTTPException
 from sqlalchemy.orm import joinedload
 from starlette import status
@@ -9,10 +7,10 @@ from dotenv import load_dotenv
 
 from backend.core.enums.enums import RoleEnum
 from backend.core.logger import logger
-from backend.core.crud_helpers import db_get_one, db_create
+from backend.core.crud_helpers import db_get_one
 from backend.core.security import hash_password, verify_password, create_token, decode_token
 from backend.core.dependencies import DBSession
-from backend.models import User, UserCounters, Role, Business, Permission, Schedule
+from backend.models import User, UserCounters, Role, Business, Permission
 from backend.schema.auth.auth import UserRegister, UserInfoResponse, UserInfoUpdate
 from jose import JWTError
 
@@ -137,16 +135,8 @@ async def get_user_info(db: DBSession, token: str):
 
         return UserInfoResponse(
             id=user.id,
-            username=user.username,
-            fullname=user.fullname,
-            avatar=user.avatar,
-            bio=user.bio,
-            gender=user.gender,
             business_id=business_id,
-            business_type_id=business_type_id,
-            email=user.email,
-            counters=user.counters,
-            profession=user.profession
+            business_type_id=business_type_id
         )
 
     except JWTError as e:
@@ -209,13 +199,7 @@ async def update_user_info(db: DBSession, user_update: UserInfoUpdate ,token: st
 
         return UserInfoResponse(
             id=user.id,
-            username=user.username,
-            fullname=user.fullname,
-            avatar=user.avatar,
             business_id=business_id,
-            email=user.email,
-            counters=user.counters,
-            profession=user.profession
         )
 
     except JWTError as e:
