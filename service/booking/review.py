@@ -201,6 +201,9 @@ async def get_review_by_user_id(db: DBSession, user_id: int, page: int, limit: i
         .limit(limit)
         .order_by(Review.created_at.asc()))
 
+    count_reviews = await db.execute(reviews_stmt)
+    count = len(count_reviews.all())
+
     reviews_result = await db.execute(reviews_stmt)
     reviews = reviews_result.scalars().unique().all()
 
@@ -225,8 +228,9 @@ async def get_review_by_user_id(db: DBSession, user_id: int, page: int, limit: i
     )
     product_author_liked_reviews = product_author_likes.scalars().all()
 
-    return [
-        {
+    return {
+        "count": count,
+        "results": [{
             "id": review.id,
             "rating": review.rating,
             "review": review.review,
@@ -237,5 +241,5 @@ async def get_review_by_user_id(db: DBSession, user_id: int, page: int, limit: i
             "is_liked": review.id in user_liked_reviews,
             "is_liked_by_author": review.id in product_author_liked_reviews,
             "created_at": review.created_at
-        } for review in reviews
-    ]
+        } for review in reviews]
+    }
