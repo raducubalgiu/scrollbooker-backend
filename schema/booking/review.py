@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel, Field
 from datetime import datetime
@@ -25,3 +25,12 @@ class ReviewResponse(ReviewBase):
 
     class Config:
         from_attributes = True
+
+class RatingBreakdown(BaseModel):
+    rating: int
+    count: int
+
+class ReviewSummaryResponse(BaseModel):
+    average_rating: float
+    total_reviews: int
+    breakdown: List[RatingBreakdown]

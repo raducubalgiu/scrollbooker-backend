@@ -2,9 +2,9 @@ from fastapi import APIRouter
 from starlette.requests import Request
 from fastapi import status
 from backend.core.dependencies import DBSession
-from backend.schema.booking.review import ReviewResponse, ReviewCreate
+from backend.schema.booking.review import ReviewResponse, ReviewCreate, ReviewSummaryResponse
 from backend.service.booking.review import create_new_review, like_review_by_id, unlike_review_by_id, \
-    get_review_by_user_id
+    get_review_by_user_id, get_reviews_summary_by_user_id
 
 router = APIRouter(tags=["Reviews"])
 
@@ -12,6 +12,12 @@ router = APIRouter(tags=["Reviews"])
     summary='List All Reviews By User Id - Business Or Employee')
 async def get_author_reviews(db: DBSession, user_id: int, page: int, limit: int, request: Request):
     return await get_review_by_user_id(db, user_id, page, limit, request)
+
+@router.get("/users/{user_id}/reviews-summary",
+    summary='List Reviews Summary By User Id - Business Or Employee',
+    response_model=ReviewSummaryResponse)
+async def get_reviews_summary(db: DBSession, user_id: int):
+    return await get_reviews_summary_by_user_id(db, user_id)
 
 @router.post("/reviews",
     summary='Create New Review',

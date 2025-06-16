@@ -2,10 +2,10 @@ from fastapi import HTTPException
 from sqlalchemy.orm import joinedload
 from starlette.requests import Request
 from starlette import status
-from sqlalchemy import select, insert, update
+from sqlalchemy import select, insert, update, func
 from backend.core.dependencies import DBSession
 from backend.models import Business, User, Review, UserCounters, ReviewLike, ReviewProductLike, Service, Product
-from backend.schema.booking.review import ReviewCreate
+from backend.schema.booking.review import ReviewCreate, ReviewSummaryResponse, RatingBreakdown
 from backend.core.logger import logger
 
 async def restrict_employee_and_business(db: DBSession, review_data: ReviewCreate, request: Request):
@@ -243,3 +243,42 @@ async def get_review_by_user_id(db: DBSession, user_id: int, page: int, limit: i
             "created_at": review.created_at
         } for review in reviews]
     }
+
+async def get_reviews_summary_by_user_id(db: DBSession, user_id):
+    result = await db.execute(
+        select(
+            func.count(Review.id),
+            func.avg(Review.rating)
+        )
+        .where(Review.user_id == user_id)
+    )
+
+    total_reviews, average_rating = result.first()
+    if total_reviews == 0:
+        return ReviewSummaryResponse(
+            average_rating=0.0,
+            total_reviews=0,
+            breakdown=[RatingBreakdown(rating=i, count=0) for i in range(5, 0, -1)]
+        )
+
+    breakdown_result = await db.execute(
+        select(
+            Review.rating,
+            func.count(Review.id)
+        )
+        .where(Review.user_id == user_id)
+        .group_by(Review.rating)
+    )
+
+    breakdown_dict = { rating: count for rating, count in breakdown_result.all() }
+
+    breakdown = [
+        RatingBreakdown(rating=i, count=breakdown_dict.get(i, 0))
+        for i in range(5, 0, -1)
+    ]
+
+    return ReviewSummaryResponse(
+        average_rating=round(float(average_rating), 1),
+        total_reviews=total_reviews,
+        breakdown=breakdown
+    )
