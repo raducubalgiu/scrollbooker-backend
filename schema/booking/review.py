@@ -1,5 +1,4 @@
 from typing import Optional, List
-
 from pydantic import BaseModel, Field
 from datetime import datetime
 
@@ -34,3 +33,41 @@ class ReviewSummaryResponse(BaseModel):
     average_rating: float
     total_reviews: int
     breakdown: List[RatingBreakdown]
+
+class ReviewCustomer(BaseModel):
+    id: int
+    username: str
+    fullname: str
+    avatar: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class ReviewService(BaseModel):
+    id: int
+    name: str
+
+    class Config:
+        from_attributes = True
+
+class ReviewProduct(BaseModel):
+    id: int
+    name: str
+
+    class Config:
+        from_attributes = True
+
+class UserReviewResponse(BaseModel):
+    id: int
+    rating: int
+    review: str
+    customer: ReviewCustomer
+    service: ReviewService
+    product: ReviewProduct
+    like_count: bool
+    is_liked: bool
+    is_liked_by_author: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

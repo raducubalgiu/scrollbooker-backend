@@ -1,11 +1,16 @@
-from fastapi import HTTPException
+from typing import Optional, List
+
+from fastapi import HTTPException, Query
 from sqlalchemy.orm import joinedload
 from starlette.requests import Request
 from starlette import status
 from sqlalchemy import select, insert, update, func
+
+from backend.core.crud_helpers import PaginatedResponse
 from backend.core.dependencies import DBSession
 from backend.models import Business, User, Review, UserCounters, ReviewLike, ReviewProductLike, Service, Product
-from backend.schema.booking.review import ReviewCreate, ReviewSummaryResponse, RatingBreakdown
+from backend.schema.booking.review import ReviewCreate, ReviewSummaryResponse, RatingBreakdown, UserReviewResponse, \
+    ReviewCustomer
 from backend.core.logger import logger
 
 async def restrict_employee_and_business(db: DBSession, review_data: ReviewCreate, request: Request):
@@ -46,34 +51,6 @@ async def update_review_counters(db: DBSession, user_id: int, rating: int):
 
     user_counters.ratings_average = new_ratings_average
     user_counters.ratings_count = new_ratings_count
-
-# async def get_user_reviews_by_user_id(db: DBSession, user_id: int, page: int, size: int):
-#     stmt = await db.execute(
-#         select(User)
-#         .filter(User.id == user_id) # type: ignore
-#         .options(joinedload(User.role))
-#     )
-#     user = stmt.scalars().first()
-#     role = user.role
-#
-#     if user is None:
-#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-#                             detail='User not found!')
-#
-#     field = 'customer_id' if role == 'client' else 'user_id'
-#
-#     stmt = await db.execute(
-#         select(Review)
-#         .where(getattr(Review, field) == user_id) #type: ignore
-#         .options(
-#             joinedload(Review.service),
-#         )
-#         .offset((page - 1) * size)
-#         .limit(size)
-#     )
-#
-#     reviews = stmt.scalars().unique().all()
-#     return reviews
 
 async def create_new_review(db: DBSession, review_data: ReviewCreate, request: Request):
     auth_user_id = request.state.user.get("id")
@@ -184,15 +161,26 @@ async def unlike_review_by_id(db: DBSession, review_id: int, request: Request):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail='Something went wrong')
 
-async def get_review_by_user_id(db: DBSession, user_id: int, page: int, limit: int, request: Request):
+async def get_review_by_user_id(
+        db: DBSession,
+        user_id: int,
+        page: int, limit: int,
+        request: Request,
+        ratings: Optional[List[int]] = Query(None)
+):
     auth_user_id = request.state.user.get("id")
 
-    reviews_stmt = (select(Review)
-        .where(
-            Review.user_id == user_id,
-            Review.parent_id.is_(None)
+    reviews_stmt = select(Review).where(
+        Review.user_id == user_id,
+        Review.parent_id.is_(None)
+    )
+
+    if ratings:
+        reviews_stmt = reviews_stmt.where(
+            Review.rating.in_(ratings)
         )
-        .options(
+
+    reviews_stmt = (reviews_stmt.options(
             joinedload(Review.customer).load_only(User.id, User.username, User.fullname, User.avatar),
             joinedload(Review.service).load_only(Service.id, Service.name),
             joinedload(Review.product).load_only(Product.id, Product.name)
@@ -200,6 +188,7 @@ async def get_review_by_user_id(db: DBSession, user_id: int, page: int, limit: i
         .offset((page - 1) * limit)
         .limit(limit)
         .order_by(Review.created_at.asc()))
+
 
     count_reviews = await db.execute(reviews_stmt)
     count = len(count_reviews.all())
@@ -228,21 +217,41 @@ async def get_review_by_user_id(db: DBSession, user_id: int, page: int, limit: i
     )
     product_author_liked_reviews = product_author_likes.scalars().all()
 
-    return {
-        "count": count,
-        "results": [{
-            "id": review.id,
-            "rating": review.rating,
-            "review": review.review,
-            "customer": review.customer,
-            "service": review.service,
-            "product": review.product,
-            "like_count": review.like_count,
-            "is_liked": review.id in user_liked_reviews,
-            "is_liked_by_author": review.id in product_author_liked_reviews,
-            "created_at": review.created_at
-        } for review in reviews]
-    }
+    # return {
+    #     "count": count,
+    #     "results": [
+    #         {
+    #             "id": review.id,
+    #             "rating": review.rating,
+    #             "review": review.review,
+    #             "customer": review.customer,
+    #             "service": review.service,
+    #             "product": review.product,
+    #             "like_count": review.like_count,
+    #             "is_liked": review.id in user_liked_reviews,
+    #             "is_liked_by_author": review.id in product_author_liked_reviews,
+    #             "created_at": review.created_at
+    #         } for review in reviews
+    #     ]
+    # }
+
+    return PaginatedResponse(
+        count=count,
+        results=[
+            UserReviewResponse(
+                id=review.id,
+                rating=review.rating,
+                review=review.review,
+                customer=review.customer,
+                service=review.service,
+                product=review.product,
+                like_count=review.like_count,
+                is_liked=review.id in user_liked_reviews,
+                is_liked_by_author=review.id in product_author_liked_reviews,
+                created_at=review.created_at
+            ) for review in reviews
+        ]
+    )
 
 async def get_reviews_summary_by_user_id(db: DBSession, user_id):
     result = await db.execute(
