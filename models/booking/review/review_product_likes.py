@@ -6,8 +6,8 @@ class ReviewProductLike(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     review_id = Column(Integer, ForeignKey("reviews.id", ondelete="CASCADE"), index=True)
-    # Business or Employee
     product_author_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True)
+
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 

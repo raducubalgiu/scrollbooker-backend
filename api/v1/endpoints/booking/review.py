@@ -9,7 +9,7 @@ from backend.core.dependencies import DBSession
 from backend.schema.booking.review import ReviewResponse, ReviewCreate, ReviewSummaryResponse, \
     UserReviewResponse
 from backend.service.booking.review import create_new_review, like_review_by_id, unlike_review_by_id, \
-    get_review_by_user_id, get_reviews_summary_by_user_id
+    get_reviews_by_user_id, get_reviews_summary_by_user_id
 
 router = APIRouter(tags=["Reviews"])
 
@@ -24,7 +24,7 @@ async def get_author_reviews(
         request: Request,
         ratings: Optional[List[int]] = Query(None),
 ):
-    return await get_review_by_user_id(db, user_id, page, limit, request, ratings)
+    return await get_reviews_by_user_id(db, user_id, page, limit, request, ratings)
 
 @router.get("/users/{user_id}/reviews-summary",
     summary='List Reviews Summary By User Id - Business Or Employee',

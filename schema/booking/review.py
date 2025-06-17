@@ -64,7 +64,7 @@ class UserReviewResponse(BaseModel):
     customer: ReviewCustomer
     service: ReviewService
     product: ReviewProduct
-    like_count: bool
+    like_count: int
     is_liked: bool
     is_liked_by_author: bool
     created_at: datetime
