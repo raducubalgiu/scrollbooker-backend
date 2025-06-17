@@ -47,7 +47,7 @@ async def register_user(db: DBSession, user_register: UserRegister):
         await db.refresh(new_user)
         return new_user
     except Exception as e:
-        db.rollback()
+        await db.rollback()
         logger.error(f"User could not be registered. Error {e}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail='Something went wrong')

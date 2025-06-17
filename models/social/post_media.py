@@ -9,8 +9,8 @@ class PostMedia(Base):
     __tablename__ = "post_media"
 
     id = Column(Integer, primary_key=True)
-    url = Column(Enum(MediaTypeEnum, name="media_type"), nullable=False)
-    type = Column(String, nullable=False, default="photo")
+    url = Column(String, nullable=False)
+    type = Column(Enum(MediaTypeEnum, name="media_type"), nullable=False, default="video")
     thumbnail_url = Column(String, nullable=False)
     post_id = Column(Integer, ForeignKey("posts.id", ondelete="CASCADE"), nullable=False)
 

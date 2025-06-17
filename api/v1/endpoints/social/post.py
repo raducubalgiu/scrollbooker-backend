@@ -11,9 +11,9 @@ from backend.service.social.comment import create_new_comment, like_post_comment
 
 router = APIRouter(prefix="/posts", tags=["Posts"])
 
-@router.post("/", response_model=PostResponse)
-async def create_post(db: DBSession, new_post: PostCreate, request: Request):
-    return await create_new_post(db, new_post, request)
+@router.post("/", status_code=status.HTTP_201_CREATED)
+async def create_post(db: DBSession, post_create: PostCreate, request: Request):
+    return await create_new_post(db, post_create, request)
 
 @router.get("/{post_id}/likes")
 async def get_post_likes(db: DBSession, post_id: int, page: int, limit: int, request: Request):
