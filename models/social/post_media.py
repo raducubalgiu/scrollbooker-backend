@@ -11,7 +11,7 @@ class PostMedia(Base):
     id = Column(Integer, primary_key=True)
     url = Column(Enum(MediaTypeEnum, name="media_type"), nullable=False)
     type = Column(String, nullable=False, default="photo")
-    thumbnail_url = Column(String, nullable=True)
+    thumbnail_url = Column(String, nullable=False)
     post_id = Column(Integer, ForeignKey("posts.id", ondelete="CASCADE"), nullable=False)
 
     order_index = Column(Integer, nullable=False, default=0)

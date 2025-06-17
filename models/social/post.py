@@ -16,10 +16,10 @@ class Post(Base):
     instant_booking = Column(Boolean, nullable=False, default=True, index=True)
 
     product_name = Column(String(100), nullable=False)
-    product_description = Column(String(200))
+    product_description = Column(String(200), nullable=False)
     product_duration = Column(Integer, nullable=False)
     product_price = Column(DECIMAL, nullable=False)
-    product_price_with_discount = Column(DECIMAL)
+    product_price_with_discount = Column(DECIMAL, nullable=False)
     product_discount = Column(DECIMAL, nullable=False)
     product_currency = Column(String(3), nullable=False)
 
@@ -37,7 +37,6 @@ class Post(Base):
     comment_count = Column(Integer, nullable=False, default=0)
     save_count = Column(Integer, nullable=False, default=0)
 
-    expiration_time = Column(TIMESTAMP(timezone=True), nullable=True, default=None, index=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
