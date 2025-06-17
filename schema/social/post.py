@@ -2,8 +2,10 @@ from decimal import Decimal
 from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel, Field, condecimal
-
-from backend.schema.social.post_media import PostMediaBase, PostMediaResponse
+from backend.models import Hashtag
+from backend.schema.social.hashtag import HashtagResponse
+from backend.schema.social.post_media import PostMediaBase
+from backend.schema.user.user import UserBaseMinimum
 
 class PostFixedSlots(BaseModel):
     start_time: datetime
@@ -38,6 +40,9 @@ class PostBase(BaseModel):
     fixed_slots: Optional[List[PostFixedSlots]] = []
     last_minute_end: Optional[datetime] = None
 
+    class Config:
+        from_attributes = True
+
 class PostCreate(PostBase):
     media_files: List[PostMediaBase]
 
@@ -51,6 +56,53 @@ class PostResponse(PostBase):
 
     created_at: datetime
     updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+class PostProduct(BaseModel):
+    id: Optional[int] = None
+    name: str
+    description: Optional[str] = None
+    duration: int
+    price: condecimal()
+    price_with_discount: condecimal()
+    discount: condecimal()
+    currency: str
+
+    class Config:
+        from_attributes = True
+
+class PostCounters(BaseModel):
+    comment_count: int
+    like_count: int
+    save_count: int
+    share_count: int
+
+    class Config:
+        from_attributes = True
+
+class LastMinute(BaseModel):
+    is_last_minute: bool
+    last_minute_end: Optional[datetime] = None
+    has_fixed_slots: bool
+    fixed_slots: Optional[List[PostFixedSlots]] = []
+
+    class Config:
+        from_attributes = True
+
+class UserPostResponse(BaseModel):
+    id: int
+    description: Optional[str] = None
+    user: UserBaseMinimum
+    product: PostProduct
+    counters: PostCounters
+    mentions: Optional[List[UserBaseMinimum]] = []
+    hashtags: Optional[List[HashtagResponse]] = []
+    bookable: bool
+    instant_booking: bool
+    last_minute: LastMinute
+    created_at: datetime
 
     class Config:
         from_attributes = True

@@ -6,11 +6,11 @@ from backend.schema.booking.product import ProductResponse
 from backend.schema.booking.schedule import ScheduleResponse
 from backend.schema.user.user_counters import UserCountersBase
 
-
 class UserBaseMinimum(BaseModel):
     id: int
     fullname: Optional[str] = None
     username: str = None
+    profession: Optional[str] = None
     avatar: Optional[str] = None
     is_follow: Optional[bool] = None
 

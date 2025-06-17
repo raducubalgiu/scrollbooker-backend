@@ -1,5 +1,3 @@
-from sqlalchemy.orm import relationship
-
 from backend.models import Base
 from sqlalchemy import Integer,String, TIMESTAMP, Column, func
 
