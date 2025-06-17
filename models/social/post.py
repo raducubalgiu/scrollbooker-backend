@@ -41,6 +41,7 @@ class Post(Base):
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     # Relations
+    bookmarks = relationship("Bookmark", back_populates="post")
     user = relationship("User", back_populates="posts")
     comments = relationship("Comment", back_populates="post", cascade="all, delete")
     media_files = relationship(

@@ -37,6 +37,7 @@ class User(Base):
 
     counters = relationship('UserCounters', back_populates="user", uselist=False, cascade="all, delete")
     role = relationship("Role", back_populates="users")
+    bookmarks = relationship("Bookmark", back_populates="user")
 
     following = relationship("Follow", foreign_keys="[Follow.follower_id]", back_populates="follower", cascade="all, delete-orphan")
     followers = relationship("Follow", foreign_keys="[Follow.followee_id]", back_populates="followee", cascade="all, delete-orphan")

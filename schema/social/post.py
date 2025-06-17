@@ -2,7 +2,6 @@ from decimal import Decimal
 from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel, Field, condecimal
-from backend.models import Hashtag
 from backend.schema.social.hashtag import HashtagResponse
 from backend.schema.social.post_media import PostMediaBase
 from backend.schema.user.user import UserBaseMinimum
