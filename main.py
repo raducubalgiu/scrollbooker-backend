@@ -7,7 +7,7 @@ from backend.core.middlewares.cors_middleware import CORSCustomMiddleware
 from backend.models import Base
 from backend.api.v1.endpoints.user import user, role, permission, consent, notification, user_currency
 from backend.api.v1.endpoints.auth import auth
-from backend.api.v1.endpoints.social import follow, hashtag, post, bookmark
+from backend.api.v1.endpoints.social import follow, hashtag, post, bookmark_posts
 from backend.api.v1.endpoints.booking import business, product, appointment, schedule, review, employment_request
 from backend.api.v1.endpoints.nomenclature import business_domain, business_type, service, filter, sub_filter, service_domain, profession, currency, problem
 from backend.core.middlewares.auth_middleware import AuthMiddleware
@@ -65,5 +65,5 @@ app.include_router(problem.router, dependencies=[UserSession])
 app.include_router(follow.router, dependencies=[UserSession])
 app.include_router(hashtag.router, dependencies=[UserSession])
 app.include_router(post.router, dependencies=[UserSession])
-app.include_router(bookmark.router, dependencies=[UserSession])
+app.include_router(bookmark_posts.router, dependencies=[UserSession])
 

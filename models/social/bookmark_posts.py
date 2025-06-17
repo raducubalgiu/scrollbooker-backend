@@ -3,9 +3,8 @@ from sqlalchemy.orm import relationship
 
 from backend.core.database import Base
 
-
-class Bookmark(Base):
-    __tablename__ = "bookmarks"
+class BookmarkPost(Base):
+    __tablename__ = "bookmark_posts"
 
     id = Column(Integer, primary_key=True)
 
@@ -14,12 +13,12 @@ class Bookmark(Base):
 
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
-    user = relationship("User", back_populates="bookmarks")
-    post = relationship("Post", back_populates="bookmarks")
+    user = relationship("User", back_populates="bookmark_posts")
+    post = relationship("Post", back_populates="bookmark_posts")
 
     __table_args__ = (
         UniqueConstraint("user_id", "post_id", name="unique_user_post_bookmark"),
-        Index("idx_bookmarks_user_id", "user_id"),
-        Index("idx_bookmarks_post_id", "post_id"),
-        Index("idx_bookmarks_user_post", "user_id", "post_id")
+        Index("idx_bookmark_posts_user_id", "user_id"),
+        Index("idx_bookmark_posts_post_id", "post_id"),
+        Index("idx_bookmarks_use_posts_post", "user_id", "post_id")
     )

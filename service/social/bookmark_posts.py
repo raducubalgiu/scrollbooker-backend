@@ -3,14 +3,14 @@ from starlette.requests import Request
 from starlette import status
 from sqlalchemy import select
 from backend.core.dependencies import DBSession
-from backend.models import Bookmark
+from backend.models import BookmarkPost
 
 async def bookmark_post_by_id(db: DBSession, post_id: int, request: Request):
     auth_user_id = request.state.user.get("id")
 
-    stmt = select(Bookmark).where(
-        Bookmark.user_id == auth_user_id,
-        Bookmark.post_id == post_id
+    stmt = select(BookmarkPost).where(
+        BookmarkPost.user_id == auth_user_id,
+        BookmarkPost.post_id == post_id
     )
 
     existing = await db.execute(stmt)
@@ -18,10 +18,10 @@ async def bookmark_post_by_id(db: DBSession, post_id: int, request: Request):
     if existing.scalar():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Already bookmarked"
+            detail="Post already bookmarked"
         )
 
-    bookmark = Bookmark(user_id=auth_user_id, post_id=post_id)
+    bookmark = BookmarkPost(user_id=auth_user_id, post_id=post_id)
     db.add(bookmark)
     await db.commit()
 
@@ -30,9 +30,9 @@ async def bookmark_post_by_id(db: DBSession, post_id: int, request: Request):
 async def unbookmark_post_by_id(db: DBSession, post_id: int, request: Request):
     auth_user_id = request.state.user.get("id")
 
-    stmt = select(Bookmark).where(
-        Bookmark.user_id == auth_user_id,
-        Bookmark.post_id == post_id
+    stmt = select(BookmarkPost).where(
+        BookmarkPost.user_id == auth_user_id,
+        BookmarkPost.post_id == post_id
     )
 
     result = await db.execute(stmt)
