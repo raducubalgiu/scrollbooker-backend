@@ -3,7 +3,7 @@ from operator import and_
 from fastapi import HTTPException
 from starlette.requests import Request
 from starlette import status
-from sqlalchemy import select, func, literal, desc
+from sqlalchemy import select, func, literal, desc, update
 
 from backend.core.crud_helpers import PaginatedResponse
 from backend.core.dependencies import DBSession, Pagination
@@ -11,6 +11,7 @@ from backend.models import BookmarkPost, Post, Follow, User, Repost
 from backend.schema.social.post import UserPostResponse, PostProduct, PostCounters, LastMinute, PostUserActions
 from backend.schema.user.user import UserBaseMinimum
 from backend.service.social.post_media import get_post_media
+from backend.core.logger import logger
 
 async def get_bookmarked_posts_by_user(db: DBSession, request: Request, pagination: Pagination):
     auth_user_id = request.state.user.get("id")
@@ -135,43 +136,73 @@ async def get_bookmarked_posts_by_user(db: DBSession, request: Request, paginati
 async def bookmark_post_by_id(db: DBSession, post_id: int, request: Request):
     auth_user_id = request.state.user.get("id")
 
-    stmt = select(BookmarkPost).where(
-        BookmarkPost.user_id == auth_user_id,
-        BookmarkPost.post_id == post_id
-    )
-
-    existing = await db.execute(stmt)
-
-    if existing.scalar():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Post already bookmarked"
+    try:
+        stmt = select(BookmarkPost).where(
+            BookmarkPost.user_id == auth_user_id,
+            BookmarkPost.post_id == post_id
         )
 
-    bookmark = BookmarkPost(user_id=auth_user_id, post_id=post_id)
-    db.add(bookmark)
-    await db.commit()
+        existing = await db.execute(stmt)
 
-    return { "detail": "Post was bookmarked successfully" }
+        if existing.scalar():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Post already bookmarked"
+            )
+
+        bookmark = BookmarkPost(user_id=auth_user_id, post_id=post_id)
+        db.add(bookmark)
+
+        post = await db.get(Post, post_id)
+
+        post.bookmark_count = post.bookmark_count + 1
+
+        db.add(post)
+
+        await db.commit()
+
+        return {"detail": "Post was bookmarked successfully"}
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Post could not be bookmarked: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='Something went wrong'
+        )
 
 async def unbookmark_post_by_id(db: DBSession, post_id: int, request: Request):
     auth_user_id = request.state.user.get("id")
 
-    stmt = select(BookmarkPost).where(
-        BookmarkPost.user_id == auth_user_id,
-        BookmarkPost.post_id == post_id
-    )
-
-    result = await db.execute(stmt)
-    bookmark = result.scalar_one_or_none()
-
-    if not bookmark:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Bookmark not found"
+    try:
+        stmt = select(BookmarkPost).where(
+            BookmarkPost.user_id == auth_user_id,
+            BookmarkPost.post_id == post_id
         )
 
-    await db.delete(bookmark)
-    await db.commit()
+        result = await db.execute(stmt)
+        bookmark = result.scalar_one_or_none()
+
+        if not bookmark:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Bookmark not found"
+            )
+
+        post = await db.get(Post, post_id)
+
+        if post.bookmark_count > 0:
+            post.bookmark_count = post.bookmark_count - 1
+
+        db.add(post)
+
+        await db.delete(bookmark)
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Post could not be unbookmarked: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='Something went wrong'
+        )
 
     return { "detail": "Bookmark removed" }
