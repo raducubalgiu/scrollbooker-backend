@@ -27,6 +27,7 @@ from backend.models.booking.employment_request import EmploymentRequest
 # SOCIAL
 from backend.models.social.follow import Follow
 from backend.models.social.bookmark_posts import BookmarkPost
+from backend.models.social.repost import Repost
 from backend.models.social.hashtag import Hashtag
 from backend.models.social.post import Post
 from backend.models.social.post_media import PostMedia

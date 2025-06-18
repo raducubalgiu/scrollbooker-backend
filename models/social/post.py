@@ -42,6 +42,7 @@ class Post(Base):
 
     # Relations
     bookmark_posts = relationship("BookmarkPost", back_populates="post")
+    reposts = relationship("Repost", back_populates="post")
     user = relationship("User", back_populates="posts")
     comments = relationship("Comment", back_populates="post", cascade="all, delete")
     media_files = relationship(
