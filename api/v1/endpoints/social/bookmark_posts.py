@@ -1,10 +1,20 @@
 from fastapi import APIRouter
 from starlette.requests import Request
 from starlette import status
-from backend.core.dependencies import DBSession
-from backend.service.social.bookmark_posts import bookmark_post_by_id, unbookmark_post_by_id
+
+from backend.core.crud_helpers import PaginatedResponse
+from backend.core.dependencies import DBSession, Pagination
+from backend.schema.social.post import UserPostResponse
+from backend.service.social.bookmark_posts import bookmark_post_by_id, unbookmark_post_by_id, \
+    get_bookmarked_posts_by_user
 
 router = APIRouter(tags=["Bookmark Posts"])
+
+@router.get("/bookmark-posts",
+            summary='List All Bookmarked Posts By User',
+            response_model=PaginatedResponse[UserPostResponse])
+async def get_bookmarked_posts(db: DBSession, request: Request, pagination: Pagination):
+    return await get_bookmarked_posts_by_user(db, request, pagination)
 
 @router.post("/posts/{post_id}/bookmark-posts",
              summary='Bookmark Post By Post Id',
