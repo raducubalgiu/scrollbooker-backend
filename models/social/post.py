@@ -35,7 +35,7 @@ class Post(Base):
     like_count = Column(Integer, nullable=False, default=0)
     share_count = Column(Integer, nullable=False, default=0)
     comment_count = Column(Integer, nullable=False, default=0)
-    save_count = Column(Integer, nullable=False, default=0)
+    bookmark_count = Column(Integer, nullable=False, default=0)
 
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)

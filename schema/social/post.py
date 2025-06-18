@@ -2,8 +2,6 @@ from decimal import Decimal
 from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel, Field, condecimal
-
-from backend.core.enums.media_type_enum import MediaTypeEnum
 from backend.schema.social.hashtag import HashtagResponse
 from backend.schema.social.post_media import PostMediaBase, PostMediaResponse
 from backend.schema.user.user import UserBaseMinimum
@@ -53,7 +51,7 @@ class PostResponse(PostBase):
     like_count: bool
     share_count: bool
     comment_count: bool
-    save_count: bool
+    bookmark_count: bool
 
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -77,7 +75,7 @@ class PostProduct(BaseModel):
 class PostCounters(BaseModel):
     comment_count: int
     like_count: int
-    save_count: int
+    bookmark_count: int
     share_count: int
 
     class Config:

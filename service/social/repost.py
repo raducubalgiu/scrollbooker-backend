@@ -106,7 +106,7 @@ async def get_reposts_by_user(db: DBSession, request: Request, pagination: Pagin
             counters=PostCounters(
                 comment_count=post.comment_count,
                 like_count=post.like_count,
-                save_count=post.save_count,
+                bookmark_count=post.bookmark_count,
                 share_count=post.share_count
             ),
             media_files=media_files,
