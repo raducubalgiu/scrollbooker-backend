@@ -2,8 +2,10 @@ from decimal import Decimal
 from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel, Field, condecimal
+
+from backend.core.enums.media_type_enum import MediaTypeEnum
 from backend.schema.social.hashtag import HashtagResponse
-from backend.schema.social.post_media import PostMediaBase
+from backend.schema.social.post_media import PostMediaBase, PostMediaResponse
 from backend.schema.user.user import UserBaseMinimum
 
 class PostFixedSlots(BaseModel):
@@ -90,12 +92,19 @@ class LastMinute(BaseModel):
     class Config:
         from_attributes = True
 
+class PostUserActions(BaseModel):
+    is_liked: bool
+    is_reposted: bool
+    is_bookmarked: bool
+
 class UserPostResponse(BaseModel):
     id: int
     description: Optional[str] = None
     user: UserBaseMinimum
     product: PostProduct
     counters: PostCounters
+    media_files: List[PostMediaResponse]
+    user_actions: PostUserActions
     mentions: Optional[List[UserBaseMinimum]] = []
     hashtags: Optional[List[HashtagResponse]] = []
     bookable: bool

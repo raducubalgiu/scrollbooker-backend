@@ -6,12 +6,14 @@ from sqlalchemy.orm import aliased
 
 from backend.core.crud_helpers import PaginatedResponse
 from backend.core.dependencies import DBSession, Pagination
-from backend.models import User, Follow, PostMedia
+from backend.models import User, Follow, PostMedia, Repost, BookmarkPost
 from backend.models.social.post_action import post_likes
-from backend.schema.social.post import PostCreate, PostResponse, UserPostResponse, PostProduct, PostCounters, LastMinute
+from backend.schema.social.post import PostCreate, PostResponse, UserPostResponse, PostProduct, PostCounters, \
+    LastMinute, PostUserActions
 from backend.models.social.post import Post
 from backend.core.logger import logger
 from backend.schema.user.user import UserBaseMinimum
+from backend.service.social.post_media import get_post_media
 
 
 async def create_new_post(db: DBSession, post_create: PostCreate, request: Request):
@@ -61,13 +63,36 @@ async def get_posts_by_user_id(db: DBSession, user_id: int, pagination: Paginati
     count_total = await db.execute(count_stmt)
     count = count_total.scalar_one()
 
-    is_follow_subq = (
+    is_reposted = (
+        select(literal(True))
+        .select_from(Repost)
+        .where(and_(
+            Repost.user_id == auth_user_id,
+            Repost.post_id == Post.id)
+        )
+        .correlate(Post)
+        .exists()
+    )
+
+    is_bookmarked = (
+        select(literal(True))
+        .select_from(BookmarkPost)
+        .where(and_(
+            BookmarkPost.user_id == auth_user_id,
+            BookmarkPost.post_id == Post.id)
+        )
+        .correlate(Post)
+        .exists()
+    )
+
+    is_follow = (
         select(literal(True))
         .select_from(Follow)
         .where(and_(
                 Follow.follower_id == auth_user_id,
                 Follow.followee_id == User.id)
         )
+        .correlate(User)
         .exists()
     )
 
@@ -79,22 +104,26 @@ async def get_posts_by_user_id(db: DBSession, user_id: int, pagination: Paginati
             User.username,
             User.avatar,
             User.profession,
-            is_follow_subq.label("is_follow")
+            is_follow,
+            is_reposted,
+            is_bookmarked
         )
         .join(User, User.id == Post.user_id)
-        .join(PostMedia, PostMedia.post_id == Post.id)
         .where(Post.user_id == user_id)
         .order_by(desc(Post.created_at))
-        .offset(
-            (pagination.page - 1) * pagination.limit
-        )
+        .offset((pagination.page - 1) * pagination.limit)
         .limit(pagination.limit)
     )
     posts = result.all()
 
+    post_ids = [p.id for p, *_ in posts]
+    media_map = await get_post_media(db, post_ids)
+
     results = []
 
-    for post, u_id, u_fullname, u_username, u_avatar, u_profession, is_follow in posts:
+    for post, u_id, u_fullname, u_username, u_avatar, u_profession, is_follow, is_reposted, is_bookmarked in posts:
+        media_files = media_map.get(post.id, [])
+
         results.append(UserPostResponse(
                 id=post.id,
                 description=post.description,
@@ -121,6 +150,12 @@ async def get_posts_by_user_id(db: DBSession, user_id: int, pagination: Paginati
                     like_count=post.like_count,
                     save_count=post.save_count,
                     share_count=post.share_count
+                ),
+                media_files=media_files,
+                user_actions=PostUserActions(
+                    is_liked=False,
+                    is_bookmarked=is_bookmarked,
+                    is_reposted=is_reposted,
                 ),
                 mentions=post.mentions,
                 hashtags=post.hashtags,

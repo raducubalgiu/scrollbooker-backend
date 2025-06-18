@@ -1,11 +1,20 @@
-from starlette.requests import Request
 from fastapi import APIRouter
 from starlette import status
-from backend.core.dependencies import DBSession
+from starlette.requests import Request
+
+from backend.core.crud_helpers import PaginatedResponse
+from backend.core.dependencies import DBSession, Pagination
+from backend.schema.social.post import UserPostResponse
 from backend.schema.social.repost import RepostCreate
-from backend.service.social.repost import repost_post_by_id, unrepost_post_by_id
+from backend.service.social.repost import repost_post_by_id, unrepost_post_by_id, get_reposts_by_user
 
 router = APIRouter(tags=["Reposts"])
+
+@router.get("/reposts",
+            summary='List All Reposts By User',
+            response_model=PaginatedResponse[UserPostResponse])
+async def get_reposts(db: DBSession, request: Request, pagination: Pagination):
+    return await get_reposts_by_user(db, request, pagination)
 
 @router.post("/posts/{post_id}/reposts",
              summary='Repost Post By Post Id',

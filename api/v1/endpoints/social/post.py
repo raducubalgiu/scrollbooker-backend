@@ -1,5 +1,3 @@
-from typing import Union
-
 from fastapi import APIRouter
 from starlette import status
 from starlette.requests import Request
@@ -7,7 +5,7 @@ from starlette.requests import Request
 from backend.core.crud_helpers import PaginatedResponse
 from backend.core.dependencies import DBSession, Pagination
 from backend.core.enums.enums import PostAction
-from backend.schema.social.post import PostResponse, PostCreate, UserPostResponse
+from backend.schema.social.post import PostCreate, UserPostResponse
 from backend.schema.social.comment import CommentCreate, CommentBase
 from backend.service.social.post import create_new_post, get_post_likes_by_post_id, get_posts_by_user_id
 from backend.service.social.post_action import check_post_action, perform_post_action, remove_post_action
