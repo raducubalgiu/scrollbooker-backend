@@ -31,9 +31,7 @@ from backend.models.social.repost import Repost
 from backend.models.social.hashtag import Hashtag
 from backend.models.social.post import Post
 from backend.models.social.post_media import PostMedia
-from backend.models.social.post_action.post_likes import post_likes
-from backend.models.social.post_action.post_saves import post_saves
-from backend.models.social.post_action.post_shares import post_shares
+from backend.models.social.post_shares import post_shares
 from backend.models.social.comment.comment import Comment
 from backend.models.social.comment.comment_likes import CommentLike
 from backend.models.social.comment.comment_post_likes import CommentPostLike

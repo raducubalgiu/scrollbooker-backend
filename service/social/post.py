@@ -1,20 +1,16 @@
 from fastapi import HTTPException
 from starlette.requests import Request
 from starlette import status
-from sqlalchemy import select, exists, desc, func, literal, and_
-from sqlalchemy.orm import aliased
-
+from sqlalchemy import select, desc, func, literal, and_
 from backend.core.crud_helpers import PaginatedResponse
 from backend.core.dependencies import DBSession, Pagination
 from backend.models import User, Follow, PostMedia, Repost, BookmarkPost
-from backend.models.social.post_action import post_likes
-from backend.schema.social.post import PostCreate, PostResponse, UserPostResponse, PostProduct, PostCounters, \
+from backend.schema.social.post import PostCreate, UserPostResponse, PostProduct, PostCounters, \
     LastMinute, PostUserActions
 from backend.models.social.post import Post
 from backend.core.logger import logger
 from backend.schema.user.user import UserBaseMinimum
 from backend.service.social.post_media import get_post_media
-
 
 async def create_new_post(db: DBSession, post_create: PostCreate, request: Request):
     auth_user_id = request.state.user.get("id")
@@ -174,28 +170,3 @@ async def get_posts_by_user_id(db: DBSession, user_id: int, pagination: Paginati
         count=count,
         results=results
     )
-
-async def get_post_likes_by_post_id(db: DBSession, post_id: int, page: int, limit: int, request: Request):
-    auth_user_id = request.state.user.get("id")
-    f1 = aliased(Follow)
-
-    stmt = await db.execute(
-        select(
-            User.id,
-            User.username,
-            User.fullname,
-            exists()
-            .where((f1.follower_id == auth_user_id) & (f1.followee_id == User.id)) #type: ignore
-            .correlate(User)
-            .label('is_following')
-        )
-        .join(post_likes, User.id == post_likes.c.user_id) #type: ignore
-        .outerjoin(f1, f1.followee_id == User.id)
-        .where(post_likes.c.post_id == post_id)
-        .group_by(User.id)
-        .limit(limit)
-        .offset((page - 1) * limit)
-    )
-
-    likes = stmt.mappings().all()
-    return likes
