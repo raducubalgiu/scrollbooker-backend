@@ -2,26 +2,25 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 
-class CommentCreate(BaseModel):
+from backend.schema.user.user import UserBaseMinimum
+
+
+class CommentBase(BaseModel):
     text: str = Field(min_length=1, max_length=200)
     parent_id: Optional[int] = None
 
-class CommentBase(BaseModel):
-    id: int
-    post_id: int
-    user_id: int
-    parent_id: Optional[int] = None
-    text: str
-    like_count: int
-    created_at: datetime
-    updated_at: datetime
+class CommentCreate(CommentBase):
+    pass
 
-class CommentResponse(BaseModel):
+class CommentResponse(CommentBase):
     id: int
-    text: str
-    user_id: int
-    username: str
+    user: UserBaseMinimum
+    post_id: int
     like_count: int
     is_liked: bool
     liked_by_post_author: bool
     created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True

@@ -22,17 +22,17 @@ async def get_services_by_business_type_id(db: DBSession, business_type_id: int)
 async def get_services_by_service_domain_id(db: DBSession, service_domain_id: int, pagination: Pagination):
     return await db_get_all(db, model=Service, schema=ServiceResponse, filters={Service.service_domain_id: service_domain_id}, page=pagination.page, limit=pagination.limit)
 
-async def get_services_by_user_id(db: DBSession, user_id: int):
-    business_result = await db.execute(
+async def get_services_by_business_id(db: DBSession, business_id: int):
+    stmt = (
         select(Business)
-        .join(User, User.id == user_id) #type: ignore
-        .where(or_(
-            User.employee_business_id == Business.id,
-            Business.owner_id == User.id
-        ))
-        .options(joinedload(Business.services))
+        .where(Business.id == business_id)
+        .options(
+            joinedload(Business.services)
+        )
     )
-    business = business_result.scalars().first()
+    result = await db.execute(stmt)
+    business = result.scalars().first()
+
     return business.services
 
 async def create_new_service(db: DBSession, new_service: ServiceCreate):

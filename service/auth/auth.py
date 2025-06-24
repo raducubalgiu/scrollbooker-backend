@@ -34,7 +34,9 @@ async def register_user(db: DBSession, user_register: UserRegister):
             email=user_register.email,
             password=hashed,
             username=user_register.username,
-            role_id=get_role.id
+            fullname=user_register.username,
+            role_id=get_role.id,
+            is_validated=user_register.is_validated
         )
         db.add(new_user)
         await db.flush()
@@ -136,7 +138,9 @@ async def get_user_info(db: DBSession, token: str):
         return UserInfoResponse(
             id=user.id,
             business_id=business_id,
-            business_type_id=business_type_id
+            business_type_id=business_type_id,
+            is_validated=user.is_validated,
+            registration_step=user.registration_step
         )
 
     except JWTError as e:

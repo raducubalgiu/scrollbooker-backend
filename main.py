@@ -5,9 +5,10 @@ from backend.core.database import async_engine
 from backend.core.dependencies import UserSession
 from backend.core.middlewares.cors_middleware import CORSCustomMiddleware
 from backend.models import Base
+from backend.api.v1.endpoints.upload import upload_media
 from backend.api.v1.endpoints.user import user, role, permission, consent, notification, user_currency
 from backend.api.v1.endpoints.auth import auth
-from backend.api.v1.endpoints.social import follow, hashtag, post, bookmark_posts,repost, like
+from backend.api.v1.endpoints.social import follow, hashtag, post, bookmark_posts,repost, like, comment
 from backend.api.v1.endpoints.booking import business, product, appointment, schedule, review, employment_request
 from backend.api.v1.endpoints.nomenclature import business_domain, business_type, service, filter, sub_filter, service_domain, profession, currency, problem
 from backend.core.middlewares.auth_middleware import AuthMiddleware
@@ -36,6 +37,9 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler) 
 # Auth
 app.include_router(auth.router)
 
+# Upload media
+app.include_router(upload_media.router, dependencies=[UserSession])
+
 # User
 app.include_router(user.router, dependencies=[UserSession])
 app.include_router(role.router, dependencies=[UserSession])
@@ -63,6 +67,7 @@ app.include_router(problem.router, dependencies=[UserSession])
 
 # Social
 app.include_router(like.router, dependencies=[UserSession])
+app.include_router(comment.router, dependencies=[UserSession])
 app.include_router(follow.router, dependencies=[UserSession])
 app.include_router(repost.router, dependencies=[UserSession])
 app.include_router(hashtag.router, dependencies=[UserSession])

@@ -8,6 +8,7 @@ class UserRegister(BaseModel):
     username: str = Field(min_length=3, max_length=35)
     password: str = Field(min_length=6, max_length=255)
     role_name: str
+    is_validated: bool
 
 class UserRegisterResponse(UserBase):
     id: int
@@ -16,6 +17,8 @@ class UserInfoResponse(BaseModel):
     id: int
     business_id: Optional[int] = None
     business_type_id: Optional[int] = None
+    is_validated: bool
+    registration_step: Optional[str] = None
 
     class Config:
         from_attributes = True

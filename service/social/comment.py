@@ -2,10 +2,12 @@ from fastapi import HTTPException
 from sqlalchemy.orm import joinedload
 from starlette.requests import Request
 from starlette import status
-from backend.core.dependencies import DBSession
+
+from backend.core.crud_helpers import PaginatedResponse
+from backend.core.dependencies import DBSession, Pagination
 from backend.schema.social.comment import CommentCreate, CommentResponse
-from sqlalchemy import select, update, insert
-from backend.models import Comment, CommentLike, CommentPostLike, Post, User
+from sqlalchemy import select, update, insert, func
+from backend.models import Comment, CommentLike, CommentPostLike, Post, User, Review
 from backend.core.logger import logger
 
 async def create_new_comment(db: DBSession, post_id: int, comment_data: CommentCreate, request: Request):
@@ -109,15 +111,35 @@ async def unlike_post_comment(db: DBSession, post_id: int, comment_id: int, requ
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail='Something went wrong')
 
-async def get_comments_by_post_id(db: DBSession, post_id: int, page: int, limit: int, request: Request):
+async def get_comments_by_post_id(db: DBSession, post_id: int, pagination: Pagination, request: Request):
     auth_user_id = request.state.user.get("id")
+
+    count_stmt = (select(func.count())
+        .select_from(Comment)
+        .where(
+            Comment.post_id == post_id,
+            Comment.parent_id.is_(None)
+        ))
+    count_total = await db.execute(count_stmt)
+    count = count_total.scalar_one()
 
     query = await db.execute(
         select(Comment)
-        .where((Comment.post_id == post_id) & (Comment.parent_id.is_(None))) #type: ignore
-        .options(joinedload(Comment.user).load_only(User.id, User.username, User.fullname))
-        .offset((page - 1) * limit)
-        .limit(limit)
+        .where(
+            Comment.post_id == post_id,
+            Comment.parent_id.is_(None)
+        )
+        .options(
+            joinedload(Comment.user).load_only(
+                User.id,
+                User.username,
+                User.fullname,
+                User.avatar,
+                User.profession
+            )
+        )
+        .offset((pagination.page - 1) * pagination.limit)
+        .limit(pagination.limit)
         .order_by(Comment.created_at.asc())
     )
     comments = query.scalars().all()
@@ -142,17 +164,21 @@ async def get_comments_by_post_id(db: DBSession, post_id: int, page: int, limit:
     )
     post_author_liked_comments = post_author_likes.scalars().all()
 
-    response = [
+    results = [
         CommentResponse(
             id=comment.id,
             text=comment.text,
-            user_id=comment.user_id,
-            username=comment.user.username,
+            user=comment.user,
+            post_id=comment.post_id,
             like_count=comment.like_count,
             is_liked=comment.id in user_liked_comments,
             liked_by_post_author=comment.id in post_author_liked_comments,
+            parent_id=comment.parent_id,
             created_at=comment.created_at
         ) for comment in comments
     ]
 
-    return response
+    return PaginatedResponse(
+        count=count,
+        results=results
+    )
