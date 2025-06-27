@@ -1,8 +1,8 @@
 from fastapi import APIRouter
 
-from backend.core.dependencies import DBSession, SuperAdminSession
-from backend.schema.social.hashtag import HashtagResponse, HashtagCreate
-from backend.service.social.hashtag import create_new_hashtag
+from core.dependencies import DBSession, SuperAdminSession
+from schema.social.hashtag import HashtagResponse, HashtagCreate
+from service.social.hashtag import create_new_hashtag
 
 router = APIRouter(prefix="/hashtags", tags=["Hashtags"])
 

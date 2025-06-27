@@ -2,7 +2,7 @@ from typing import Optional, List
 from pydantic import BaseModel, Field, condecimal
 from datetime import datetime
 from decimal import Decimal
-from backend.schema.nomenclature.sub_filter import SubFilterWithFilterResponse
+from schema.nomenclature.sub_filter import SubFilterWithFilterResponse
 
 class ProductBase(BaseModel):
     name: str = Field(min_length=3, max_length=100)

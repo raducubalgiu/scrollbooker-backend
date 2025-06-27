@@ -2,15 +2,15 @@ from fastapi import HTTPException
 from starlette.requests import Request
 from starlette import status
 from sqlalchemy import select, asc, desc, func, literal, and_
-from backend.core.crud_helpers import PaginatedResponse
-from backend.core.dependencies import DBSession, Pagination
-from backend.models import User, Follow, PostMedia, Repost, BookmarkPost
-from backend.schema.social.post import PostCreate, UserPostResponse, PostProduct, PostCounters, \
+from core.crud_helpers import PaginatedResponse
+from core.dependencies import DBSession, Pagination
+from models import User, Follow, PostMedia, Repost, BookmarkPost
+from schema.social.post import PostCreate, UserPostResponse, PostProduct, PostCounters, \
     LastMinute, PostUserActions
-from backend.models.social.post import Post
-from backend.core.logger import logger
-from backend.schema.user.user import UserBaseMinimum
-from backend.service.social.post_media import get_post_media
+from models.social.post import Post
+from core.logger import logger
+from schema.user.user import UserBaseMinimum
+from service.social.post_media import get_post_media
 
 async def get_book_now_posts(db: DBSession, pagination: Pagination, request: Request):
     auth_user_id = request.state.user.get("id")

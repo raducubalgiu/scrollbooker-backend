@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, TIMESTAMP, func, ForeignKey
 
-from backend.core.database import Base
+from core.database import Base
 
 
 class Problem(Base):

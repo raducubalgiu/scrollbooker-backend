@@ -1,19 +1,19 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from contextlib import asynccontextmanager
-from backend.core.database import async_engine
-from backend.core.dependencies import UserSession
-from backend.core.middlewares.cors_middleware import CORSCustomMiddleware
-from backend.models import Base
-from backend.api.v1.endpoints.upload import upload_media
-from backend.api.v1.endpoints.user import user, role, permission, consent, notification, user_currency
-from backend.api.v1.endpoints.auth import auth
-from backend.api.v1.endpoints.social import follow, hashtag, post, bookmark_posts,repost, like, comment
-from backend.api.v1.endpoints.booking import business, product, appointment, schedule, review, employment_request
-from backend.api.v1.endpoints.nomenclature import business_domain, business_type, service, filter, sub_filter, service_domain, profession, currency, problem
-from backend.core.middlewares.auth_middleware import AuthMiddleware
-from backend.core.exceptions import global_exception_handler, http_exception_handler, validation_exception_handler
-from backend.core.scheduler import start as start_scheduler, scheduler
+from core.database import async_engine
+from core.dependencies import UserSession
+from core.middlewares.cors_middleware import CORSCustomMiddleware
+from models import Base
+#from api.v1.endpoints.upload import upload_media
+from api.v1.endpoints.user import user, role, permission, consent, notification, user_currency
+from api.v1.endpoints.auth import auth
+from api.v1.endpoints.social import follow, hashtag, post, bookmark_posts,repost, like, comment
+from api.v1.endpoints.booking import business, product, appointment, schedule, review, employment_request
+from api.v1.endpoints.nomenclature import business_domain, business_type, service, filter, sub_filter, service_domain, profession, currency, problem
+from core.middlewares.auth_middleware import AuthMiddleware
+from core.exceptions import global_exception_handler, http_exception_handler, validation_exception_handler
+from core.scheduler import start as start_scheduler, scheduler
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -38,7 +38,7 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler) 
 app.include_router(auth.router)
 
 # Upload media
-app.include_router(upload_media.router, dependencies=[UserSession])
+#app.include_router(upload_media.router, dependencies=[UserSession])
 
 # User
 app.include_router(user.router, dependencies=[UserSession])

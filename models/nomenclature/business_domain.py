@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, TIMESTAMP, func, Boolean, Index
 from sqlalchemy.orm import relationship
 
-from backend.models import Base
+from models import Base
 
 class BusinessDomain(Base):
     __tablename__ = "business_domains"

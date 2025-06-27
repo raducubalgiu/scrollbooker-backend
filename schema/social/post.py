@@ -2,9 +2,9 @@ from decimal import Decimal
 from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel, Field, condecimal
-from backend.schema.social.hashtag import HashtagResponse
-from backend.schema.social.post_media import PostMediaBase, PostMediaResponse
-from backend.schema.user.user import UserBaseMinimum
+from schema.social.hashtag import HashtagResponse
+from schema.social.post_media import PostMediaBase, PostMediaResponse
+from schema.user.user import UserBaseMinimum
 
 class PostFixedSlots(BaseModel):
     start_time: datetime

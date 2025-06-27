@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, ForeignKey, TIMESTAMP, func, UniqueConstraint, Index
-from backend.models import Base
+from models import Base
 
 class ReviewProductLike(Base):
     __tablename__ = "review_product_likes"

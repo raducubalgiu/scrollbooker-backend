@@ -6,7 +6,7 @@ from jose import jwt, JWTError # type: ignore
 from passlib.context import CryptContext # type: ignore
 from fastapi.concurrency import run_in_threadpool
 from fastapi.security import OAuth2PasswordBearer
-from backend.core.logger import logger
+from core.logger import logger
 
 load_dotenv()
 

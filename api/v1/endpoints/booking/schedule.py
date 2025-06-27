@@ -2,10 +2,10 @@ from typing import List
 
 from fastapi import APIRouter
 from starlette.requests import Request
-from backend.schema.booking.schedule import ScheduleCreate, ScheduleUpdate, ScheduleResponse
-from backend.service.booking.schedule import create_user_schedule, update_user_schedule, update_user_many_schedules, \
+from schema.booking.schedule import ScheduleCreate, ScheduleUpdate, ScheduleResponse
+from service.booking.schedule import create_user_schedule, update_user_schedule, update_user_many_schedules, \
     get_schedules_by_user_id
-from backend.core.dependencies import DBSession, BusinessAndEmployeesSession
+from core.dependencies import DBSession, BusinessAndEmployeesSession
 
 router = APIRouter(tags=["Schedules"])
 

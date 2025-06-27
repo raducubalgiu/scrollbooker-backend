@@ -1,10 +1,10 @@
 from sqlalchemy.orm import joinedload
-from backend.core.crud_helpers import db_create, db_delete, db_update, db_insert_many_to_many, \
+from core.crud_helpers import db_create, db_delete, db_update, db_insert_many_to_many, \
     db_remove_many_to_many, db_get_one, db_get_all
-from backend.core.dependencies import DBSession, Pagination
-from backend.models import BusinessType, Service, Filter, Profession
-from backend.models.nomenclature.business_type_filters import business_type_filters
-from backend.schema.nomenclature.business_type import BusinessTypeCreate, BusinessTypeUpdate, BusinessTypeResponse
+from core.dependencies import DBSession, Pagination
+from models import BusinessType, Service, Filter, Profession
+from models.nomenclature.business_type_filters import business_type_filters
+from schema.nomenclature.business_type import BusinessTypeCreate, BusinessTypeUpdate, BusinessTypeResponse
 
 async def get_all_business_types(db: DBSession, pagination: Pagination):
     return await db_get_all(db,

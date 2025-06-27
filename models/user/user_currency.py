@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, ForeignKey, TIMESTAMP, func, Boolean
 from sqlalchemy.orm import relationship
 
-from backend.core.database import Base
+from core.database import Base
 
 class UserCurrency(Base):
     __tablename__ = "user_currencies"

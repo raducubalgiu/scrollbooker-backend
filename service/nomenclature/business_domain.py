@@ -1,7 +1,7 @@
-from backend.core.crud_helpers import db_create, db_get_all, db_delete, db_update
-from backend.core.dependencies import DBSession, Pagination
-from backend.models import BusinessDomain
-from backend.schema.nomenclature.business_domain import BusinessDomainCreate, BusinessDomainUpdate, \
+from core.crud_helpers import db_create, db_get_all, db_delete, db_update
+from core.dependencies import DBSession, Pagination
+from models import BusinessDomain
+from schema.nomenclature.business_domain import BusinessDomainCreate, BusinessDomainUpdate, \
     BusinessDomainResponse
 
 async def get_all_business_domain(db: DBSession, pagination: Pagination):

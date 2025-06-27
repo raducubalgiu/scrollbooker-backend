@@ -1,8 +1,8 @@
 from fastapi import APIRouter
 from starlette import status
-from backend.core.dependencies import DBSession
-from backend.schema.nomenclature.problem import ProblemCreate
-from backend.service.nomenclature.problem import create_new_problem
+from core.dependencies import DBSession
+from schema.nomenclature.problem import ProblemCreate
+from service.nomenclature.problem import create_new_problem
 
 router = APIRouter(prefix="/problems", tags=["Problems"])
 

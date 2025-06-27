@@ -1,8 +1,7 @@
-from sqlalchemy import Boolean
-from backend.core.crud_helpers import db_delete, db_create, db_get_all, db_get_all_paginate, db_update
-from backend.models.user.role import Role
-from backend.schema.user.role import RoleCreate, RoleResponse, RoleUpdate
-from backend.core.dependencies import DBSession
+from core.crud_helpers import db_delete, db_create, db_get_all_paginate, db_update
+from models.user.role import Role
+from schema.user.role import RoleCreate, RoleResponse, RoleUpdate
+from core.dependencies import DBSession
 
 async def get_all_roles(db: DBSession, page: int, limit: int):
     return await db_get_all_paginate(db, model=Role, schema=RoleResponse, page=page, limit=limit)

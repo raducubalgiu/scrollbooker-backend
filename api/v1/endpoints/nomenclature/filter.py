@@ -2,10 +2,10 @@ from typing import Union
 
 from fastapi import APIRouter
 from starlette import status
-from backend.core.crud_helpers import PaginatedResponse
-from backend.core.dependencies import DBSession, SuperAdminSession
-from backend.schema.nomenclature.filter import FilterResponse, FilterCreate, FilterUpdate, FilterWithSubFiltersResponse
-from backend.service.nomenclature.filter import create_new_filter, get_all_filters, \
+from core.crud_helpers import PaginatedResponse
+from core.dependencies import DBSession, SuperAdminSession
+from schema.nomenclature.filter import FilterResponse, FilterCreate, FilterUpdate, FilterWithSubFiltersResponse
+from service.nomenclature.filter import create_new_filter, get_all_filters, \
     update_filter_by_id, delete_filter_by_id, get_filters_by_business_type_id, attach_filters_to_business_type, detach_filters_from_business_type
 
 router = APIRouter(tags=["Filters"])

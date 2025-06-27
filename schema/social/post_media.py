@@ -1,7 +1,7 @@
 from typing import Optional
 from pydantic import BaseModel, HttpUrl
 
-from backend.core.enums.media_type_enum import MediaTypeEnum
+from core.enums.media_type_enum import MediaTypeEnum
 
 class PostMediaBase(BaseModel):
     url: str

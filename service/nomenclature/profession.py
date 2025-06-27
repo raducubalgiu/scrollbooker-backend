@@ -1,11 +1,11 @@
 from sqlalchemy.orm import joinedload
 
-from backend.core.crud_helpers import db_create, db_update, db_delete, db_get_all_paginate, db_get_one, db_get_all, \
+from core.crud_helpers import db_create, db_update, db_delete, db_get_all_paginate, db_get_one, db_get_all, \
     db_insert_many_to_many, db_remove_many_to_many
-from backend.core.dependencies import DBSession, Pagination
-from backend.models import Profession, BusinessType
-from backend.models.nomenclature.business_type_professions import business_type_professions
-from backend.schema.nomenclature.profession import ProfessionCreate, ProfessionUpdate, \
+from core.dependencies import DBSession, Pagination
+from models import Profession, BusinessType
+from models.nomenclature.business_type_professions import business_type_professions
+from schema.nomenclature.profession import ProfessionCreate, ProfessionUpdate, \
     ProfessionWithBusinessTypesResponse, ProfessionResponse
 
 async def get_professions_by_business_type_id(db: DBSession, business_type_id: int):

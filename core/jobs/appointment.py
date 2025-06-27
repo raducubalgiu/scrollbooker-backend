@@ -1,10 +1,10 @@
-from backend.core.database import async_session_factory
-from backend.core.enums.enums import AppointmentStatusEnum
-from backend.core.logger import logger
+from core.database import async_session_factory
+from core.enums.enums import AppointmentStatusEnum
+from core.logger import logger
 from sqlalchemy import select, and_
 from datetime import datetime, timezone
 
-from backend.models import Appointment
+from models import Appointment
 
 async def update_appointment_status():
     async with async_session_factory() as db:

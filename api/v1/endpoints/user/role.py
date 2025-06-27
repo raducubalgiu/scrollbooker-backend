@@ -1,10 +1,10 @@
 from fastapi import APIRouter
 from starlette import status
 
-from backend.core.crud_helpers import PaginatedResponse
-from backend.core.dependencies import DBSession
-from backend.schema.user.role import RoleResponse, RoleCreate, RoleUpdate
-from backend.service.user.role import get_all_roles, create_new_role, delete_role_by_id, update_role_by_id
+from core.crud_helpers import PaginatedResponse
+from core.dependencies import DBSession
+from schema.user.role import RoleResponse, RoleCreate, RoleUpdate
+from service.user.role import get_all_roles, create_new_role, delete_role_by_id, update_role_by_id
 
 router = APIRouter(prefix="/roles", tags=["Roles"])
 

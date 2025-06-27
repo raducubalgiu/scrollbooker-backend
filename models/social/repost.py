@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, ForeignKey, TIMESTAMP, func, UniqueConstraint, Index, String
 from sqlalchemy.orm import relationship
 
-from backend.core.database import Base
+from core.database import Base
 
 class Repost(Base):
     __tablename__ = "reposts"

@@ -1,5 +1,5 @@
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from backend.core.jobs.appointment import update_appointment_status
+from core.jobs.appointment import update_appointment_status
 
 scheduler = AsyncIOScheduler()
 

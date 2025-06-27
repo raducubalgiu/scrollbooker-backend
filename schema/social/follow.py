@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import BaseModel
 from datetime import datetime
 
-from backend.schema.user.user import UserBaseMinimum
+from schema.user.user import UserBaseMinimum
 
 class FollowBase(BaseModel):
     follower_id: int

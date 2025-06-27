@@ -2,9 +2,9 @@ from pydantic import BaseModel, Field, EmailStr
 from typing import Optional, List
 from datetime import datetime
 
-from backend.schema.booking.product import ProductResponse
-from backend.schema.booking.schedule import ScheduleResponse
-from backend.schema.user.user_counters import UserCountersBase
+from schema.booking.product import ProductResponse
+from schema.booking.schedule import ScheduleResponse
+from schema.user.user_counters import UserCountersBase
 
 class UserBaseMinimum(BaseModel):
     id: int

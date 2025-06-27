@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, ForeignKey, String, UniqueConstraint, Index, TIMESTAMP, func
 from sqlalchemy.orm import relationship
 
-from backend.models import Base
+from models import Base
 
 class EmploymentRequest(Base):
     __tablename__ = "employment_requests"

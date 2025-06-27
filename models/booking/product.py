@@ -1,8 +1,8 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, TIMESTAMP, func, Index, DECIMAL
 from sqlalchemy.orm import relationship
 
-from backend.models import Base
-from backend.models.booking.product_sub_filters import product_sub_filters
+from models import Base
+from models.booking.product_sub_filters import product_sub_filters
 
 class Product(Base):
     __tablename__ = "products"

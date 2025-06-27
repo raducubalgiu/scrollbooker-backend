@@ -5,12 +5,12 @@ from fastapi import HTTPException
 from sqlalchemy.orm import joinedload
 from starlette import status
 from starlette.requests import Request
-from backend.core.crud_helpers import db_get_all, db_get_one, db_update
-from backend.core.dependencies import DBSession
-from backend.core.enums.enums import RoleEnum, AppointmentStatusEnum
-from backend.models import User, Follow, Appointment, Product, Business, Role, BusinessType, Schedule
+from core.crud_helpers import db_get_all, db_get_one, db_update
+from core.dependencies import DBSession
+from core.enums.enums import RoleEnum, AppointmentStatusEnum
+from models import User, Follow, Appointment, Product, Business, Role, BusinessType, Schedule
 from sqlalchemy import select, func, case, and_, or_, distinct, exists
-from backend.schema.user.user import UsernameUpdate, FullNameUpdate, BioUpdate, GenderUpdate, UserProfileResponse, \
+from schema.user.user import UsernameUpdate, FullNameUpdate, BioUpdate, GenderUpdate, UserProfileResponse, \
     OpeningHours, UserBaseMinimum
 
 

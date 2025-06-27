@@ -1,9 +1,9 @@
 from fastapi import APIRouter
 from starlette.requests import Request
 from starlette import status
-from backend.core.dependencies import BusinessAndEmployeesSession, DBSession
-from backend.schema.user.user_currency import UserCurrencyResponse, UserCurrencyCreate, UserCurrencyUpdate
-from backend.service.user.user_currency import create_new_user_currency, delete_new_user_currency
+from core.dependencies import BusinessAndEmployeesSession, DBSession
+from schema.user.user_currency import UserCurrencyResponse, UserCurrencyCreate, UserCurrencyUpdate
+from service.user.user_currency import create_new_user_currency, delete_new_user_currency
 
 router = APIRouter(prefix="/user-currencies", tags=["User Currencies"])
 

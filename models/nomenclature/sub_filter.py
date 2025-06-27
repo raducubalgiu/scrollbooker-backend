@@ -1,8 +1,8 @@
 from sqlalchemy import Column, Integer, String, Boolean, TIMESTAMP, func, ForeignKey, Index
 from sqlalchemy.orm import relationship
 
-from backend.models import Base
-from backend.models.booking.product_sub_filters import product_sub_filters
+from models import Base
+from models.booking.product_sub_filters import product_sub_filters
 
 class SubFilter(Base):
     __tablename__ = "sub_filters"

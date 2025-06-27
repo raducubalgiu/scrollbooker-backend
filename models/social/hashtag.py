@@ -1,4 +1,4 @@
-from backend.models import Base
+from models import Base
 from sqlalchemy import Integer,String, TIMESTAMP, Column, func
 
 class Hashtag(Base):

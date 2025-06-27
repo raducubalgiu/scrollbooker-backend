@@ -2,10 +2,10 @@ from fastapi import APIRouter
 from starlette.requests import Request
 from starlette import status
 
-from backend.core.crud_helpers import PaginatedResponse
-from backend.core.dependencies import DBSession, Pagination
-from backend.schema.social.comment import CommentCreate, CommentResponse
-from backend.service.social.comment import get_comments_by_post_id, create_new_comment, like_post_comment, \
+from core.crud_helpers import PaginatedResponse
+from core.dependencies import DBSession, Pagination
+from schema.social.comment import CommentCreate, CommentResponse
+from service.social.comment import get_comments_by_post_id, create_new_comment, like_post_comment, \
     unlike_post_comment
 
 router = APIRouter(prefix="/posts/{post_id}/comments", tags=["Comments"])

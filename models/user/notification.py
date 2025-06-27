@@ -2,7 +2,7 @@ from sqlalchemy import Column, String, Integer, ForeignKey, Boolean, TIMESTAMP, 
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
-from backend.models import Base
+from models import Base
 
 class Notification(Base):
     __tablename__ = "notifications"

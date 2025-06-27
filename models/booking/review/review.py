@@ -1,6 +1,6 @@
 from sqlalchemy.orm import relationship, backref
 
-from backend.models import Base
+from models import Base
 from sqlalchemy import Column, Integer, ForeignKey, String, TIMESTAMP, func
 
 class Review(Base):

@@ -1,6 +1,6 @@
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
-from backend.models import Base
+from models import Base
 from sqlalchemy import Column, Integer, String, TIMESTAMP, func, ForeignKey, Boolean, ARRAY, Text, BigInteger, Index, \
     DECIMAL
 

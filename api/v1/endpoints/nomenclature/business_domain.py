@@ -3,10 +3,10 @@ from typing import Union
 from fastapi import APIRouter
 from starlette import status
 
-from backend.core.crud_helpers import PaginatedResponse
-from backend.core.dependencies import DBSession, SuperAdminSession, Pagination
-from backend.schema.nomenclature.business_domain import BusinessDomainResponse, BusinessDomainCreate, BusinessDomainUpdate
-from backend.service.nomenclature.business_domain import create_new_business_domain, get_all_business_domain, update_business_domain_by_id, delete_business_domain_by_id
+from core.crud_helpers import PaginatedResponse
+from core.dependencies import DBSession, SuperAdminSession, Pagination
+from schema.nomenclature.business_domain import BusinessDomainResponse, BusinessDomainCreate, BusinessDomainUpdate
+from service.nomenclature.business_domain import create_new_business_domain, get_all_business_domain, update_business_domain_by_id, delete_business_domain_by_id
 
 router = APIRouter(prefix="/business-domains", tags=["Businesses Domain"])
 

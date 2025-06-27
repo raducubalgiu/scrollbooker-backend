@@ -3,7 +3,7 @@ from sqlalchemy.sql import func
 from geoalchemy2 import Geometry #type: ignore
 from sqlalchemy.orm import relationship
 from .business_services import business_services
-from backend.models import Base
+from models import Base
 
 class Business(Base):
     __tablename__ = "businesses"

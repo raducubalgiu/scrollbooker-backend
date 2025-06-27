@@ -1,18 +1,20 @@
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, and_
 from starlette import status
 from starlette.requests import Request
-from backend.core.dependencies import DBSession
-from backend.models import Post, Like
-from backend.core.logger import logger
+from core.dependencies import DBSession
+from models import Post, Like
+from core.logger import logger
 
 async def like_post_by_id(db: DBSession, post_id: int, request: Request):
     auth_user_id = request.state.user.get("id")
 
     try:
         stmt = select(Like).where(
-            Like.user_id == auth_user_id,
-            Like.post_id == post_id
+            and_(
+                Like.user_id == auth_user_id,
+                Like.post_id == post_id
+            )
         )
 
         existing = await db.execute(stmt)
@@ -48,8 +50,10 @@ async def unlike_post_by_id(db: DBSession, post_id: int, request: Request):
 
     try:
         stmt = select(Like).where(
-            Like.user_id == auth_user_id,
-            Like.post_id == post_id
+            and_(
+                Like.user_id == auth_user_id,
+                Like.post_id == post_id
+            )
         )
 
         result = await db.execute(stmt)

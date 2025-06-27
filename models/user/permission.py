@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, TIMESTAMP, func
 from sqlalchemy.orm import relationship
-from backend.models import Base
-from backend.models.user.role_permissions import role_permissions
+from models import Base
+from models.user.role_permissions import role_permissions
 
 class Permission(Base):
     __tablename__ = "permissions"

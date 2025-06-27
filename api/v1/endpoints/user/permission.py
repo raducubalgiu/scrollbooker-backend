@@ -1,11 +1,11 @@
 from fastapi import APIRouter
 from starlette import status
 
-from backend.core.crud_helpers import PaginatedResponse
-from backend.core.dependencies import DBSession, SuperAdminSession
-from backend.schema.user.permission import PermissionResponse, PermissionCreate, PermissionWithRolesResponse, \
+from core.crud_helpers import PaginatedResponse
+from core.dependencies import DBSession, SuperAdminSession
+from schema.user.permission import PermissionResponse, PermissionCreate, PermissionWithRolesResponse, \
     PermissionUpdate
-from backend.service.user.permission import get_all_permissions, create_new_permission, delete_permission_by_id, \
+from service.user.permission import get_all_permissions, create_new_permission, delete_permission_by_id, \
     attach_role_to_permission, detach_role_from_permission, update_permission_by_id
 
 router = APIRouter(prefix="/permissions", tags=["Permissions"])

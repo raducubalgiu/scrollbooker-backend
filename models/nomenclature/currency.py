@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, TIMESTAMP, func, Index, Boolean
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import relationship
-from backend.core.database import Base
+from core.database import Base
 
 class Currency(Base):
     __tablename__ = "currencies"

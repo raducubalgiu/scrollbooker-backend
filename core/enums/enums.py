@@ -9,7 +9,8 @@ class RoleEnum(str, Enum):
     CLIENT = "client",
     EMPLOYEE = "employee",
     BUSINESS = "business",
-    SUPER_ADMIN = "superadmin"
+    SUPER_ADMIN = "superadmin",
+    MANAGER = "manager"
 
 class AppointmentChannelEnum(str, Enum):
     OWN_CLIENT = "own_client",

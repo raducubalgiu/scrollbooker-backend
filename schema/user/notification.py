@@ -2,7 +2,7 @@ from typing import Optional, Dict, Any, List
 
 from pydantic import BaseModel, Field
 
-from backend.schema.user.user import UserBaseMinimum
+from schema.user.user import UserBaseMinimum
 
 
 class NotificationBase(BaseModel):

@@ -3,15 +3,15 @@ from starlette.requests import Request
 from starlette import status
 from sqlalchemy import select, func, literal, and_, desc
 
-from backend.core.crud_helpers import PaginatedResponse
-from backend.core.dependencies import DBSession, Pagination
-from backend.models import User, Follow, Repost, BookmarkPost
-from backend.schema.social.post import UserPostResponse, PostProduct, PostCounters, \
+from core.crud_helpers import PaginatedResponse
+from core.dependencies import DBSession, Pagination
+from models import User, Follow, Repost, BookmarkPost
+from schema.social.post import UserPostResponse, PostProduct, PostCounters, \
     LastMinute, PostUserActions
-from backend.models.social.post import Post
-from backend.schema.social.repost import RepostCreate
-from backend.schema.user.user import UserBaseMinimum
-from backend.service.social.post_media import get_post_media
+from models.social.post import Post
+from schema.social.repost import RepostCreate
+from schema.user.user import UserBaseMinimum
+from service.social.post_media import get_post_media
 
 async def get_reposts_by_user(db: DBSession, request: Request, pagination: Pagination):
     auth_user_id = request.state.user.get("id")

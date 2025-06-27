@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, TIMESTAMP, ForeignKey, func, String, UniqueConstraint, Index, Boolean, Float, \
     DECIMAL
 from sqlalchemy.orm import relationship
-from backend.models import Base
+from models import Base
 
 class Appointment(Base):
     __tablename__ = "appointments"

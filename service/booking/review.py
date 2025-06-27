@@ -6,11 +6,11 @@ from starlette.requests import Request
 from starlette import status
 from sqlalchemy import select, insert, update, func
 
-from backend.core.crud_helpers import PaginatedResponse
-from backend.core.dependencies import DBSession
-from backend.models import Business, User, Review, UserCounters, ReviewLike, ReviewProductLike, Service, Product
-from backend.schema.booking.review import ReviewCreate, ReviewSummaryResponse, RatingBreakdown, UserReviewResponse
-from backend.core.logger import logger
+from core.crud_helpers import PaginatedResponse
+from core.dependencies import DBSession
+from models import Business, User, Review, UserCounters, ReviewLike, ReviewProductLike, Service, Product
+from schema.booking.review import ReviewCreate, ReviewSummaryResponse, RatingBreakdown, UserReviewResponse
+from core.logger import logger
 
 async def get_reviews_by_user_id(
         db: DBSession,

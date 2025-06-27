@@ -1,10 +1,10 @@
 from fastapi import APIRouter
 from starlette import status
 from starlette.requests import Request
-from backend.core.dependencies import DBSession, BusinessAndEmployeesSession, Pagination
-from backend.schema.booking.appointment import AppointmentResponse, AppointmentBlock, \
+from core.dependencies import DBSession, BusinessAndEmployeesSession, Pagination
+from schema.booking.appointment import AppointmentResponse, AppointmentBlock, \
     AppointmentCancel, AppointmentTimeslotsResponse, AppointmentUnblock, AppointmentCreateOwnClient
-from backend.service.booking.appointment import create_new_appointment_own_client, get_daily_available_slots, \
+from service.booking.appointment import create_new_appointment_own_client, get_daily_available_slots, \
     get_user_calendar_events, create_new_blocked_appointment, get_user_calendar_availability, cancel_user_appointment, \
     unblock_user_appointment, get_appointments_by_user_id
 

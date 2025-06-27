@@ -2,11 +2,11 @@ from fastapi import HTTPException
 from starlette.requests import Request
 from starlette import status
 from sqlalchemy import select, and_
-from backend.core.crud_helpers import db_create
-from backend.core.dependencies import DBSession
-from backend.models import UserCurrency, User
-from backend.schema.user.user_currency import UserCurrencyCreate, UserCurrencyUpdate
-from backend.core.logger import logger
+from core.crud_helpers import db_create
+from core.dependencies import DBSession
+from models import UserCurrency, User
+from schema.user.user_currency import UserCurrencyCreate, UserCurrencyUpdate
+from core.logger import logger
 
 async def create_new_user_currency(db: DBSession, user_currency_create: UserCurrencyCreate, request: Request):
     auth_user_id = request.state.user.get("id")

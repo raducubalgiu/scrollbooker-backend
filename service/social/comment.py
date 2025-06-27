@@ -3,12 +3,12 @@ from sqlalchemy.orm import joinedload
 from starlette.requests import Request
 from starlette import status
 
-from backend.core.crud_helpers import PaginatedResponse
-from backend.core.dependencies import DBSession, Pagination
-from backend.schema.social.comment import CommentCreate, CommentResponse
+from core.crud_helpers import PaginatedResponse
+from core.dependencies import DBSession, Pagination
+from schema.social.comment import CommentCreate, CommentResponse
 from sqlalchemy import select, update, insert, func
-from backend.models import Comment, CommentLike, CommentPostLike, Post, User, Review
-from backend.core.logger import logger
+from models import Comment, CommentLike, CommentPostLike, Post, User, Review
+from core.logger import logger
 
 async def create_new_comment(db: DBSession, post_id: int, comment_data: CommentCreate, request: Request):
     auth_user_id = request.state.user.get("id")

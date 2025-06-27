@@ -2,11 +2,11 @@ from fastapi import APIRouter, Query
 from starlette import status
 from starlette.requests import Request
 from typing import List
-from backend.core.dependencies import DBSession
-from backend.core.dependencies import BusinessSession
-from backend.schema.booking.business import BusinessCreate, BusinessResponse
-from backend.schema.nomenclature.service import ServiceIdsUpdate
-from backend.service.booking.business import attach_service_to_business, get_businesses_by_distance, create_new_business, \
+from core.dependencies import DBSession
+from core.dependencies import BusinessSession
+from schema.booking.business import BusinessCreate, BusinessResponse
+from schema.nomenclature.service import ServiceIdsUpdate
+from service.booking.business import attach_service_to_business, get_businesses_by_distance, create_new_business, \
     delete_business_by_id, detach_service_from_business, get_business_employees_by_id, \
     attach_many_services_to_business, get_business_by_user_id
 

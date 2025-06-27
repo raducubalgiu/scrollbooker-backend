@@ -7,14 +7,14 @@ from zoneinfo import ZoneInfo
 from sqlalchemy.orm import aliased
 from starlette.requests import Request
 from starlette import status
-from backend.core.crud_helpers import db_create, db_get_one
-from backend.core.enums.enums import AppointmentStatusEnum, AppointmentChannelEnum
-from backend.schema.booking.appointment import AppointmentBlock, AppointmentCancel, AppointmentUnblock, \
+from core.crud_helpers import db_create, db_get_one
+from core.enums.enums import AppointmentStatusEnum, AppointmentChannelEnum
+from schema.booking.appointment import AppointmentBlock, AppointmentCancel, AppointmentUnblock, \
     AppointmentCreateOwnClient
-from backend.core.dependencies import DBSession
-from backend.models import Appointment, Schedule, User, Business, Currency, Product
+from core.dependencies import DBSession
+from models import Appointment, Schedule, User, Business, Currency, Product
 from sqlalchemy import select, and_, or_, desc, func
-from backend.core.logger import logger
+from core.logger import logger
 
 async def get_appointments_by_user_id(db: DBSession, page: int, limit: int, as_customer: bool, request: Request):
     # user_id can be the id of the business/customer or the id of the customer

@@ -1,10 +1,10 @@
 from fastapi import HTTPException
 
-from backend.core.crud_helpers import db_get_one, db_create
-from backend.core.dependencies import DBSession
+from core.crud_helpers import db_get_one, db_create
+from core.dependencies import DBSession
 from starlette import status
-from backend.schema.social.hashtag import HashtagCreate
-from backend.models import Hashtag
+from schema.social.hashtag import HashtagCreate
+from models import Hashtag
 
 async def create_new_hashtag(db: DBSession, new_hashtag: HashtagCreate):
     hashtag = await db_get_one(db, model=Hashtag, filters={Hashtag.name: new_hashtag.name}, raise_not_found=False)

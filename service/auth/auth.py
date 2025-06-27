@@ -5,16 +5,16 @@ from starlette import status
 from datetime import timedelta
 from dotenv import load_dotenv
 
-from backend.core.enums.enums import RoleEnum
-from backend.core.logger import logger
-from backend.core.crud_helpers import db_get_one
-from backend.core.security import hash_password, verify_password, create_token, decode_token
-from backend.core.dependencies import DBSession
-from backend.models import User, UserCounters, Role, Business, Permission
-from backend.schema.auth.auth import UserRegister, UserInfoResponse, UserInfoUpdate
+from core.enums.enums import RoleEnum
+from core.logger import logger
+from core.crud_helpers import db_get_one
+from core.security import hash_password, verify_password, create_token, decode_token
+from core.dependencies import DBSession
+from models import User, UserCounters, Role, Business, Permission
+from schema.auth.auth import UserRegister, UserInfoResponse, UserInfoUpdate
 from jose import JWTError
 
-from backend.schema.auth.token import RefreshToken
+from schema.auth.token import RefreshToken
 
 load_dotenv()
 

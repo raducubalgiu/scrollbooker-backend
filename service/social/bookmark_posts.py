@@ -5,13 +5,13 @@ from starlette.requests import Request
 from starlette import status
 from sqlalchemy import select, func, literal, desc, update
 
-from backend.core.crud_helpers import PaginatedResponse
-from backend.core.dependencies import DBSession, Pagination
-from backend.models import BookmarkPost, Post, Follow, User, Repost
-from backend.schema.social.post import UserPostResponse, PostProduct, PostCounters, LastMinute, PostUserActions
-from backend.schema.user.user import UserBaseMinimum
-from backend.service.social.post_media import get_post_media
-from backend.core.logger import logger
+from core.crud_helpers import PaginatedResponse
+from core.dependencies import DBSession, Pagination
+from models import BookmarkPost, Post, Follow, User, Repost
+from schema.social.post import UserPostResponse, PostProduct, PostCounters, LastMinute, PostUserActions
+from schema.user.user import UserBaseMinimum
+from service.social.post_media import get_post_media
+from core.logger import logger
 
 async def get_bookmarked_posts_by_user(db: DBSession, request: Request, pagination: Pagination):
     auth_user_id = request.state.user.get("id")

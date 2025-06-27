@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Request
 from starlette import status
 
-from backend.core.crud_helpers import PaginatedResponse
-from backend.core.dependencies import DBSession, Pagination
-from backend.schema.user.notification import NotificationResponse
-from backend.service.user.notification import delete_notification_by_id, get_notifications_by_user_id
+from core.crud_helpers import PaginatedResponse
+from core.dependencies import DBSession, Pagination
+from schema.user.notification import NotificationResponse
+from service.user.notification import delete_notification_by_id, get_notifications_by_user_id
 
 router = APIRouter(prefix= "/notifications",tags=["Notifications"])
 

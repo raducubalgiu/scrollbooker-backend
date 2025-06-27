@@ -1,8 +1,8 @@
 from sqlalchemy import Column, Integer, String, Boolean, TIMESTAMP, func, Index, ForeignKey
 from sqlalchemy.orm import relationship
 
-from backend.models import Base
-from backend.models.nomenclature.business_type_professions import business_type_professions
+from models import Base
+from models.nomenclature.business_type_professions import business_type_professions
 
 class Profession(Base):
     __tablename__ = "professions"

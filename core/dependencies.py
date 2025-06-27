@@ -4,12 +4,12 @@ from typing import Annotated, List, Type, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from .database import get_db
-from backend.models import Base
+from models import Base
 from starlette import status
-from backend.core.security import decode_token, oauth2_bearer
-from backend.core.enums.enums import RoleEnum
+from core.security import decode_token, oauth2_bearer
+from core.enums.enums import RoleEnum
 from starlette.requests import Request
-from backend.core.logger import logger
+from core.logger import logger
 
 class PaginationParams:
     def __init__(self, page: Optional[int] = Query(None, ge=1), limit: Optional[int] = Query(None, ge=1)):

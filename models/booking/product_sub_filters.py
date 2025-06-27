@@ -1,5 +1,5 @@
 from sqlalchemy import Table, Column, Integer, ForeignKey, UniqueConstraint
-from backend.models import  Base
+from models import  Base
 
 product_sub_filters = Table(
     "product_sub_filters",

@@ -1,10 +1,10 @@
 from fastapi import APIRouter
 from starlette.requests import Request
 from starlette import status
-from backend.core.dependencies import DBSession, BusinessSession, ClientSession, BusinessAndEmployeesSession
-from backend.service.booking.employment_request import send_employment_request, accept_employment_request, \
+from core.dependencies import DBSession, BusinessSession, ClientSession, BusinessAndEmployeesSession
+from service.booking.employment_request import send_employment_request, accept_employment_request, \
     delete_employment_request_by_id, get_employment_requests_by_user_id
-from backend.schema.booking.employment_request import EmploymentRequestCreate, EmploymentRequestUpdate, \
+from schema.booking.employment_request import EmploymentRequestCreate, EmploymentRequestUpdate, \
     EmploymentRequestResponse
 
 router = APIRouter(tags=["Employment Request"])

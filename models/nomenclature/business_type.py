@@ -1,9 +1,9 @@
 from sqlalchemy import Column, Integer, String, Boolean, TIMESTAMP, func, Index, ForeignKey
 from sqlalchemy.orm import relationship
-from backend.models import Base
-from backend.models.nomenclature.business_type_filters import business_type_filters
-from backend.models.nomenclature.business_type_professions import business_type_professions
-from backend.models.nomenclature.service_business_types import service_business_types
+from models import Base
+from models.nomenclature.business_type_filters import business_type_filters
+from models.nomenclature.business_type_professions import business_type_professions
+from models.nomenclature.service_business_types import service_business_types
 
 class BusinessType(Base):
     __tablename__ = "business_types"

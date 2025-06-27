@@ -4,11 +4,11 @@ from fastapi import APIRouter
 from starlette.requests import Request
 from starlette import status
 
-from backend.core.crud_helpers import PaginatedResponse
-from backend.core.dependencies import DBSession, BusinessAndEmployeesSession, Pagination
-from backend.service.booking.product import create_new_product, delete_by_id, update_by_id, get_products_by_user_id, \
+from core.crud_helpers import PaginatedResponse
+from core.dependencies import DBSession, BusinessAndEmployeesSession, Pagination
+from service.booking.product import create_new_product, delete_by_id, update_by_id, get_products_by_user_id, \
     get_products_by_user_id_and_service_id, get_product_by_id
-from backend.schema.booking.product import ProductResponse, ProductCreateWithSubFilters, ProductUpdate
+from schema.booking.product import ProductResponse, ProductCreateWithSubFilters, ProductUpdate
 
 router = APIRouter(tags=["Products"])
 

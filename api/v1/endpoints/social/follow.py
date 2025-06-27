@@ -2,9 +2,9 @@ from typing import Optional
 from fastapi import APIRouter
 from starlette import status
 from starlette.requests import Request
-from backend.core.dependencies import DBSession
-from backend.schema.social.follow import FollowResponse
-from backend.service.social.follow import follow_user, is_user_follow, unfollow_user
+from core.dependencies import DBSession
+from schema.social.follow import FollowResponse
+from service.social.follow import follow_user, is_user_follow, unfollow_user
 
 router = APIRouter(prefix="/follows/{followee_id}", tags=["Follows"])
 

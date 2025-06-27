@@ -1,5 +1,5 @@
 from sqlalchemy import Table, Column, Integer, ForeignKey, Index, TIMESTAMP, func
-from backend.models import Base
+from models import Base
 
 post_shares = Table(
     "post_shares",

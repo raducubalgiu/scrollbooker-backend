@@ -1,8 +1,8 @@
 from fastapi import APIRouter
 
-from backend.core.dependencies import SuperAdminSession, DBSession
-from backend.schema.nomenclature.consent import ConsentResponse, ConsentCreate
-from backend.service.nomenclature.consent import get_consent_by_name, create_new_consent
+from core.dependencies import SuperAdminSession, DBSession
+from schema.nomenclature.consent import ConsentResponse, ConsentCreate
+from service.nomenclature.consent import get_consent_by_name, create_new_consent
 
 router = APIRouter(prefix="/consents", tags=["Consents"])
 

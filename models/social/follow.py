@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, ForeignKey, TIMESTAMP, func, Index, UniqueConstraint
 from sqlalchemy.orm import relationship
 
-from backend.models import Base
+from models import Base
 
 class Follow(Base):
     __tablename__ = "follows"

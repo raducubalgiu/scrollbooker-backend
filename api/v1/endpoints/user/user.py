@@ -2,10 +2,10 @@ from fastapi import APIRouter, Query
 from starlette import status
 from starlette.requests import Request
 
-from backend.core.crud_helpers import PaginatedResponse
-from backend.core.dependencies import DBSession
-from backend.schema.user.user import UserBaseMinimum, UsernameUpdate, FullNameUpdate, BioUpdate, GenderUpdate
-from backend.service.user.user import get_user_followers_by_user_id, \
+from core.crud_helpers import PaginatedResponse
+from core.dependencies import DBSession
+from schema.user.user import UserBaseMinimum, UsernameUpdate, FullNameUpdate, BioUpdate, GenderUpdate
+from service.user.user import get_user_followers_by_user_id, \
     get_user_followings_by_user_id, get_user_dashboard_summary_by_id, \
     get_available_professions_by_user_id, search_users_clients, get_product_durations_by_user_id, update_user_fullname, \
     update_user_username, update_user_bio, get_user_profile_by_id, update_user_gender

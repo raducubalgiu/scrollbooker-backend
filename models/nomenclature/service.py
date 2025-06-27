@@ -1,9 +1,9 @@
 from sqlalchemy import Column, Integer, Boolean, String, TIMESTAMP, func, ForeignKey, Index
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
-from backend.models import Base
-from backend.models.booking.business_services import business_services
-from backend.models.nomenclature.service_business_types import service_business_types
+from models import Base
+from models.booking.business_services import business_services
+from models.nomenclature.service_business_types import service_business_types
 
 class Service(Base):
     __tablename__ = "services"

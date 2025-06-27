@@ -1,11 +1,11 @@
 from typing import List, Dict, Any
 from sqlalchemy import select,desc
 
-from backend.core.crud_helpers import db_create, db_delete, db_insert_many_to_many, db_remove_many_to_many, db_update
-from backend.core.dependencies import DBSession
-from backend.models import Permission, Role
-from backend.models.user.role_permissions import role_permissions
-from backend.schema.user.permission import PermissionCreate, PermissionWithRolesResponse, RoleAssignment, PermissionUpdate
+from core.crud_helpers import db_create, db_delete, db_insert_many_to_many, db_remove_many_to_many, db_update
+from core.dependencies import DBSession
+from models import Permission, Role
+from models.user.role_permissions import role_permissions
+from schema.user.permission import PermissionCreate, PermissionWithRolesResponse, RoleAssignment, PermissionUpdate
 
 async def get_all_permissions(db: DBSession, page: int, limit: int):
     roles_result = await db.scalars(select(Role))

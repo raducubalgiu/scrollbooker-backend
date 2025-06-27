@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 
-from backend.schema.user.user import UserBaseMinimum
+from schema.user.user import UserBaseMinimum
 
 
 class CommentBase(BaseModel):

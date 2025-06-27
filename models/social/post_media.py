@@ -1,7 +1,7 @@
 from sqlalchemy.orm import relationship
 
-from backend.core.enums.media_type_enum import MediaTypeEnum
-from backend.models import Base
+from core.enums.media_type_enum import MediaTypeEnum
+from models import Base
 from sqlalchemy import Column, Integer, String, TIMESTAMP, func, ForeignKey, Float, Index
 from sqlalchemy import Enum
 

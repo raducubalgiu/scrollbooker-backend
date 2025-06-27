@@ -1,8 +1,8 @@
-from backend.core.crud_helpers import db_create, db_update, db_delete, db_get_all
-from backend.core.dependencies import DBSession, Pagination
-from backend.schema.nomenclature.service_domain import ServiceDomainCreate, ServiceDomainUpdate, \
+from core.crud_helpers import db_create, db_update, db_delete, db_get_all
+from core.dependencies import DBSession, Pagination
+from schema.nomenclature.service_domain import ServiceDomainCreate, ServiceDomainUpdate, \
     ServiceDomainResponse
-from backend.models import ServiceDomain
+from models import ServiceDomain
 
 async def get_all_service_domains(db: DBSession, pagination: Pagination):
     return await db_get_all(db,

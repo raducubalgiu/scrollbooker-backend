@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, ForeignKey, Float
 from sqlalchemy.orm import relationship
 
-from backend.models import Base
+from models import Base
 
 class UserCounters(Base):
     __tablename__ = "user_counters"

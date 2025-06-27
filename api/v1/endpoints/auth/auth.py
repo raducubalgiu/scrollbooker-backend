@@ -2,13 +2,13 @@ from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from starlette import status
 from dotenv import load_dotenv
-from backend.core.security import oauth2_bearer
-from backend.schema.auth.auth import UserRegister, UserRegisterResponse, UserInfoResponse, UserInfoUpdate
-from backend.schema.auth.token import Token, RefreshToken
-from backend.service.auth.auth import login_user, register_user, get_refresh_token, get_user_info, update_user_info, \
+from core.security import oauth2_bearer
+from schema.auth.auth import UserRegister, UserRegisterResponse, UserInfoResponse, UserInfoUpdate
+from schema.auth.token import Token, RefreshToken
+from service.auth.auth import login_user, register_user, get_refresh_token, get_user_info, update_user_info, \
     get_user_permissions
-from backend.core.dependencies import DBSession
-from backend.models import User
+from core.dependencies import DBSession
+from models import User
 from sqlalchemy import select
 
 router = APIRouter(prefix="/auth", tags=["Auth"])

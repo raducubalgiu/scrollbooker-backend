@@ -3,11 +3,11 @@ from typing import Union
 from fastapi import APIRouter
 from starlette import status
 
-from backend.core.crud_helpers import PaginatedResponse
-from backend.core.dependencies import DBSession, SuperAdminSession, Pagination
-from backend.schema.nomenclature.service_domain import ServiceDomainCreate, \
+from core.crud_helpers import PaginatedResponse
+from core.dependencies import DBSession, SuperAdminSession, Pagination
+from schema.nomenclature.service_domain import ServiceDomainCreate, \
     ServiceDomainUpdate, ServiceDomainResponse
-from backend.service.nomenclature.service_domain import get_all_service_domains, create_new_service_domain, \
+from service.nomenclature.service_domain import get_all_service_domains, create_new_service_domain, \
     update_service_domain_by_id, delete_service_domain_by_id
 
 router = APIRouter(prefix="/service-domains", tags=["Service Domains"])

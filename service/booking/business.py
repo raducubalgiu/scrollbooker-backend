@@ -2,23 +2,23 @@ from typing import List
 from sqlalchemy.orm import joinedload
 from starlette.requests import Request
 from fastapi import HTTPException, Query
-from backend.core.logger import logger
-from backend.core.data_utils import local_to_utc_fulldate
-from backend.core.dependencies import DBSession
+from core.logger import logger
+from core.data_utils import local_to_utc_fulldate
+from core.dependencies import DBSession
 from starlette import status
-from backend.models import Business, Service, business_services, Product, Appointment, User, UserCounters, Schedule, Follow, \
+from models import Business, Service, business_services, Product, Appointment, User, UserCounters, Schedule, Follow, \
     SubFilter, EmploymentRequest
 from sqlalchemy import select, delete, and_, or_, func, not_, exists, text, insert
-from pytz import timezone, utc #type: ignore
-from geoalchemy2.shape import to_shape # type: ignore
-from geoalchemy2 import Geography # type: ignore
-from geoalchemy2.functions import ST_DistanceSphere # type: ignore
-from timezonefinder import TimezoneFinder # type: ignore
+from pytz import timezone, utc
+from geoalchemy2.shape import to_shape
+from geoalchemy2 import Geography
+from geoalchemy2.functions import ST_DistanceSphere
+from timezonefinder import TimezoneFinder
 
-from backend.models.booking.product_sub_filters import product_sub_filters
-from backend.schema.booking.business import BusinessCreate, BusinessResponse
+from models.booking.product_sub_filters import product_sub_filters
+from schema.booking.business import BusinessCreate, BusinessResponse
 from datetime import timedelta,datetime
-from backend.schema.nomenclature.service import ServiceIdsUpdate
+from schema.nomenclature.service import ServiceIdsUpdate
 
 async def get_business_by_user_id(db: DBSession, user_id: int):
     business_query = await db.execute(select(Business, User.id).where(

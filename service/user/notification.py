@@ -2,10 +2,10 @@ from fastapi import Request, HTTPException
 from sqlalchemy.orm import joinedload
 from starlette import status
 
-from backend.core.crud_helpers import db_get_all
-from backend.core.dependencies import DBSession, Pagination
-from backend.models import Notification
-from backend.schema.user.notification import NotificationResponse
+from core.crud_helpers import db_get_all
+from core.dependencies import DBSession, Pagination
+from models import Notification
+from schema.user.notification import NotificationResponse
 
 async def get_notifications_by_user_id(db: DBSession, pagination: Pagination, request: Request):
     auth_user_id = request.state.user.get("id")

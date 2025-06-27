@@ -2,12 +2,12 @@ from fastapi import APIRouter
 from starlette import status
 from starlette.requests import Request
 
-from backend.core.crud_helpers import PaginatedResponse
-from backend.core.dependencies import DBSession, Pagination
-from backend.schema.social.post import PostCreate, UserPostResponse
-from backend.schema.social.comment import CommentCreate, CommentBase
-from backend.service.social.post import create_new_post, get_posts_by_user_id, get_book_now_posts, get_following_posts
-from backend.service.social.comment import create_new_comment, like_post_comment, unlike_post_comment, get_comments_by_post_id
+from core.crud_helpers import PaginatedResponse
+from core.dependencies import DBSession, Pagination
+from schema.social.post import PostCreate, UserPostResponse
+from schema.social.comment import CommentCreate, CommentBase
+from service.social.post import create_new_post, get_posts_by_user_id, get_book_now_posts, get_following_posts
+from service.social.comment import create_new_comment, like_post_comment, unlike_post_comment, get_comments_by_post_id
 
 router = APIRouter(tags=["Posts"])
 

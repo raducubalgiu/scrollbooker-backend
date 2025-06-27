@@ -3,9 +3,9 @@ from sqlalchemy import select, insert, delete
 from sqlalchemy.orm import joinedload
 from starlette.requests import Request
 from starlette import status
-from backend.core.dependencies import DBSession
-from backend.models import Follow, User, UserCounters, Notification
-from backend.core.logger import logger
+from core.dependencies import DBSession
+from models import Follow, User, UserCounters, Notification
+from core.logger import logger
 
 async def is_user_follow(db: DBSession, followee_id: int, request: Request):
     follower_id = request.state.user.get("id")

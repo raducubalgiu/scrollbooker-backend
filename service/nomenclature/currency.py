@@ -3,10 +3,10 @@ from starlette import status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from backend.core.crud_helpers import db_create, db_get_all, db_update
-from backend.core.dependencies import DBSession, Pagination
-from backend.models import Currency, User, UserCurrency
-from backend.schema.nomenclature.currency import CurrencyCreate, CurrencyResponse, CurrencyUpdate
+from core.crud_helpers import db_create, db_get_all, db_update
+from core.dependencies import DBSession, Pagination
+from models import Currency, User, UserCurrency
+from schema.nomenclature.currency import CurrencyCreate, CurrencyResponse, CurrencyUpdate
 
 
 async def get_all_currencies(db: DBSession, pagination: Pagination):

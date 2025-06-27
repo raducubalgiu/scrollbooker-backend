@@ -1,7 +1,7 @@
-from backend.core.crud_helpers import db_create, db_get_one
-from backend.core.dependencies import DBSession
-from backend.schema.nomenclature.consent import ConsentCreate
-from backend.models import Consent
+from core.crud_helpers import db_create, db_get_one
+from core.dependencies import DBSession
+from schema.nomenclature.consent import ConsentCreate
+from models import Consent
 
 async def get_consent_by_name(db: DBSession, consent_name: str):
     return await db_get_one(db, model=Consent, filters={Consent.name: consent_name})

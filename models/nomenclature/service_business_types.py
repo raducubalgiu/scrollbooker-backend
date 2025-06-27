@@ -1,5 +1,5 @@
 from sqlalchemy import Table, Column, Integer, ForeignKey, UniqueConstraint
-from backend.models import  Base
+from models import  Base
 
 service_business_types = Table(
     "service_business_types",

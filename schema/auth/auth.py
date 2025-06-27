@@ -1,7 +1,7 @@
 from typing import Optional
 
 from pydantic import BaseModel, Field, EmailStr
-from backend.schema.user.user import UserBase
+from schema.user.user import UserBase
 
 class UserRegister(BaseModel):
     email: EmailStr

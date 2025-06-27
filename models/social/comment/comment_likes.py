@@ -1,4 +1,4 @@
-from backend.models import Base
+from models import Base
 from sqlalchemy import Column, ForeignKey, Integer, TIMESTAMP, func, UniqueConstraint, Index
 
 class CommentLike(Base):

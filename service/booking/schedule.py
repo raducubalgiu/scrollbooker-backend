@@ -4,13 +4,13 @@ from fastapi import HTTPException
 from starlette.requests import Request
 from starlette import status
 from sqlalchemy import select, or_
-from backend.core.crud_helpers import db_get_one, db_get_all
-from backend.core.dependencies import DBSession, check_resource_ownership
-from backend.schema.booking.schedule import ScheduleCreate, ScheduleUpdate
-from backend.models import Schedule, Business, User
+from core.crud_helpers import db_get_one, db_get_all
+from core.dependencies import DBSession, check_resource_ownership
+from schema.booking.schedule import ScheduleCreate, ScheduleUpdate
+from models import Schedule, Business, User
 import calendar
 
-from backend.service.booking.business import get_business_by_user_id
+from service.booking.business import get_business_by_user_id
 
 async def get_business(db: DBSession, auth_user_id: int):
     business_stmt = await db.execute(

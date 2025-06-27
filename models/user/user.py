@@ -2,8 +2,8 @@ from sqlalchemy import Column, Integer, String, Boolean, Date, ForeignKey, Float
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import relationship
 
-from backend.core.enums.enums import GenderType
-from backend.models import Base, Business, EmploymentRequest
+from core.enums.enums import GenderType
+from models import Base, Business, EmploymentRequest
 
 class User(Base):
     __tablename__ = "users"
@@ -18,7 +18,7 @@ class User(Base):
     profession = Column(String(100), nullable=False, default='Creator')
     bio = Column(String(100), nullable=True)
 
-    gender = Column(String(String(10)), default=GenderType.OTHER)
+    gender = Column(String(10), default=GenderType.OTHER)
 
     date_of_birth = Column(Date, nullable=True)
     last_known_lat = Column(Float, nullable=True)

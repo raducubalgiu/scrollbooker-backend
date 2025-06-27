@@ -3,10 +3,10 @@ from typing import Union
 from fastapi import APIRouter
 from starlette import status
 
-from backend.core.crud_helpers import PaginatedResponse
-from backend.core.dependencies import DBSession, SuperAdminSession, Pagination
-from backend.schema.nomenclature.sub_filter import SubFilterCreate, SubFilterResponse, SubFilterUpdate
-from backend.service.nomenclature.sub_filter import create_new_sub_filter, update_sub_filter_by_id, \
+from core.crud_helpers import PaginatedResponse
+from core.dependencies import DBSession, SuperAdminSession, Pagination
+from schema.nomenclature.sub_filter import SubFilterCreate, SubFilterResponse, SubFilterUpdate
+from service.nomenclature.sub_filter import create_new_sub_filter, update_sub_filter_by_id, \
     delete_sub_filters_by_id, get_sub_filters_by_filter_id
 
 router = APIRouter(tags=["SubFilters"])

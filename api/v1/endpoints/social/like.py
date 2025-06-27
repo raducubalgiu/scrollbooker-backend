@@ -2,8 +2,8 @@ from fastapi import APIRouter
 from starlette import status
 from starlette.requests import Request
 
-from backend.core.dependencies import DBSession
-from backend.service.social.like import like_post_by_id, unlike_post_by_id
+from core.dependencies import DBSession
+from service.social.like import like_post_by_id, unlike_post_by_id
 
 router = APIRouter(tags=["Likes"])
 

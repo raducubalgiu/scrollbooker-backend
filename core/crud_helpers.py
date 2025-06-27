@@ -3,10 +3,10 @@ from fastapi import HTTPException, Query
 from pydantic import BaseModel
 from starlette import status
 from sqlalchemy import select, Table, insert, delete, asc, desc, func
-from backend.core.dependencies import DBSession
-from backend.models import Base
+from core.dependencies import DBSession
+from models import Base
 from typing import List, Any, Type
-from backend.core.logger import logger
+from core.logger import logger
 
 ModelType = TypeVar("ModelType", bound=Base)
 SchemaIn = TypeVar("SchemaIn", bound=BaseModel)

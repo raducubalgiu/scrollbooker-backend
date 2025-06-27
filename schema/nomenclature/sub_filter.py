@@ -2,7 +2,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 from datetime import datetime
 
-from backend.schema.nomenclature.filter import FilterResponse
+from schema.nomenclature.filter import FilterResponse
 
 class SubFilterBase(BaseModel):
     name: str = Field(min_length=3, max_length=50)

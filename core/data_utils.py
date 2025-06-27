@@ -1,7 +1,7 @@
 from datetime import datetime, date, time
 from typing import Optional
-import pytz  # type: ignore
-from backend.core.logger import logger
+import pytz
+from core.logger import logger
 
 async def local_to_utc_fulldate(timezone: str, local_date: str, local_time: str):
     try:

@@ -1,7 +1,7 @@
 from sqlalchemy import Integer, Column, ForeignKey, func, TIMESTAMP, UniqueConstraint, Index
 from sqlalchemy.orm import relationship
 
-from backend.core.database import Base
+from core.database import Base
 
 class Like(Base):
     __tablename__ = "likes"

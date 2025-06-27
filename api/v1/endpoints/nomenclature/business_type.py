@@ -1,10 +1,10 @@
 from typing import Union
 from fastapi import APIRouter
 from starlette import status
-from backend.core.crud_helpers import PaginatedResponse
-from backend.core.dependencies import DBSession, SuperAdminSession, Pagination
-from backend.schema.nomenclature.business_type import BusinessTypeResponse, BusinessTypeCreate, BusinessTypeUpdate
-from backend.service.nomenclature.business_type import create_new_business_type, \
+from core.crud_helpers import PaginatedResponse
+from core.dependencies import DBSession, SuperAdminSession, Pagination
+from schema.nomenclature.business_type import BusinessTypeResponse, BusinessTypeCreate, BusinessTypeUpdate
+from service.nomenclature.business_type import create_new_business_type, \
     delete_business_type_by_id, update_business_type_by_id, get_business_types_by_business_domain_id, \
     get_business_types_by_service_id, get_all_business_types, get_business_types_by_profession_id, get_business_types_by_filter_id
 

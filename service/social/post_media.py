@@ -1,11 +1,11 @@
 from collections import defaultdict
 from typing import List, Dict
 
-from backend.core.dependencies import DBSession
-from backend.models import PostMedia
+from core.dependencies import DBSession
+from models import PostMedia
 from sqlalchemy import select
 
-from backend.schema.social.post_media import PostMediaResponse
+from schema.social.post_media import PostMediaResponse
 
 async def get_post_media(
         db: DBSession, post_ids: List[int]

@@ -2,12 +2,12 @@ from fastapi import HTTPException
 from sqlalchemy.orm import joinedload
 from starlette.requests import Request
 from starlette import status
-from backend.core.crud_helpers import db_delete, db_get_all, db_update, db_get_one
-from backend.core.dependencies import DBSession, check_resource_ownership, Pagination
-from backend.models import Product, Schedule, product_sub_filters, business_services, SubFilter
-from backend.schema.booking.product import ProductCreateWithSubFilters, ProductUpdate, ProductCreate, \
+from core.crud_helpers import db_delete, db_get_all, db_update, db_get_one
+from core.dependencies import DBSession, check_resource_ownership, Pagination
+from models import Product, Schedule, product_sub_filters, business_services, SubFilter
+from schema.booking.product import ProductCreateWithSubFilters, ProductUpdate, ProductCreate, \
     ProductWithSubFiltersResponse, ProductResponse
-from backend.core.logger import logger
+from core.logger import logger
 from sqlalchemy import insert,select
 
 async def get_products_by_user_id(db: DBSession, user_id: int, pagination: Pagination):

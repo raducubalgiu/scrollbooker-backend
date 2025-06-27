@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, TEXT, TIMESTAMP, func, Index
-from backend.models import Base
+from models import Base
 
 class Consent(Base):
     __tablename__ = "consents"

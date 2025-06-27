@@ -1,11 +1,11 @@
 from sqlalchemy.orm import joinedload
 
-from backend.core.crud_helpers import db_create, db_update, db_get_all_paginate, db_delete, db_get_one, \
+from core.crud_helpers import db_create, db_update, db_get_all_paginate, db_delete, db_get_one, \
     db_insert_many_to_many, db_remove_many_to_many, db_get_all
-from backend.core.dependencies import DBSession
-from backend.models.nomenclature.business_type_filters import business_type_filters
-from backend.schema.nomenclature.filter import FilterCreate, FilterUpdate, FilterWithSubFiltersResponse
-from backend.models import Filter, BusinessType
+from core.dependencies import DBSession
+from models.nomenclature.business_type_filters import business_type_filters
+from schema.nomenclature.filter import FilterCreate, FilterUpdate, FilterWithSubFiltersResponse
+from models import Filter, BusinessType
 
 async def get_all_filters(db: DBSession, page: int, limit: int):
     return await db_get_all(db,

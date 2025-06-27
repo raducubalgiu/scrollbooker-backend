@@ -1,7 +1,7 @@
-from backend.core.crud_helpers import db_create, db_update, db_delete, db_get_all
-from backend.core.dependencies import DBSession, Pagination
-from backend.schema.nomenclature.sub_filter import SubFilterCreate, SubFilterUpdate, SubFilterResponse
-from backend.models import SubFilter
+from core.crud_helpers import db_create, db_update, db_delete, db_get_all
+from core.dependencies import DBSession, Pagination
+from schema.nomenclature.sub_filter import SubFilterCreate, SubFilterUpdate, SubFilterResponse
+from models import SubFilter
 
 async def get_sub_filters_by_filter_id(db: DBSession, filter_id: int, pagination: Pagination):
     return await db_get_all(db,

@@ -4,11 +4,11 @@ from fastapi import APIRouter, Query
 from starlette.requests import Request
 from fastapi import status
 
-from backend.core.crud_helpers import PaginatedResponse
-from backend.core.dependencies import DBSession
-from backend.schema.booking.review import ReviewResponse, ReviewCreate, ReviewSummaryResponse, \
+from core.crud_helpers import PaginatedResponse
+from core.dependencies import DBSession
+from schema.booking.review import ReviewResponse, ReviewCreate, ReviewSummaryResponse, \
     UserReviewResponse
-from backend.service.booking.review import create_new_review, like_review_by_id, unlike_review_by_id, \
+from service.booking.review import create_new_review, like_review_by_id, unlike_review_by_id, \
     get_reviews_by_user_id, get_reviews_summary_by_user_id
 
 router = APIRouter(tags=["Reviews"])
