@@ -1,5 +1,5 @@
 from core.database import async_session_factory
-from core.enums.enums import AppointmentStatusEnum
+from core.enums.appointment_status_enum import AppointmentStatusEnum
 from core.logger import logger
 from sqlalchemy import select, and_
 from datetime import datetime, timezone

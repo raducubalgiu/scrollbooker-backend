@@ -5,7 +5,7 @@ from starlette import status
 from datetime import timedelta
 from dotenv import load_dotenv
 
-from core.enums.enums import RoleEnum
+from core.enums.role_enum import RoleEnum
 from core.logger import logger
 from core.crud_helpers import db_get_one
 from core.security import hash_password, verify_password, create_token, decode_token

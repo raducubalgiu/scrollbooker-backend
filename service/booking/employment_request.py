@@ -3,9 +3,9 @@ from sqlalchemy.orm import joinedload
 from starlette.requests import Request
 from sqlalchemy import select, or_
 from starlette import status
-from core.enums.enums import RoleEnum
 from core.crud_helpers import db_create, db_get_one, db_delete, db_get_all
 from core.dependencies import DBSession
+from core.enums.role_enum import RoleEnum
 from models import EmploymentRequest, Business, User, Role, Notification, Profession, Schedule
 from schema.booking.employment_request import EmploymentRequestCreate, EmploymentRequestUpdate
 from core.logger import logger

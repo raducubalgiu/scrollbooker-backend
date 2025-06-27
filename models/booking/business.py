@@ -1,6 +1,6 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Boolean
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Boolean, Index
 from sqlalchemy.sql import func
-from geoalchemy2 import Geometry #type: ignore
+from geoalchemy2 import Geometry
 from sqlalchemy.orm import relationship
 from .business_services import business_services
 from models import Base
@@ -9,7 +9,7 @@ class Business(Base):
     __tablename__ = "businesses"
 
     id = Column(Integer, primary_key=True)
-    coordinates = Column(Geometry("POINT", srid=4326), nullable=False, unique=True) # SRID 4326 (GPS coordinates)
+    coordinates = Column(Geometry("POINT", srid=4326), nullable=False, unique=True)
     timezone = Column(String, nullable=False)
     address = Column(String, nullable=False)
     description = Column(String, nullable=True)
@@ -29,3 +29,10 @@ class Business(Base):
     products = relationship("Product", back_populates="business", cascade="all, delete-orphan")
     appointments = relationship("Appointment", back_populates="business")
     employment_requests = relationship("EmploymentRequest", back_populates="business")
+
+    __table_args__ = (
+        Index("idx_business_coordinates", "coordinates", postgresql_using="gist"),
+        Index("idx_business_timezone", "timezone"),
+        Index("idx_business_owner", "owner_id"),
+        Index("idx_business_type_id", "business_type_id")
+    )

@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Integer, ForeignKey, String, UniqueConstraint, Index, TIMESTAMP, func
+from sqlalchemy import Column, Integer, ForeignKey, String, UniqueConstraint, Index, TIMESTAMP, func, Enum
 from sqlalchemy.orm import relationship
 
+from core.enums.employment_requests_status_enum import EmploymentRequestsStatusEnum
 from models import Base
 
 class EmploymentRequest(Base):
@@ -17,7 +18,11 @@ class EmploymentRequest(Base):
 
     start_date = Column(TIMESTAMP(timezone=True), nullable=True)
     end_date = Column(TIMESTAMP(timezone=True), nullable=True)
-    status = Column(String, nullable=False, default='pending')
+    status = Column(
+        Enum(EmploymentRequestsStatusEnum),
+        nullable=False,
+        default=EmploymentRequestsStatusEnum.PENDING
+    )
 
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 

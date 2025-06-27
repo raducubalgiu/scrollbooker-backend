@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, ForeignKey, TIMESTAMP, func, Boolean
+from sqlalchemy import Column, Integer, ForeignKey, TIMESTAMP, func, Boolean, Index
 from sqlalchemy.orm import relationship
 
 from core.database import Base
@@ -16,3 +16,7 @@ class UserCurrency(Base):
 
     user = relationship("User", back_populates="currencies_assoc")
     currency = relationship("Currency", back_populates="users_assoc")
+
+    __table_args__ = (
+        Index("idx_currencies_user_id", "user_id"),
+    )

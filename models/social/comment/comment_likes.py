@@ -12,7 +12,7 @@ class CommentLike(Base):
 
     __table_args__ = (
         UniqueConstraint("comment_id", "user_id", name="uq_comment_like"),
-        Index("idx_commentlike_comment", "comment_id"),
-        Index("idx_commentlike_user", "user_id"),
-        Index("idx_commentlike_user_comment", "user_id", "comment_id")
+        Index("idx_comment_like_comment", "comment_id"),
+        Index("idx_comment_like_user", "user_id"),
+        Index("idx_comment_like_user_comment", "user_id", "comment_id")
     )

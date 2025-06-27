@@ -7,9 +7,10 @@ from .database import get_db
 from models import Base
 from starlette import status
 from core.security import decode_token, oauth2_bearer
-from core.enums.enums import RoleEnum
 from starlette.requests import Request
 from core.logger import logger
+from .enums.role_enum import RoleEnum
+
 
 class PaginationParams:
     def __init__(self, page: Optional[int] = Query(None, ge=1), limit: Optional[int] = Query(None, ge=1)):

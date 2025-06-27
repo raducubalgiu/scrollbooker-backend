@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, ForeignKey, Float
+from sqlalchemy import Column, Integer, ForeignKey, Float, Index
 from sqlalchemy.orm import relationship
 
 from models import Base
@@ -16,3 +16,7 @@ class UserCounters(Base):
 
     # Relationship with user - ONE TO ONE
     user = relationship("User", back_populates="counters", uselist=False)
+
+    __table_args__ = (
+        Index("idx_counters_user_id", "user_id"),
+    )

@@ -1,6 +1,9 @@
-from sqlalchemy import Column, Integer, TIMESTAMP, ForeignKey, func, String, UniqueConstraint, Index, Boolean, Float, \
+from sqlalchemy import Column, Integer, TIMESTAMP, ForeignKey, func, String, Enum, Index, Boolean, Float, \
     DECIMAL
 from sqlalchemy.orm import relationship
+
+from core.enums.appointment_channel_enum import AppointmentChannelEnum
+from core.enums.appointment_status_enum import AppointmentStatusEnum
 from models import Base
 
 class Appointment(Base):
@@ -27,8 +30,8 @@ class Appointment(Base):
     exchange_rate = Column(DECIMAL, nullable=False, default=1)
     message = Column(String(50), nullable=True)
 
-    status = Column(String, default='in_progress', nullable=False, index=True)  # finished - in_progress
-    channel = Column(String, default='scroll_booker', nullable=False, index=True)  # scroll_booker - own_client
+    status = Column(Enum(AppointmentStatusEnum), default=AppointmentStatusEnum.IN_PROGRESS, nullable=False, index=True)  # finished - in_progress
+    channel = Column(Enum(AppointmentChannelEnum), default=AppointmentChannelEnum.SCROLL_BOOKER, nullable=False, index=True)  # scroll_booker - own_client
     instant_booking = Column(Boolean, nullable=False, default=True)
     is_blocked = Column(Boolean, nullable=False, default=False)
 

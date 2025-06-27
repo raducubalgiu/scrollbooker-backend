@@ -1,8 +1,9 @@
-from sqlalchemy import Column, Integer, String, Boolean, Date, ForeignKey, Float, TIMESTAMP, func
+from sqlalchemy import Column, Integer, String, Boolean, Date, ForeignKey, Float, TIMESTAMP, func, Enum, Index
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import relationship
 
-from core.enums.enums import GenderType
+from core.enums.gender_type_enum import GenderTypeEnum
+from core.enums.registration_step_enum import RegistrationStepEnum
 from models import Base, Business, EmploymentRequest
 
 class User(Base):
@@ -18,7 +19,7 @@ class User(Base):
     profession = Column(String(100), nullable=False, default='Creator')
     bio = Column(String(100), nullable=True)
 
-    gender = Column(String(10), default=GenderType.OTHER)
+    gender = Column(Enum(GenderTypeEnum), default=GenderTypeEnum.OTHER)
 
     date_of_birth = Column(Date, nullable=True)
     last_known_lat = Column(Float, nullable=True)
@@ -27,8 +28,11 @@ class User(Base):
 
     instant_booking = Column(Boolean, nullable=False, default=False)
     active = Column(Boolean, nullable=False, default=True)
-    registration_step = Column(String(100), nullable=True)
+
+    email_verified = Column(Boolean, nullable=False, default=False)
+    registration_step = Column(Enum(RegistrationStepEnum), nullable=True)
     is_validated = Column(Boolean, nullable=False, default=True)
+
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
@@ -114,4 +118,15 @@ class User(Base):
         "EmploymentRequest",
         back_populates="employer",
         foreign_keys=[EmploymentRequest.employer_id],
+    )
+
+    __table_args__ = (
+        Index("idx_user_username", "username"),
+        Index("idx_user_fullname", "fullname"),
+        Index("idx_user_avatar", "avatar"),
+        Index("idx_user_profession", "profession"),
+        Index("idx_user_active", "active"),
+        Index("idx_user_validated", "is_validated"),
+        Index("idx_user_role", "role_id"),
+        Index("idx_user_username_fullname_profession_avatar", "username", "fullname", "profession", "avatar"),
     )

@@ -1,7 +1,7 @@
 from sqlalchemy.orm import relationship, backref
 
 from models import Base
-from sqlalchemy import Column, Integer, ForeignKey, String, TIMESTAMP, func
+from sqlalchemy import Column, Integer, ForeignKey, String, TIMESTAMP, func, Index
 
 class Review(Base):
     __tablename__ = "reviews"
@@ -28,3 +28,12 @@ class Review(Base):
     service = relationship("Service", back_populates="reviews")
     product = relationship("Product", back_populates="reviews")
     replies = relationship("Review", backref=backref("parent", remote_side=[id]))
+
+    __table_args__ = (
+        Index("idx_user_id", "user_id"),
+        Index("idx_user_rating", "user_id", "rating"),
+
+        Index("idx_service_id", "service_id"),
+        Index("idx_product_id", "product_id"),
+        Index("idx_customer_id", "customer_id"),
+    )

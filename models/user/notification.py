@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, ForeignKey, Boolean, TIMESTAMP, func
+from sqlalchemy import Column, String, Integer, ForeignKey, Boolean, TIMESTAMP, func, Index
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
@@ -22,3 +22,11 @@ class Notification(Base):
 
     sender = relationship("User", foreign_keys=[sender_id])
     receiver = relationship("User", foreign_keys=[receiver_id])
+
+    __table_args__ = (
+        Index("idx_notifications_sender", "sender_id"),
+        Index("idx_notifications_receiver", "receiver_id"),
+        Index("idx_deleted", "is_deleted"),
+        Index("idx_created_at", "created_at"),
+        Index("idx_receiver_created_at_deleted", "receiver_id", "created_at", "is_deleted"),
+    )

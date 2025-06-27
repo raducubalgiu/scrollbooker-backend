@@ -1,12 +1,14 @@
-from sqlalchemy import Column, Integer, String, Time, ForeignKey, UniqueConstraint, Index, Interval
+from sqlalchemy import Column, Integer, String, Time, ForeignKey, UniqueConstraint, Index, Enum
 from sqlalchemy.orm import relationship
+
+from core.enums.day_of_week_enum import DayOfWeekEnum
 from models import Base
 
 class Schedule(Base):
     __tablename__ = "schedules"
 
     id = Column(Integer, primary_key=True, index=True)
-    day_of_week = Column(String, nullable=False, index=True) # This will be an enum later
+    day_of_week = Column(Enum(DayOfWeekEnum), nullable=False, index=True)
     day_week_index = Column(Integer, nullable=False)
     start_time = Column(Time, nullable=True)
     end_time = Column(Time, nullable=True)

@@ -7,7 +7,8 @@ from starlette import status
 from starlette.requests import Request
 from core.crud_helpers import db_get_all, db_get_one, db_update
 from core.dependencies import DBSession
-from core.enums.enums import RoleEnum, AppointmentStatusEnum
+from core.enums.appointment_status_enum import AppointmentStatusEnum
+from core.enums.role_enum import RoleEnum
 from models import User, Follow, Appointment, Product, Business, Role, BusinessType, Schedule
 from sqlalchemy import select, func, case, and_, or_, distinct, exists
 from schema.user.user import UsernameUpdate, FullNameUpdate, BioUpdate, GenderUpdate, UserProfileResponse, \

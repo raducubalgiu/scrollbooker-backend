@@ -8,7 +8,8 @@ from sqlalchemy.orm import aliased
 from starlette.requests import Request
 from starlette import status
 from core.crud_helpers import db_create, db_get_one
-from core.enums.enums import AppointmentStatusEnum, AppointmentChannelEnum
+from core.enums.appointment_channel_enum import AppointmentChannelEnum
+from core.enums.appointment_status_enum import AppointmentStatusEnum
 from schema.booking.appointment import AppointmentBlock, AppointmentCancel, AppointmentUnblock, \
     AppointmentCreateOwnClient
 from core.dependencies import DBSession
