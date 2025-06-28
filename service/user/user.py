@@ -8,12 +8,12 @@ from starlette.requests import Request
 from core.crud_helpers import db_get_all, db_get_one, db_update
 from core.dependencies import DBSession
 from core.enums.appointment_status_enum import AppointmentStatusEnum
+from core.enums.registration_step_enum import RegistrationStepEnum
 from core.enums.role_enum import RoleEnum
 from models import User, Follow, Appointment, Product, Business, Role, BusinessType, Schedule
 from sqlalchemy import select, func, case, and_, or_, distinct, exists
 from schema.user.user import UsernameUpdate, FullNameUpdate, BioUpdate, GenderUpdate, UserProfileResponse, \
     OpeningHours, UserBaseMinimum
-
 
 async def get_user_profile_by_id(db: DBSession, user_id: int, request: Request):
     auth_user_id = request.state.user.get("id")
@@ -31,8 +31,10 @@ async def get_user_profile_by_id(db: DBSession, user_id: int, request: Request):
     if not is_own_profile:
         follow_exists = await db.scalar(
             select(exists().where(
-                Follow.follower_id == auth_user_id,
-                Follow.followee_id == user_id
+                and_(
+                    Follow.follower_id == auth_user_id,
+                    Follow.followee_id == user_id
+                )
             ))
         )
         is_follow = follow_exists
@@ -145,7 +147,15 @@ async def update_user_gender(db: DBSession, gender_update: GenderUpdate, request
 
 async def update_user_username(db: DBSession, username_update: UsernameUpdate, request: Request):
     auth_user_id = request.state.user.get("id")
-    await db_update(db, model=User, update_data=username_update, filters={"id": auth_user_id})
+    user = await db.get(User, auth_user_id)
+
+    user.username = username_update.username
+
+    if user.registration_step is RegistrationStepEnum.COLLECT_USER_USERNAME:
+        user.registration_step = RegistrationStepEnum.COLLECT_CLIENT_BIRTHDATE
+
+    db.add(user)
+    await db.commit()
 
     return { "detail": "Username successfully updated" }
 

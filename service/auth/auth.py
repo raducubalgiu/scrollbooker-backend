@@ -1,4 +1,5 @@
 import os
+from starlette.requests import Request
 from fastapi import HTTPException
 from sqlalchemy.orm import joinedload
 from sqlalchemy import select, and_
@@ -238,3 +239,21 @@ async def update_user_info(db: DBSession, user_update: UserInfoUpdate ,token: st
         logger.error(f"Invalid access token. Error: {e}")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Invalid access token')
+
+async def verify_user_email(db: DBSession, request: Request):
+    auth_user_id = request.state.user.get("id")
+
+    user = await db.get(User, auth_user_id)
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    user.registration_step = RegistrationStepEnum.COLLECT_USER_USERNAME
+    db.add(user)
+
+    await db.commit()
+
+    return { "Detail": "Email verified" }
