@@ -1,10 +1,12 @@
 import os
 from fastapi import HTTPException
 from sqlalchemy.orm import joinedload
+from sqlalchemy import select, and_
 from starlette import status
 from datetime import timedelta
 from dotenv import load_dotenv
 
+from core.enums.registration_step_enum import RegistrationStepEnum
 from core.enums.role_enum import RoleEnum
 from core.logger import logger
 from core.crud_helpers import db_get_one
@@ -13,30 +15,52 @@ from core.dependencies import DBSession
 from models import User, UserCounters, Role, Business, Permission
 from schema.auth.auth import UserRegister, UserInfoResponse, UserInfoUpdate
 from jose import JWTError
+import uuid
 
 from schema.auth.token import RefreshToken
 
 load_dotenv()
 
 async def register_user(db: DBSession, user_register: UserRegister):
-    user = await db_get_one(db, model=User, filters={User.email: user_register.email}, raise_not_found=False)
-
-    if user:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='User already registered')
-
-    hashed = await hash_password(user_register.password)
-
-    # This will be removed in the future
-    get_role = await db_get_one(db, model=Role, filters={Role.name: user_register.role_name})
-
     try:
+        user = await db_get_one(db, model=User, filters={User.email: user_register.email}, raise_not_found=False)
+
+        if user:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='User already registered')
+
+        # Construct Username
+        max_retries = 5
+
+        for _ in range(max_retries):
+            temp_username = uuid.uuid4().hex
+            username_str = str(temp_username)
+            result = await db.execute(select(User).where(and_(User.username == username_str)))
+
+            if not result.scalar():
+                username = temp_username
+                break
+
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail='Failed to generate unique username after multiple attempts'
+            )
+
+        # Hash Password
+        hashed = await hash_password(user_register.password)
+
+        # Get User Role
+        role = await db_get_one(db, model=Role, filters={Role.name: user_register.role_name})
+
+        # Register User
         new_user = User(
             email=user_register.email,
             password=hashed,
-            username=user_register.username,
-            fullname=user_register.username,
-            role_id=get_role.id,
-            is_validated=user_register.is_validated
+            username=username,
+            fullname=username,
+            role_id=role.id,
+            is_validated=False,
+            registration_step=RegistrationStepEnum.COLLECT_EMAIL_VERIFICATION
         )
         db.add(new_user)
         await db.flush()
@@ -46,8 +70,7 @@ async def register_user(db: DBSession, user_register: UserRegister):
         db.add(user_counters)
 
         await db.commit()
-        await db.refresh(new_user)
-        return new_user
+        return { "Detail": "User registered successfully" }
     except Exception as e:
         await db.rollback()
         logger.error(f"User could not be registered. Error {e}")

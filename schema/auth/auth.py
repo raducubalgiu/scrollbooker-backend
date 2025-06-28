@@ -5,10 +5,8 @@ from schema.user.user import UserBase
 
 class UserRegister(BaseModel):
     email: EmailStr
-    username: str = Field(min_length=3, max_length=35)
     password: str = Field(min_length=6, max_length=255)
     role_name: str
-    is_validated: bool
 
 class UserRegisterResponse(UserBase):
     id: int

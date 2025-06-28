@@ -20,7 +20,9 @@ async def get_users(db: DBSession):
     users = await db.execute(select(User))
     return users.scalars().all()
 
-@router.post("/register", response_model=UserRegisterResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register",
+             summary='Register New User',
+             status_code=status.HTTP_201_CREATED)
 async def register(db: DBSession, user_register: UserRegister):
     return await register_user(db, user_register)
 

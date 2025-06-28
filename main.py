@@ -42,7 +42,7 @@ app.include_router(auth.router)
 
 # User
 app.include_router(user.router, dependencies=[UserSession])
-app.include_router(role.router, dependencies=[UserSession])
+app.include_router(role.router)
 app.include_router(permission.router, dependencies=[UserSession])
 app.include_router(consent.router, dependencies=[UserSession])
 app.include_router(notification.router, dependencies=[UserSession])

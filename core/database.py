@@ -9,8 +9,6 @@ load_dotenv()
 # Get the database URL from the env
 DATABASE_URL=os.getenv("DATABASE_URL")
 
-print("DATABASE URL!!!!!", DATABASE_URL)
-
 # Create an asynchronous engine
 async_engine = create_async_engine(DATABASE_URL, echo=True)
 

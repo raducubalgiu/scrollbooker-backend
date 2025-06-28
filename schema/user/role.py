@@ -1,7 +1,9 @@
 from pydantic import BaseModel, Field
 
+from core.enums.role_enum import RoleEnum
+
 class RoleBase(BaseModel):
-    name: str = Field(min_length=3, max_length=50)
+    name: RoleEnum = Field(min_length=3, max_length=50)
 
     class Config:
         from_attributes = True
