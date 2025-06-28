@@ -12,7 +12,7 @@ from api.v1.endpoints.social import follow, hashtag, post, bookmark_posts,repost
 from api.v1.endpoints.booking import business, product, appointment, schedule, review, employment_request
 from api.v1.endpoints.nomenclature import business_domain, business_type, service, filter, sub_filter, service_domain, profession, currency, problem
 from core.middlewares.auth_middleware import AuthMiddleware
-from core.exceptions import global_exception_handler, http_exception_handler, validation_exception_handler
+from core.exceptions import register_exception_handler
 from core.scheduler import start as start_scheduler, scheduler
 
 @asynccontextmanager
@@ -30,9 +30,8 @@ app = FastAPI(lifespan=lifespan, root_path="/api/v1")
 app.add_middleware(AuthMiddleware) #type: ignore
 app.add_middleware(CORSCustomMiddleware) #type: ignore
 
-app.add_exception_handler(Exception, global_exception_handler)
-app.add_exception_handler(HTTPException, http_exception_handler) #type: ignore
-app.add_exception_handler(RequestValidationError, validation_exception_handler) #type: ignore
+# Error exception handler
+register_exception_handler(app)
 
 # Auth
 app.include_router(auth.router)

@@ -18,20 +18,20 @@ from jose import JWTError
 import uuid
 
 from schema.auth.token import RefreshToken
-
 load_dotenv()
 
 async def register_user(db: DBSession, user_register: UserRegister):
     try:
-        user = await db_get_one(db, model=User, filters={User.email: user_register.email}, raise_not_found=False)
-
+        user = await db_get_one(db,
+                                model=User,
+                                filters={User.email: user_register.email},
+                                raise_not_found=False)
         if user:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='User already registered')
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail='User already registered')
 
-        # Construct Username
-        max_retries = 5
-
-        for _ in range(max_retries):
+        for _ in range(5):
             temp_username = uuid.uuid4().hex
             username_str = str(temp_username)
             result = await db.execute(select(User).where(and_(User.username == username_str)))
@@ -46,13 +46,9 @@ async def register_user(db: DBSession, user_register: UserRegister):
                 detail='Failed to generate unique username after multiple attempts'
             )
 
-        # Hash Password
         hashed = await hash_password(user_register.password)
-
-        # Get User Role
         role = await db_get_one(db, model=Role, filters={Role.name: user_register.role_name})
 
-        # Register User
         new_user = User(
             email=user_register.email,
             password=hashed,
@@ -70,16 +66,21 @@ async def register_user(db: DBSession, user_register: UserRegister):
         db.add(user_counters)
 
         await db.commit()
-        return { "Detail": "User registered successfully" }
+        await db.refresh(new_user)
+
+        return await generate_tokens(username, new_user.id, role.name)
     except Exception as e:
         await db.rollback()
         logger.error(f"User could not be registered. Error {e}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail='Something went wrong')
 
-
 async def login_user(db: DBSession, username: str, password: str):
-    user = await db_get_one(db, model=User, filters={User.username: username}, joins=[joinedload(User.role)])
+    user = await db_get_one(db,
+                            model=User,
+                            filters={User.username: username},
+                            joins=[joinedload(User.role)],
+                            raise_not_found=False)
 
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
@@ -180,8 +181,11 @@ async def get_user_permissions(db: DBSession, token: str):
                                 detail='Invalid token')
 
         username = payload.get("sub")
-        user = await db_get_one(db, model=User, filters={User.username: username},
-                    joins=[joinedload(User.role).joinedload(Role.permissions).load_only(Permission.name, Permission.code)])
+        user = await db_get_one(db,
+                                model=User,
+                                filters={User.username: username},
+                                joins=[joinedload(User.role).joinedload(Role.permissions)
+                                        .load_only(Permission.name, Permission.code)])
         return user.role.permissions
 
     except JWTError as e:

@@ -1,12 +1,19 @@
 from typing import Optional
-
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, field_validator, ValidationError
 from schema.user.user import UserBase
 
 class UserRegister(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=6, max_length=255)
+    password: str = Field(min_length=8, max_length=20)
     role_name: str
+
+    @field_validator("password", mode="after")
+    def validate_password(cls, value: str) -> str:
+        if not (c.isupper() for c in value):
+            raise ValueError("The password should contain at least 1 uppercase letter")
+        if not any(c.isdigit() for c in value):
+            raise ValueError("The password should contain at least 1 digit")
+        return value
 
 class UserRegisterResponse(UserBase):
     id: int
