@@ -1,10 +1,13 @@
+import random
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
+from fastapi.params import Depends
 from sqlalchemy.orm import joinedload
 from starlette import status
 from starlette.requests import Request
+
 from core.crud_helpers import db_get_all, db_get_one, db_update
 from core.dependencies import DBSession
 from core.enums.appointment_status_enum import AppointmentStatusEnum
@@ -13,7 +16,46 @@ from core.enums.role_enum import RoleEnum
 from models import User, Follow, Appointment, Product, Business, Role, BusinessType, Schedule
 from sqlalchemy import select, func, case, and_, or_, distinct, exists
 from schema.user.user import UsernameUpdate, FullNameUpdate, BioUpdate, GenderUpdate, UserProfileResponse, \
-    OpeningHours, UserBaseMinimum
+    OpeningHours, UserBaseMinimum, SearchUsername, SearchUsernameResponse
+
+
+async def search_available_username(db: DBSession, query: SearchUsername = Depends()):
+    result = await db.execute(select(User.id).where(and_(User.username == query.username)))
+    user = result.scalar_one_or_none()
+
+    if user is None:
+        return SearchUsernameResponse(
+            available=True,
+            suggestions=[]
+        )
+
+    suggestions = await generate_username_suggestions(db, query.username)
+
+    return SearchUsernameResponse(
+        available=False,
+        suggestions=suggestions
+    )
+
+async def generate_username_suggestions(db: DBSession, base: str, max_suggestions: int = 5):
+    suggestions = []
+    tried = set()
+
+    while len(suggestions) < max_suggestions:
+        suffix = random.choice([
+            str(random.randint(1, 9999)),
+            f"_{random.randint(10, 99)}",
+            f"_{random.randint(100, 999)}",
+            "_user"
+        ])
+        candidate = f"{base}{suffix}"
+        if candidate in tried:
+            continue
+        tried.add(candidate)
+
+        result = await db.execute(select(User.id).where(and_(User.username == candidate)))
+        if result.scalar_one_or_none() is None:
+            suggestions.append(candidate)
+    return suggestions
 
 async def get_user_profile_by_id(db: DBSession, user_id: int, request: Request):
     auth_user_id = request.state.user.get("id")

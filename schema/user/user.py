@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, model_validator
 from typing import Optional, List
 from datetime import datetime
 
@@ -77,3 +77,21 @@ class UserProfileResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class SearchUsername(BaseModel):
+    username: str = Field(
+        min_length=3,
+        max_length=35,
+        pattern=r"^[a-zA-Z0-9_]+$",
+        description="Must be 3-35 characters, only letters, numbers, and underscores"
+    )
+    #
+    # @model_validator(mode="before")
+    # def check_not_only_digits(self) -> "SearchUsername":
+    #     if self.username.isdigit():
+    #         raise ValueError("Username cannot be only numbers")
+    #     return self
+
+class SearchUsernameResponse(BaseModel):
+    available: bool
+    suggestions: Optional[List[str]] = []

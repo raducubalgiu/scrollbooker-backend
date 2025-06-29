@@ -1,16 +1,26 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Query
+from fastapi.params import Depends
 from starlette import status
 from starlette.requests import Request
 
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession
-from schema.user.user import UserBaseMinimum, UsernameUpdate, FullNameUpdate, BioUpdate, GenderUpdate
+from schema.user.user import UserBaseMinimum, UsernameUpdate, FullNameUpdate, BioUpdate, GenderUpdate, SearchUsername, \
+    SearchUsernameResponse
 from service.user.user import get_user_followers_by_user_id, \
     get_user_followings_by_user_id, get_user_dashboard_summary_by_id, \
     get_available_professions_by_user_id, search_users_clients, get_product_durations_by_user_id, update_user_fullname, \
-    update_user_username, update_user_bio, get_user_profile_by_id, update_user_gender
+    update_user_username, update_user_bio, get_user_profile_by_id, update_user_gender, search_available_username
 
 router = APIRouter(prefix="/users", tags=["Users"])
+
+@router.get("/available-username",
+            summary='Search Available Username',
+            response_model=SearchUsernameResponse)
+async def search_username(db: DBSession, query: SearchUsername = Depends()):
+    return await search_available_username(db, query)
 
 @router.get("/{user_id}/user-profile")
 async def get_user_profile(db: DBSession, user_id: int, request: Request):
