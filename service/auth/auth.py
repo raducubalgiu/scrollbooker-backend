@@ -13,6 +13,7 @@ from core.logger import logger
 from core.crud_helpers import db_get_one
 from core.security import hash_password, verify_password, create_token, decode_token
 from core.dependencies import DBSession
+from core.send_email import send_verification_email
 from models import User, UserCounters, Role, Business, Permission
 from schema.auth.auth import UserRegister, UserInfoResponse, UserInfoUpdate
 from jose import JWTError
@@ -66,6 +67,19 @@ async def register_user(db: DBSession, user_register: UserRegister):
         user_counters = UserCounters(user_id=new_user.id)
         db.add(user_counters)
 
+        # # Send registration email
+        # expires = timedelta(hours=24)
+        # token = await create_token(
+        #     data={"email": user_register.email},
+        #     expires_at=expires,
+        #     secret_key=os.getenv("SECRET_KEY")
+        # )
+        #
+        # base_url = os.getenv("APP_BASE_URL")
+        # link = f"{base_url}/verify-email/token={token}"
+        #
+        # await send_verification_email(to_email=str(user_register.email), verify_link=link)
+
         await db.commit()
         await db.refresh(new_user)
 
@@ -75,6 +89,57 @@ async def register_user(db: DBSession, user_register: UserRegister):
         logger.error(f"User could not be registered. Error {e}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail='Something went wrong')
+
+async def verify_user_email(db: DBSession, request: Request):
+    auth_user_id = request.state.user.get("id")
+
+    user = await db.get(User, auth_user_id)
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    user.registration_step = RegistrationStepEnum.COLLECT_USER_USERNAME
+    db.add(user)
+
+    await db.commit()
+
+    return { "Detail": "Email verified" }
+
+# async def verify_user_email(db: DBSession, token: str):
+#     try:
+#         email_data = await decode_token(token, os.getenv("SECRET_KEY"))
+#
+#         if not email_data or "email" not in email_data:
+#             raise HTTPException(
+#                 status_code=status.HTTP_400_BAD_REQUEST,
+#                 detail="Token invalid or expired"
+#             )
+#
+#         email = email_data.get("email")
+#
+#         user_stmt = await db.execute(select(User).where(and_(User.email == email)))
+#         user = user_stmt.scalar_one_or_none()
+#
+#         if not user:
+#             raise HTTPException(
+#                 status_code=status.HTTP_404_NOT_FOUND,
+#                 detail="User not found"
+#             )
+#
+#         user.registration_step = RegistrationStepEnum.COLLECT_USER_USERNAME
+#         db.add(user)
+#
+#         await db.commit()
+#
+#         return {"Detail": "Email verified"}
+#     except Exception as e:
+#         raise HTTPException(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             detail="Something went wrong"
+#         )
 
 async def login_user(db: DBSession, username: str, password: str):
     user = await db_get_one(db,
@@ -240,20 +305,3 @@ async def update_user_info(db: DBSession, user_update: UserInfoUpdate ,token: st
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Invalid access token')
 
-async def verify_user_email(db: DBSession, request: Request):
-    auth_user_id = request.state.user.get("id")
-
-    user = await db.get(User, auth_user_id)
-
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-
-    user.registration_step = RegistrationStepEnum.COLLECT_USER_USERNAME
-    db.add(user)
-
-    await db.commit()
-
-    return { "Detail": "Email verified" }
