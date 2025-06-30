@@ -1,5 +1,5 @@
 import random
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
@@ -16,7 +16,7 @@ from core.enums.role_enum import RoleEnum
 from models import User, Follow, Appointment, Product, Business, Role, BusinessType, Schedule
 from sqlalchemy import select, func, case, and_, or_, distinct, exists
 from schema.user.user import UsernameUpdate, FullNameUpdate, BioUpdate, GenderUpdate, UserProfileResponse, \
-    OpeningHours, UserBaseMinimum, SearchUsername, SearchUsernameResponse
+    OpeningHours, UserBaseMinimum, SearchUsername, SearchUsernameResponse, BirthDateUpdate
 
 
 async def search_available_username(db: DBSession, query: SearchUsername = Depends()):
@@ -181,9 +181,41 @@ async def update_user_fullname(db: DBSession, fullname_update: FullNameUpdate, r
 
     return { "detail": "Fullname successfully updated" }
 
+async def update_user_birthdate(db: DBSession, birthdate_update: BirthDateUpdate, request: Request):
+    auth_user_id = request.state.user.get("id")
+    user = await db.get(User, auth_user_id)
+
+    birthdate = birthdate_update.birthdate
+
+    if birthdate is not None:
+        user.date_of_birth = date.fromisoformat(birthdate)
+
+    if user.registration_step is RegistrationStepEnum.COLLECT_CLIENT_BIRTHDATE:
+        user.registration_step = RegistrationStepEnum.COLLECT_CLIENT_GENDER
+
+    db.add(user)
+    await db.commit()
+
+    return {"detail": "Birthdate successfully updated"}
+
 async def update_user_gender(db: DBSession, gender_update: GenderUpdate, request: Request):
     auth_user_id = request.state.user.get("id")
-    await db_update(db, model=User, update_data=gender_update, filters={"id": auth_user_id})
+    user = await db.get(User, auth_user_id)
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail='User not found'
+        )
+
+    user.gender = gender_update.gender
+    user.is_validated = True
+
+    if user.registration_step is RegistrationStepEnum.COLLECT_CLIENT_GENDER:
+        user.registration_step = None
+
+    db.add(user)
+    await db.commit()
 
     return {"detail": "Gender successfully updated"}
 
@@ -192,6 +224,7 @@ async def update_user_username(db: DBSession, username_update: UsernameUpdate, r
     user = await db.get(User, auth_user_id)
 
     user.username = username_update.username
+    user.fullname = username_update.username
 
     if user.registration_step is RegistrationStepEnum.COLLECT_USER_USERNAME:
         user.registration_step = RegistrationStepEnum.COLLECT_CLIENT_BIRTHDATE

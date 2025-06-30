@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field, EmailStr, model_validator
 from typing import Optional, List
 from datetime import datetime
 
+from core.enums.gender_type_enum import GenderTypeEnum
 from schema.booking.product import ProductResponse
 from schema.booking.schedule import ScheduleResponse
 from schema.user.user_counters import UserCountersBase
@@ -52,7 +53,10 @@ class BioUpdate(BaseModel):
     bio: str = Field(None, max_length=100)
 
 class GenderUpdate(BaseModel):
-    gender: str = Field(max_length=30)
+    gender: GenderTypeEnum
+
+class BirthDateUpdate(BaseModel):
+    birthdate: Optional[str] = None
 
 class OpeningHours(BaseModel):
     open_now: bool
@@ -85,12 +89,6 @@ class SearchUsername(BaseModel):
         pattern=r"^[a-zA-Z0-9_]+$",
         description="Must be 3-35 characters, only letters, numbers, and underscores"
     )
-    #
-    # @model_validator(mode="before")
-    # def check_not_only_digits(self) -> "SearchUsername":
-    #     if self.username.isdigit():
-    #         raise ValueError("Username cannot be only numbers")
-    #     return self
 
 class SearchUsernameResponse(BaseModel):
     available: bool
