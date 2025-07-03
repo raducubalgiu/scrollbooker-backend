@@ -16,7 +16,7 @@ from core.enums.role_enum import RoleEnum
 from models import User, Follow, Appointment, Product, Business, Role, BusinessType, Schedule
 from sqlalchemy import select, func, case, and_, or_, distinct, exists
 from schema.user.user import UsernameUpdate, FullNameUpdate, BioUpdate, GenderUpdate, UserProfileResponse, \
-    OpeningHours, UserBaseMinimum, SearchUsername, SearchUsernameResponse, BirthDateUpdate
+    OpeningHours, UserBaseMinimum, SearchUsername, SearchUsernameResponse, BirthDateUpdate, UserUpdateResponse
 
 
 async def search_available_username(db: DBSession, query: SearchUsername = Depends()):
@@ -181,9 +181,49 @@ async def update_user_fullname(db: DBSession, fullname_update: FullNameUpdate, r
 
     return { "detail": "Fullname successfully updated" }
 
+async def update_user_username(db: DBSession, username_update: UsernameUpdate, request: Request):
+    auth_user_id = request.state.user.get("id")
+    user_stmt = await db.execute(
+        select(User)
+        .where(and_(User.id == auth_user_id))
+        .options(joinedload(User.role))
+    )
+
+    user = user_stmt.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail='User not found'
+        )
+
+    user.username = username_update.username
+    user.fullname = username_update.username
+
+    if user.registration_step is RegistrationStepEnum.COLLECT_USER_USERNAME:
+        if user.role.name is RoleEnum.BUSINESS:
+            user.registration_step = RegistrationStepEnum.COLLECT_BUSINESS
+        else:
+            user.registration_step = RegistrationStepEnum.COLLECT_CLIENT_BIRTHDATE
+
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+
+    return UserUpdateResponse(
+        is_validated=user.is_validated,
+        registration_step=user.registration_step
+    )
+
 async def update_user_birthdate(db: DBSession, birthdate_update: BirthDateUpdate, request: Request):
     auth_user_id = request.state.user.get("id")
     user = await db.get(User, auth_user_id)
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
 
     birthdate = birthdate_update.birthdate
 
@@ -195,8 +235,12 @@ async def update_user_birthdate(db: DBSession, birthdate_update: BirthDateUpdate
 
     db.add(user)
     await db.commit()
+    await db.refresh(user)
 
-    return {"detail": "Birthdate successfully updated"}
+    return UserUpdateResponse(
+        is_validated=user.is_validated,
+        registration_step=user.registration_step
+    )
 
 async def update_user_gender(db: DBSession, gender_update: GenderUpdate, request: Request):
     auth_user_id = request.state.user.get("id")
@@ -209,30 +253,18 @@ async def update_user_gender(db: DBSession, gender_update: GenderUpdate, request
         )
 
     user.gender = gender_update.gender
-    user.is_validated = True
 
     if user.registration_step is RegistrationStepEnum.COLLECT_CLIENT_GENDER:
-        user.registration_step = None
+        user.registration_step = RegistrationStepEnum.COLLECT_CLIENT_LOCATION_PERMISSION
 
     db.add(user)
     await db.commit()
+    await db.refresh(user)
 
-    return {"detail": "Gender successfully updated"}
-
-async def update_user_username(db: DBSession, username_update: UsernameUpdate, request: Request):
-    auth_user_id = request.state.user.get("id")
-    user = await db.get(User, auth_user_id)
-
-    user.username = username_update.username
-    user.fullname = username_update.username
-
-    if user.registration_step is RegistrationStepEnum.COLLECT_USER_USERNAME:
-        user.registration_step = RegistrationStepEnum.COLLECT_CLIENT_BIRTHDATE
-
-    db.add(user)
-    await db.commit()
-
-    return { "detail": "Username successfully updated" }
+    return UserUpdateResponse(
+        is_validated=user.is_validated,
+        registration_step=user.registration_step
+    )
 
 async def update_user_bio(db: DBSession, bio_update: BioUpdate, request: Request):
     auth_user_id = request.state.user.get("id")
@@ -353,7 +385,10 @@ async def get_user_followers_by_user_id(db: DBSession, user_id: int, page: int, 
 
    subquery = (
        select(Follow)
-       .where(Follow.follower_id == auth_user_id, Follow.followee_id == User.id) #type: ignore
+       .where(and_(
+           Follow.follower_id == auth_user_id,
+           Follow.followee_id == User.id
+       ))
        .correlate(User)
        .exists()
    )
@@ -383,7 +418,10 @@ async def get_user_followings_by_user_id(db: DBSession, user_id: int, page: int,
 
    subquery = (
        select(Follow)
-       .where(Follow.follower_id == auth_user_id, Follow.followee_id == User.id)
+       .where(and_(
+           Follow.follower_id == auth_user_id,
+           Follow.followee_id == User.id
+       ))
        .correlate(User)
        .exists()
    )

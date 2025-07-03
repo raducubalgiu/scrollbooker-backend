@@ -2,12 +2,14 @@ from typing import List
 from sqlalchemy.orm import joinedload
 from starlette.requests import Request
 from fastapi import HTTPException, Query
+
+from core.enums.registration_step_enum import RegistrationStepEnum
 from core.logger import logger
 from core.data_utils import local_to_utc_fulldate
 from core.dependencies import DBSession
 from starlette import status
 from models import Business, Service, business_services, Product, Appointment, User, UserCounters, Schedule, Follow, \
-    SubFilter, EmploymentRequest
+    SubFilter, EmploymentRequest, BusinessType
 from sqlalchemy import select, delete, and_, or_, func, not_, exists, text, insert
 from pytz import timezone, utc
 from geoalchemy2.shape import to_shape
@@ -19,6 +21,8 @@ from models.booking.product_sub_filters import product_sub_filters
 from schema.booking.business import BusinessCreate, BusinessResponse
 from datetime import timedelta,datetime
 from schema.nomenclature.service import ServiceIdsUpdate
+from service.integration.google_places import get_place_details
+
 
 async def get_business_by_user_id(db: DBSession, user_id: int):
     business_query = await db.execute(select(Business, User.id).where(
@@ -223,42 +227,57 @@ async def get_businesses_by_distance(
     }
 
 async def create_new_business(db: DBSession, business_data: BusinessCreate):
-    longitude, latitude = business_data.coordinates
+    try:
+        place = await get_place_details(business_data.place_id)
 
-    tf = TimezoneFinder()
-    timezone = tf.timezone_at_land(lng=longitude, lat=latitude)
+        owner = await db.get(User, business_data.owner_id)
+        business_type = await db.get(BusinessType, business_data.business_type_id)
 
-    stmt_owner_has_business = await db.execute(
-        select(Business).
-        filter(Business.owner_id == business_data.owner_id)
-    )
-    owner_has_business = stmt_owner_has_business.scalars().first()
+        tf = TimezoneFinder()
+        business_timezone = tf.timezone_at_land(lng=place["lng"], lat=place["lat"])
 
-    if owner_has_business:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                            detail='You already have a business attached')
+        stmt_owner_has_business = await db.execute(
+            select(Business).
+            filter(and_(Business.owner_id == business_data.owner_id))
+        )
+        owner_has_business = stmt_owner_has_business.scalars().first()
 
-    stmt = text("""
-        INSERT INTO businesses (description, address, coordinates, timezone, owner_id, business_type_id, has_employees) 
-        VALUES (:description, :address, ST_SetSRID(ST_Point(:longitude, :latitude), 4326), :timezone, :owner_id, :business_type_id, :has_employees)
-        RETURNING id
-    """)
+        if owner_has_business:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail='You already have a business attached')
 
-    params = {
-        "description": business_data.description,
-        "address": business_data.address,
-        "longitude": longitude,
-        "latitude": latitude,
-        "timezone": timezone,
-        "owner_id": business_data.owner_id,
-        "business_type_id": business_data.business_type_id,
-        "has_employees": business_data.has_employees
-    }
-    result = await db.execute(stmt, params)
-    business_id = result.scalar()
-    await db.commit()
+        stmt = text("""
+            INSERT INTO businesses (description, address, coordinates, timezone, owner_id, business_type_id, has_employees)
+            VALUES (:description, :address, ST_SetSRID(ST_Point(:longitude, :latitude), 4326), :timezone, :owner_id, :business_type_id, :has_employees)
+            RETURNING id
+        """)
 
-    return { "detail": "Business created", "id": business_id }
+        params = {
+            "description": business_data.description,
+            "address": place["address"],
+            "longitude": place["lng"],
+            "latitude": place["lat"],
+            "timezone": business_timezone,
+            "owner_id": business_data.owner_id,
+            "business_type_id": business_data.business_type_id,
+            "has_employees": business_type.has_employees
+        }
+
+        if owner.registration_step is RegistrationStepEnum.COLLECT_BUSINESS:
+            owner.registration_step = RegistrationStepEnum.COLLECT_BUSINESS_SERVICES
+
+        db.add(owner)
+
+        await db.execute(stmt, params)
+        await db.commit()
+
+        return { "detail": "Business created" }
+    except Exception as e:
+        await db.rollback()
+
+        logger.error(f"Business could not be created. Error: {e}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail='Business could not be created')
 
 async def delete_business_by_id(db: DBSession, business_id: int, request: Request):
     auth_user_id = request.state.user.get("id")

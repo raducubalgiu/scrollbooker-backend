@@ -1,8 +1,10 @@
 from pydantic import BaseModel, Field, EmailStr, model_validator
 from typing import Optional, List
 from datetime import datetime
+from sqlalchemy import Boolean
 
 from core.enums.gender_type_enum import GenderTypeEnum
+from core.enums.registration_step_enum import RegistrationStepEnum
 from schema.booking.product import ProductResponse
 from schema.booking.schedule import ScheduleResponse
 from schema.user.user_counters import UserCountersBase
@@ -48,6 +50,10 @@ class FullNameUpdate(BaseModel):
 
 class UsernameUpdate(BaseModel):
     username: str = Field(max_length=35)
+
+class UserUpdateResponse(BaseModel):
+    is_validated: bool
+    registration_step: Optional[RegistrationStepEnum] = None
 
 class BioUpdate(BaseModel):
     bio: str = Field(None, max_length=100)

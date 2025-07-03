@@ -22,8 +22,10 @@ class User(Base):
     gender = Column(Enum(GenderTypeEnum), default=GenderTypeEnum.OTHER)
 
     date_of_birth = Column(Date, nullable=True)
+
     last_known_lat = Column(Float, nullable=True)
     last_known_lng = Column(Float, nullable=True)
+
     phone_number = Column(String(20), nullable=True)
 
     instant_booking = Column(Boolean, nullable=False, default=False)

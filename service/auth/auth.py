@@ -58,7 +58,7 @@ async def register_user(db: DBSession, user_register: UserRegister):
             fullname=username,
             role_id=role.id,
             is_validated=False,
-            registration_step=RegistrationStepEnum.COLLECT_EMAIL_VERIFICATION
+            registration_step=RegistrationStepEnum.COLLECT_USER_EMAIL_VALIDATION
         )
         db.add(new_user)
         await db.flush()

@@ -4,17 +4,32 @@ from starlette.requests import Request
 from typing import List
 from core.dependencies import DBSession
 from core.dependencies import BusinessSession
-from schema.booking.business import BusinessCreate, BusinessResponse
+from schema.booking.business import BusinessCreate, BusinessResponse, BusinessPlaceAddressResponse
 from schema.nomenclature.service import ServiceIdsUpdate
 from service.booking.business import attach_service_to_business, get_businesses_by_distance, create_new_business, \
     delete_business_by_id, detach_service_from_business, get_business_employees_by_id, \
     attach_many_services_to_business, get_business_by_user_id
+from service.integration.google_places import search_places
 
 router = APIRouter(tags=["Businesses"])
 
+@router.post(
+    "/businesses",
+    summary='Create New Business',
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[BusinessSession])
+async def create_business(db: DBSession, business_data: BusinessCreate):
+    return await create_new_business(db, business_data)
+
+@router.get("/businesses/search",
+            summary='Search Business address',
+            response_model=list[BusinessPlaceAddressResponse])
+async def search_business_address(query: str = Query(min_length=2)):
+    return await search_places(query)
+
 @router.get(
     "/users/{user_id}/business",
-    summary='List All Businesses Filtered By User Id',
+    summary='Get Business By User Id',
     response_model=BusinessResponse)
 async def get_business_by_user(db: DBSession, user_id: int):
     return await get_business_by_user_id(db, user_id)
@@ -34,14 +49,6 @@ async def get_nearby_businesses(db: DBSession,
                                 limit: int,
                                 sub_filters: List[int] = Query([])):
     return await get_businesses_by_distance(db, lon, lat, start_date, end_date, start_time, end_time, service_id, instant_booking, request, page, limit, sub_filters)
-
-@router.post(
-    "/businesses",
-    summary='Create New Business',
-    status_code=status.HTTP_201_CREATED,
-    dependencies=[BusinessSession])
-async def create_business(db: DBSession, business_data: BusinessCreate):
-    return await create_new_business(db, business_data)
 
 @router.get(
     "/businesses/{business_id}/employees",

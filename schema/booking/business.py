@@ -11,8 +11,11 @@ class BusinessBase(BaseModel):
     business_type_id: int
     has_employees: Optional[bool] = None
 
-class BusinessCreate(BusinessBase):
-    pass
+class BusinessCreate(BaseModel):
+    description: Optional[str] = None
+    place_id: str
+    owner_id: int = None
+    business_type_id: int
 
 class BusinessResponse(BusinessBase):
     id: int
@@ -34,6 +37,10 @@ class BusinessEmployeesResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class BusinessPlaceAddressResponse(BaseModel):
+    description: str
+    place_id: str
 
 
 

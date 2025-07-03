@@ -22,7 +22,7 @@ async def get_business(db: DBSession, auth_user_id: int):
         ))
     )
 
-    business = business_stmt.scalars().first()
+    business = business_stmt.scalar_one_or_none()
 
     if not business:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,

@@ -1,5 +1,3 @@
-from typing import Annotated
-
 from fastapi import APIRouter, Query
 from fastapi.params import Depends
 from starlette import status
@@ -8,7 +6,7 @@ from starlette.requests import Request
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession
 from schema.user.user import UserBaseMinimum, UsernameUpdate, FullNameUpdate, BioUpdate, GenderUpdate, SearchUsername, \
-    SearchUsernameResponse, BirthDateUpdate
+    SearchUsernameResponse, BirthDateUpdate, UserUpdateResponse
 from service.user.user import get_user_followers_by_user_id, \
     get_user_followings_by_user_id, get_user_dashboard_summary_by_id, \
     get_available_professions_by_user_id, search_users_clients, get_product_durations_by_user_id, update_user_fullname, \
@@ -31,17 +29,23 @@ async def get_user_profile(db: DBSession, user_id: int, request: Request):
 async def update_fullname(db: DBSession, fullname_update: FullNameUpdate, request: Request):
     return await update_user_fullname(db, fullname_update, request)
 
-@router.patch("/user-info/birthdate", status_code=status.HTTP_200_OK)
+@router.patch("/user-info/username",
+              summary='Update User Username',
+              response_model=UserUpdateResponse)
+async def update_username(db: DBSession, username_update: UsernameUpdate, request: Request):
+    return await update_user_username(db, username_update, request)
+
+@router.patch("/user-info/birthdate",
+              summary='Update User BirthDate',
+              response_model=UserUpdateResponse)
 async def update_birthdate(db: DBSession, birthdate_update: BirthDateUpdate, request: Request):
     return await update_user_birthdate(db, birthdate_update, request)
 
-@router.patch("/user-info/gender", status_code=status.HTTP_200_OK)
+@router.patch("/user-info/gender",
+              summary='Update User Gender',
+              response_model=UserUpdateResponse)
 async def update_gender(db: DBSession, gender_update: GenderUpdate, request: Request):
     return await update_user_gender(db, gender_update, request)
-
-@router.patch("/user-info/username")
-async def update_username(db: DBSession, username_update: UsernameUpdate, request: Request):
-    return await update_user_username(db, username_update, request)
 
 @router.patch("/user-info/bio")
 async def update_bio(db: DBSession, bio_update: BioUpdate, request: Request):
