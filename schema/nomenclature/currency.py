@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, Field
 
 class CurrencyBase(BaseModel):
@@ -19,3 +19,6 @@ class CurrencyResponse(CurrencyBase):
 
     class Config:
         from_attributes = True
+
+class UserCurrenciesUpdate(BaseModel):
+    currency_ids: List[int]
