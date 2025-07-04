@@ -1,12 +1,19 @@
-from sqlalchemy import select, or_
+from starlette import status
+from sqlalchemy import select, or_, and_, delete, insert, false
 from sqlalchemy.orm import joinedload
+from starlette.exceptions import HTTPException
+from starlette.requests import Request
 
 from core.dependencies import DBSession, Pagination
-from models import Service, BusinessType, Business, User
-from schema.nomenclature.service import ServiceCreate, ServiceUpdate, ServiceResponse
+from core.enums.registration_step_enum import RegistrationStepEnum
+from models import Service, BusinessType, Business, User, business_services, Product
+from schema.nomenclature.service import ServiceCreate, ServiceUpdate, ServiceResponse, ServiceIdsUpdate
 from core.crud_helpers import db_create, db_delete, db_update, db_get_all, db_insert_many_to_many, \
     db_remove_many_to_many, db_get_one
 from models.nomenclature.service_business_types import service_business_types
+from core.logger import logger
+from schema.user.user import UserUpdateResponse
+
 
 async def get_all_services(db: DBSession, pagination: Pagination):
     return await db_get_all(db,
@@ -25,7 +32,7 @@ async def get_services_by_service_domain_id(db: DBSession, service_domain_id: in
 async def get_services_by_business_id(db: DBSession, business_id: int):
     stmt = (
         select(Business)
-        .where(Business.id == business_id)
+        .where(and_(Business.id == business_id))
         .options(
             joinedload(Business.services)
         )
@@ -43,6 +50,94 @@ async def update_service_by_id(db: DBSession, service_id: int, service_data: Ser
 
 async def delete_service_by_id(db: DBSession, service_id: int):
     return await db_delete(db, model=Service, resource_id=service_id)
+
+async def update_services_by_business_id(db: DBSession, services_update: ServiceIdsUpdate, request: Request):
+    auth_user_id = request.state.user.get("id")
+
+    try:
+        business_query = await db.execute(
+            select(Business.id, Business.owner_id)
+            .where(and_(
+                User.id == auth_user_id,
+                or_(
+                    Business.owner_id == auth_user_id,
+                    Business.id == User.employee_business_id
+                )
+            )
+        )
+                                          )
+        business = business_query.unique().mappings().first()
+        business_id, owner_id = business["id"], business["owner_id"]
+
+        result = await db.execute(
+            select(business_services.c.service_id)
+            .where(and_(business_services.c.business_id == business_id))
+        )
+
+        existing_services = set(row[0] for row in result.fetchall())
+        incoming_services = set(services_update.service_ids)
+        to_add = incoming_services - existing_services
+        to_remove = existing_services - incoming_services
+
+        if to_remove:
+            result = await db.execute(
+                select(Product.service_id)
+                .where(and_(
+                    Product.business_id == business_id,
+                    Product.service_id.in_(to_remove)
+                ))
+            )
+            conflicting_services = result.scalars().all()
+
+            if conflicting_services:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Cannot delete services because has associated products"
+                )
+
+        if to_remove:
+            await db.execute(
+                delete(business_services).where(and_(
+                    business_services.c.business_id == business_id,
+                    business_services.c.service_id.in_(to_remove)
+                ))
+            )
+
+        if to_add:
+            await db.execute(
+                insert(business_services),
+                [
+                    {
+                        "business_id": business_id,
+                        "service_id": service_id
+                    } for service_id in to_add
+                ]
+            )
+
+        owner = await db.get(User, owner_id)
+
+        if owner.registration_step is RegistrationStepEnum.COLLECT_BUSINESS_SERVICES:
+            owner.registration_step = RegistrationStepEnum.COLLECT_BUSINESS_SCHEDULES
+
+        db.add(owner)
+
+        await db.commit()
+        await db.refresh(owner)
+
+        return UserUpdateResponse(
+            is_validated=owner.is_validated,
+            registration_step=owner.registration_step
+        )
+
+    except Exception as e:
+        await db.rollback()
+
+        logger.error(f"Business services could not be updated. Error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Something went wrong"
+        )
+
 
 async def attach_services_to_business_type(db: DBSession, business_type_id: int, service_id: int):
     return await db_insert_many_to_many(db,

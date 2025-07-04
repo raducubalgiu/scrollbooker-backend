@@ -9,7 +9,7 @@ class BusinessBase(BaseModel):
     coordinates: tuple[float, float]
     owner_id: int = None
     business_type_id: int
-    has_employees: Optional[bool] = None
+    has_employees: bool
 
 class BusinessCreate(BaseModel):
     description: Optional[str] = None
@@ -41,6 +41,9 @@ class BusinessEmployeesResponse(BaseModel):
 class BusinessPlaceAddressResponse(BaseModel):
     description: str
     place_id: str
+
+class BusinessHasEmployeesUpdate(BaseModel):
+    has_employees: bool
 
 
 

@@ -8,21 +8,18 @@ from core.logger import logger
 from core.data_utils import local_to_utc_fulldate
 from core.dependencies import DBSession
 from starlette import status
-from models import Business, Service, business_services, Product, Appointment, User, UserCounters, Schedule, Follow, \
+from models import Business, Service, Product, Appointment, User, UserCounters, Schedule, Follow, \
     SubFilter, EmploymentRequest, BusinessType
-from sqlalchemy import select, delete, and_, or_, func, not_, exists, text, insert
-from pytz import timezone, utc
+from sqlalchemy import select, and_, or_, func, not_, exists, text
 from geoalchemy2.shape import to_shape
 from geoalchemy2 import Geography
-from geoalchemy2.functions import ST_DistanceSphere
 from timezonefinder import TimezoneFinder
 
 from models.booking.product_sub_filters import product_sub_filters
-from schema.booking.business import BusinessCreate, BusinessResponse
+from schema.booking.business import BusinessCreate, BusinessResponse, BusinessHasEmployeesUpdate
 from datetime import timedelta,datetime
-from schema.nomenclature.service import ServiceIdsUpdate
+from schema.user.user import UserUpdateResponse
 from service.integration.google_places import get_place_details
-
 
 async def get_business_by_user_id(db: DBSession, user_id: int):
     business_query = await db.execute(select(Business, User.id).where(
@@ -53,7 +50,8 @@ async def get_business_by_user_id(db: DBSession, user_id: int):
         timezone=business.timezone,
         address=business.address,
         services=business.services,
-        coordinates=(longitude, latitude)
+        coordinates=(longitude, latitude),
+        has_employees=business.has_employees
     )
 
 async def get_business_employees_by_id(db: DBSession, business_id: int, page: int, limit: int):
@@ -279,6 +277,49 @@ async def create_new_business(db: DBSession, business_data: BusinessCreate):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail='Business could not be created')
 
+async def update_business_has_employees(db: DBSession, business_update: BusinessHasEmployeesUpdate, request: Request):
+    auth_user_id = request.state.user.get("id")
+
+    try:
+        business_stmt = await db.execute(
+            select(Business)
+            .where(and_(Business.owner_id == auth_user_id))
+        )
+        business = business_stmt.scalar_one_or_none()
+
+        if not business:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                detail='This Business was not found')
+        if auth_user_id != business.owner_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail='You do not have permission to perform this action')
+
+        business.has_employees = business_update.has_employees
+        db.add(business)
+
+        owner = await db.get(User, auth_user_id)
+
+        if owner.registration_step is RegistrationStepEnum.COLLECT_BUSINESS_HAS_EMPLOYEES:
+            owner.registration_step = RegistrationStepEnum.COLLECT_BUSINESS_VALIDATION
+
+        db.add(owner)
+
+        await db.commit()
+        await db.refresh(owner)
+
+        return UserUpdateResponse(
+            is_validated=owner.is_validated,
+            registration_step=owner.registration_step
+        )
+
+    except Exception as e:
+        logger.error(f"Business could not be updated. ERROR: {e}")
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Something went wrong"
+        )
+
 async def delete_business_by_id(db: DBSession, business_id: int, request: Request):
     auth_user_id = request.state.user.get("id")
     business = await db.get(Business, business_id)
@@ -292,98 +333,3 @@ async def delete_business_by_id(db: DBSession, business_id: int, request: Reques
 
     await db.delete(business)
     await db.commit()
-
-async def attach_service_to_business(db: DBSession, business_id: int, service_id: int, request: Request):
-    authenticated_user_id = request.state.user.get("id")
-    business = await db.get(Business, business_id)
-    service = await db.get(Service, service_id)
-
-    if business and service:
-        if authenticated_user_id != business.owner_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                                detail='You do not have permission to perform this action')
-
-        is_present = await db.execute(
-            select(business_services).where(
-                (business_services.c.business_id == business_id) & (business_services.c.service_id == service_id) # type: ignore
-            )
-        )
-
-        if is_present.scalar():
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                                detail='This service is already associated with this Business')
-
-        await db.execute(insert(business_services).values(business_id=business_id, service_id=service_id))
-        await db.commit()
-        return {"detail": f"Service {service_id} successfully attached to Business {business_id}"}
-
-    else:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail='Business or service not found')
-
-async def attach_many_services_to_business(db: DBSession, business_id: int, service_ids: ServiceIdsUpdate, request: Request):
-    authenticated_user_id = request.state.user.get("id")
-    business = await db.get(Business, business_id)
-
-    if business:
-        if authenticated_user_id != business.owner_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                                detail='You do not have permission to perform this action')
-
-        try:
-            for service_id in service_ids.service_ids:
-                service = await db.get(Service, service_id)
-
-                if not service:
-                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                                        detail='Service not found')
-
-                is_present = await db.execute(
-                    select(business_services).where(
-                        (business_services.c.business_id == business_id) & (business_services.c.service_id == service_id) # type: ignore
-                    )
-                )
-
-
-                if not is_present.scalar():
-                    await db.execute(insert(business_services).values(business_id=business_id, service_id=service_id))
-                    await db.commit()
-            return {"detail": f"Services {service_ids} successfully attached to Business {business_id}"}
-        except Exception as e:
-            await db.rollback()
-            logger.error(f"Services could not saved. Error: {e}")
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                                detail='Something went wrong')
-
-    else:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail='Business or service not found')
-
-async def detach_service_from_business(db: DBSession, business_id: int, service_id: int, request: Request):
-    authenticated_user_id = request.state.user.get("id")
-    business = await db.get(Business, business_id)
-    service = await db.get(Service, service_id)
-
-    if business and service:
-        if authenticated_user_id != business.owner_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                                detail='You do not have permission to perform this action')
-
-        is_present = await db.execute(
-            select(business_services).where(
-                (business_services.c.business_id == business_id) & (business_services.c.service_id == service_id)
-            )
-        )
-
-        if not is_present.scalar():
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                                detail='This service is not associated with this Business')
-
-        await db.execute(delete(business_services).where(
-            (business_services.c.business_id == business_id) & (business_services.c.service_id == service_id)
-        ))
-        await db.commit()
-
-    else:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail='Business or service not found')

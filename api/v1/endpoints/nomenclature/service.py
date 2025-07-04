@@ -2,14 +2,16 @@ from typing import Union
 
 from fastapi import APIRouter
 from starlette import status
+from starlette.requests import Request
+
 from core.crud_helpers import PaginatedResponse
-from core.dependencies import DBSession, Pagination
+from core.dependencies import DBSession, Pagination, BusinessSession
 from core.dependencies import SuperAdminSession
-from schema.nomenclature.service import ServiceResponse, ServiceCreate, ServiceUpdate
+from schema.nomenclature.service import ServiceResponse, ServiceCreate, ServiceUpdate, ServiceIdsUpdate
 from service.nomenclature.service import create_new_service, \
     delete_service_by_id, update_service_by_id, get_all_services, attach_services_to_business_type, \
     detach_services_from_business_type, get_services_by_business_id, get_services_by_service_domain_id, \
-    get_services_by_business_type_id
+    get_services_by_business_type_id, update_services_by_business_id
 
 router = APIRouter(tags=["Services"])
 
@@ -59,6 +61,12 @@ async def update_service(db: DBSession, service_id: int, service_data: ServiceUp
     dependencies=[SuperAdminSession])
 async def delete_service(db: DBSession, service_id: int):
     return await delete_service_by_id(db, service_id)
+
+@router.put("/businesses/update-services",
+            summary='Update Business Services',
+            dependencies=[BusinessSession])
+async def update_business_services(db: DBSession, services_update: ServiceIdsUpdate, request: Request):
+    return await update_services_by_business_id(db, services_update, request)
 
 @router.post("/services/{service_id}/business-types/{business_type_id}",
     summary='Create Service - Business Type Relation',
