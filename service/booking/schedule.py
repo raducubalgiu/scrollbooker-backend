@@ -11,7 +11,7 @@ from schema.booking.schedule import ScheduleCreate, ScheduleUpdate
 from models import Schedule, Business, User
 import calendar
 from core.logger import logger
-from schema.user.user import UserUpdateResponse
+from schema.user.user import UserAuthStateResponse
 
 from service.booking.business import get_business_by_user_id
 
@@ -104,7 +104,7 @@ async def update_user_many_schedules(db: DBSession, schedule_update: List[Schedu
         await db.commit()
         await db.refresh(user)
 
-        return UserUpdateResponse(
+        return UserAuthStateResponse(
             is_validated=user.is_validated,
             registration_step=user.registration_step
         )

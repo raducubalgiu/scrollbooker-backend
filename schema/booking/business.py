@@ -2,6 +2,8 @@ from pydantic import BaseModel
 from typing import Optional, List
 
 from schema.nomenclature.service import ServiceResponse
+from schema.user.user import UserAuthStateResponse
+
 
 class BusinessBase(BaseModel):
     description: Optional[str] = None
@@ -14,7 +16,6 @@ class BusinessBase(BaseModel):
 class BusinessCreate(BaseModel):
     description: Optional[str] = None
     place_id: str
-    owner_id: int = None
     business_type_id: int
 
 class BusinessResponse(BusinessBase):
@@ -44,6 +45,10 @@ class BusinessPlaceAddressResponse(BaseModel):
 
 class BusinessHasEmployeesUpdate(BaseModel):
     has_employees: bool
+
+class BusinessCreateResponse(BaseModel):
+    authState: UserAuthStateResponse
+    business_id: int
 
 
 

@@ -10,7 +10,7 @@ from core.enums.registration_step_enum import RegistrationStepEnum
 from models import Currency, User, UserCurrency, Product
 from schema.nomenclature.currency import CurrencyCreate, CurrencyResponse, CurrencyUpdate, UserCurrenciesUpdate
 from core.logger import logger
-from schema.user.user import UserUpdateResponse
+from schema.user.user import UserAuthStateResponse
 
 
 async def get_all_currencies(db: DBSession, pagination: Pagination):
@@ -94,7 +94,7 @@ async def update_currencies_by_user(db: DBSession, currency_update: UserCurrenci
         await db.commit()
         await db.refresh(user)
 
-        return UserUpdateResponse(
+        return UserAuthStateResponse(
             is_validated=user.is_validated,
             registration_step=user.registration_step
         )

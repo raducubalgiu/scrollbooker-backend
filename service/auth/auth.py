@@ -1,12 +1,15 @@
 import os
+
+from pydantic import EmailStr
 from starlette.requests import Request
 from fastapi import HTTPException
 from sqlalchemy.orm import joinedload
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, or_
 from starlette import status
 from datetime import timedelta
 from dotenv import load_dotenv
 
+from core.enums.day_of_week_enum import DayOfWeekEnum
 from core.enums.registration_step_enum import RegistrationStepEnum
 from core.enums.role_enum import RoleEnum
 from core.logger import logger
@@ -14,7 +17,7 @@ from core.crud_helpers import db_get_one
 from core.security import hash_password, verify_password, create_token, decode_token
 from core.dependencies import DBSession
 from core.send_email import send_verification_email
-from models import User, UserCounters, Role, Business, Permission
+from models import User, UserCounters, Role, Business, Permission, Schedule
 from schema.auth.auth import UserRegister, UserInfoResponse, UserInfoUpdate
 from jose import JWTError
 import uuid
@@ -83,7 +86,7 @@ async def register_user(db: DBSession, user_register: UserRegister):
         await db.commit()
         await db.refresh(new_user)
 
-        return await generate_tokens(username, new_user.id, role.name)
+        return await generate_tokens(username, new_user.email, new_user.id, role.name)
     except Exception as e:
         await db.rollback()
         logger.error(f"User could not be registered. Error {e}")
@@ -157,18 +160,18 @@ async def login_user(db: DBSession, username: str, password: str):
     if not password:
         raise HTTPException(status_code=400, detail="Password doesn't match")
 
-    return await generate_tokens(username, user.id, user.role.name)
+    return await generate_tokens(username, user.email, user.id, user.role.name)
 
 # Generate access and refresh tokens
-async def generate_tokens(username: str, user_id: int, role: str):
+async def generate_tokens(username: str, email: EmailStr, user_id: int, role: str):
     access_token = await create_token(
-        data={"sub": username, "id": user_id, "role": role},
+        data={"sub": username, "email": email, "id": user_id, "role": role},
         expires_at=timedelta(minutes=float(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))),
         secret_key=os.getenv("SECRET_KEY")
     )
 
     refresh_token = await create_token(
-        data={"sub": username, "id": user_id, "role": role},
+        data={"sub": username, "email": email, "id": user_id, "role": role},
         expires_at=timedelta(days=float(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS"))),
         secret_key=os.getenv("REFRESH_SECRET_KEY")
     )
@@ -182,14 +185,26 @@ async def get_refresh_token(db: DBSession, token: RefreshToken):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
 
         username = payload.get("sub")
+        email = payload.get("email")
 
-        user = await db_get_one(db, model=User, filters={User.username: username}, joins=[joinedload(User.role)])
+        user_stmt = await db.execute(
+            select(User)
+            .where(
+                or_(
+                    User.username == username,
+                    User.email == email
+                )
+            )
+            .options(joinedload(User.role))
+        )
+
+        user = user_stmt.scalar_one_or_none()
 
         if not user:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
         logger.info(f"The Token was refreshed for user: {username}")
-        return await generate_tokens(username, user.id, user.role.name)
+        return await generate_tokens(username, email, user.id, user.role.name)
 
     except JWTError as e:
         logger.error(f"Token could not be refreshed.Error: {e}")
@@ -205,14 +220,27 @@ async def get_user_info(db: DBSession, token: str):
                                 detail='Invalid token')
 
         username = payload.get("sub")
-        user = await db_get_one(db, model=User,
-                                filters={User.username: username},
-                                joins=[
-                                    joinedload(User.counters),
-                                    joinedload(User.owner_business).load_only(Business.id, Business.business_type_id),
-                                    joinedload(User.employee_business).load_only(Business.id, Business.business_type_id)
-                                ])
+        email = payload.get("email")
 
+        user_stmt = await db.execute(
+            select(User)
+            .where(
+                or_(
+                    User.username == username,
+                    User.email == email
+                )
+            )
+            .options(
+                joinedload(User.counters),
+                joinedload(User.owner_business).load_only(Business.id, Business.business_type_id),
+                joinedload(User.employee_business).load_only(Business.id, Business.business_type_id)
+            )
+        )
+
+        user = user_stmt.scalar_one_or_none()
+
+        if not user:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
         business_id = (
             user.owner_business.id if user.owner_business
@@ -247,11 +275,26 @@ async def get_user_permissions(db: DBSession, token: str):
                                 detail='Invalid token')
 
         username = payload.get("sub")
-        user = await db_get_one(db,
-                                model=User,
-                                filters={User.username: username},
-                                joins=[joinedload(User.role).joinedload(Role.permissions)
-                                        .load_only(Permission.name, Permission.code)])
+        email = payload.get("email")
+
+        user_stmt = await db.execute(
+            select(User)
+            .where(
+                or_(
+                    User.username == username,
+                    User.email == email
+                )
+            )
+            .options(
+                joinedload(User.role).joinedload(Role.permissions).load_only(Permission.name, Permission.code)
+            )
+        )
+
+        user = user_stmt.unique().scalar_one_or_none()
+
+        if not user:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+
         return user.role.permissions
 
     except JWTError as e:
@@ -297,6 +340,7 @@ async def update_user_info(db: DBSession, user_update: UserInfoUpdate ,token: st
         return UserInfoResponse(
             id=user.id,
             business_id=business_id,
+            is_validated=user.is_validated
         )
 
     except JWTError as e:

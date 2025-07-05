@@ -16,7 +16,7 @@ from core.enums.role_enum import RoleEnum
 from models import User, Follow, Appointment, Product, Business, Role, BusinessType, Schedule
 from sqlalchemy import select, func, case, and_, or_, distinct, exists
 from schema.user.user import UsernameUpdate, FullNameUpdate, BioUpdate, GenderUpdate, UserProfileResponse, \
-    OpeningHours, UserBaseMinimum, SearchUsername, SearchUsernameResponse, BirthDateUpdate, UserUpdateResponse
+    OpeningHours, UserBaseMinimum, SearchUsername, SearchUsernameResponse, BirthDateUpdate, UserAuthStateResponse
 
 
 async def search_available_username(db: DBSession, query: SearchUsername = Depends()):
@@ -210,7 +210,7 @@ async def update_user_username(db: DBSession, username_update: UsernameUpdate, r
     await db.commit()
     await db.refresh(user)
 
-    return UserUpdateResponse(
+    return UserAuthStateResponse(
         is_validated=user.is_validated,
         registration_step=user.registration_step
     )
@@ -237,7 +237,7 @@ async def update_user_birthdate(db: DBSession, birthdate_update: BirthDateUpdate
     await db.commit()
     await db.refresh(user)
 
-    return UserUpdateResponse(
+    return UserAuthStateResponse(
         is_validated=user.is_validated,
         registration_step=user.registration_step
     )
@@ -261,7 +261,7 @@ async def update_user_gender(db: DBSession, gender_update: GenderUpdate, request
     await db.commit()
     await db.refresh(user)
 
-    return UserUpdateResponse(
+    return UserAuthStateResponse(
         is_validated=user.is_validated,
         registration_step=user.registration_step
     )

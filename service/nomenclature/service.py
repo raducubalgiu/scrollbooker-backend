@@ -12,7 +12,7 @@ from core.crud_helpers import db_create, db_delete, db_update, db_get_all, db_in
     db_remove_many_to_many, db_get_one
 from models.nomenclature.service_business_types import service_business_types
 from core.logger import logger
-from schema.user.user import UserUpdateResponse
+from schema.user.user import UserAuthStateResponse
 
 
 async def get_all_services(db: DBSession, pagination: Pagination):
@@ -124,7 +124,7 @@ async def update_services_by_business_id(db: DBSession, services_update: Service
         await db.commit()
         await db.refresh(owner)
 
-        return UserUpdateResponse(
+        return UserAuthStateResponse(
             is_validated=owner.is_validated,
             registration_step=owner.registration_step
         )

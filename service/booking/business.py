@@ -3,6 +3,7 @@ from sqlalchemy.orm import joinedload
 from starlette.requests import Request
 from fastapi import HTTPException, Query
 
+from core.enums.day_of_week_enum import DayOfWeekEnum
 from core.enums.registration_step_enum import RegistrationStepEnum
 from core.logger import logger
 from core.data_utils import local_to_utc_fulldate
@@ -16,9 +17,9 @@ from geoalchemy2 import Geography
 from timezonefinder import TimezoneFinder
 
 from models.booking.product_sub_filters import product_sub_filters
-from schema.booking.business import BusinessCreate, BusinessResponse, BusinessHasEmployeesUpdate
+from schema.booking.business import BusinessCreate, BusinessResponse, BusinessHasEmployeesUpdate, BusinessCreateResponse
 from datetime import timedelta,datetime
-from schema.user.user import UserUpdateResponse
+from schema.user.user import UserAuthStateResponse
 from service.integration.google_places import get_place_details
 
 async def get_business_by_user_id(db: DBSession, user_id: int):
@@ -224,11 +225,13 @@ async def get_businesses_by_distance(
         "available_businesses": available_businesses
     }
 
-async def create_new_business(db: DBSession, business_data: BusinessCreate):
+async def create_new_business(db: DBSession, business_data: BusinessCreate, request: Request):
+    auth_user_id = request.state.user.get("id")
+
     try:
         place = await get_place_details(business_data.place_id)
 
-        owner = await db.get(User, business_data.owner_id)
+        owner = await db.get(User, auth_user_id)
         business_type = await db.get(BusinessType, business_data.business_type_id)
 
         tf = TimezoneFinder()
@@ -236,7 +239,7 @@ async def create_new_business(db: DBSession, business_data: BusinessCreate):
 
         stmt_owner_has_business = await db.execute(
             select(Business).
-            filter(and_(Business.owner_id == business_data.owner_id))
+            filter(and_(Business.owner_id == auth_user_id))
         )
         owner_has_business = stmt_owner_has_business.scalars().first()
 
@@ -256,7 +259,7 @@ async def create_new_business(db: DBSession, business_data: BusinessCreate):
             "longitude": place["lng"],
             "latitude": place["lat"],
             "timezone": business_timezone,
-            "owner_id": business_data.owner_id,
+            "owner_id": auth_user_id,
             "business_type_id": business_data.business_type_id,
             "has_employees": business_type.has_employees
         }
@@ -266,10 +269,40 @@ async def create_new_business(db: DBSession, business_data: BusinessCreate):
 
         db.add(owner)
 
-        await db.execute(stmt, params)
-        await db.commit()
+        business_result = await db.execute(stmt, params)
+        business_id = business_result.scalar_one()
 
-        return { "detail": "Business created" }
+        days_of_week = [
+            (DayOfWeekEnum.MONDAY, 0),
+            (DayOfWeekEnum.TUESDAY, 1),
+            (DayOfWeekEnum.WEDNESDAY, 2),
+            (DayOfWeekEnum.THURSDAY, 3),
+            (DayOfWeekEnum.FRIDAY, 4),
+            (DayOfWeekEnum.SATURDAY, 5),
+            (DayOfWeekEnum.SUNDAY, 6)
+        ]
+
+        for day_of_week, index in days_of_week:
+            schedule = Schedule(
+                user_id=auth_user_id,
+                business_id=business_id,
+                day_of_week=day_of_week,
+                start_time=None,
+                end_time=None,
+                day_week_index=index
+            )
+            db.add(schedule)
+
+        await db.commit()
+        await db.refresh(owner)
+
+        return BusinessCreateResponse(
+            authState=UserAuthStateResponse(
+                is_validated=owner.is_validated,
+                registration_step=owner.registration_step
+            ),
+            business_id=business_id
+        )
     except Exception as e:
         await db.rollback()
 
@@ -307,7 +340,7 @@ async def update_business_has_employees(db: DBSession, business_update: Business
         await db.commit()
         await db.refresh(owner)
 
-        return UserUpdateResponse(
+        return UserAuthStateResponse(
             is_validated=owner.is_validated,
             registration_step=owner.registration_step
         )

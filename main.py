@@ -6,7 +6,7 @@ from core.dependencies import UserSession
 from core.middlewares.cors_middleware import CORSCustomMiddleware
 from models import Base
 #from api.v1.endpoints.upload import upload_media
-from api.v1.endpoints.user import user, role, permission, consent, notification, user_currency
+from api.v1.endpoints.user import user, role, permission, consent, notification
 from api.v1.endpoints.auth import auth
 from api.v1.endpoints.social import follow, hashtag, post, bookmark_posts,repost, like, comment
 from api.v1.endpoints.booking import business, product, appointment, schedule, review, employment_request
@@ -45,7 +45,6 @@ app.include_router(role.router)
 app.include_router(permission.router, dependencies=[UserSession])
 app.include_router(consent.router, dependencies=[UserSession])
 app.include_router(notification.router, dependencies=[UserSession])
-app.include_router(user_currency.router, dependencies=[UserSession])
 
 # Booking
 app.include_router(currency.router, dependencies=[UserSession])
