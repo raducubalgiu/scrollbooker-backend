@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field, EmailStr, model_validator
 from typing import Optional, List
 from datetime import datetime
+
 from sqlalchemy import Boolean
 
 from core.enums.gender_type_enum import GenderTypeEnum
@@ -81,9 +82,14 @@ class UserProfileResponse(BaseModel):
     business_type_id: Optional[int] = None
     counters: UserCountersBase
     profession: str
+
     opening_hours: OpeningHours
     is_follow: bool
     business_owner: Optional[UserBaseMinimum] = None
+    is_own_profile: bool
+    is_business_or_employee: bool
+    distance_km: Optional[float] = None
+    address: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 class ConsentBase(BaseModel):
     name: str = Field(min_length=3, max_length=50),
-    title: str
+    title: str = Field(min_length=3, max_length=100)
     text: str
 
 class ConsentCreate(ConsentBase):

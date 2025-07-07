@@ -13,10 +13,8 @@ from schema.social.repost import RepostCreate
 from schema.user.user import UserBaseMinimum
 from service.social.post_media import get_post_media
 
-async def get_reposts_by_user(db: DBSession, request: Request, pagination: Pagination):
-    auth_user_id = request.state.user.get("id")
-
-    count_stmt = select(func.count()).select_from(Repost).where(Repost.user_id == auth_user_id)
+async def get_reposts_by_user(db: DBSession, user_id: int, pagination: Pagination):
+    count_stmt = select(func.count()).select_from(Repost).where(and_(Repost.user_id == user_id))
     count_total = await db.execute(count_stmt)
     count = count_total.scalar_one()
 
@@ -24,7 +22,7 @@ async def get_reposts_by_user(db: DBSession, request: Request, pagination: Pagin
         select(literal(True))
         .select_from(Repost)
         .where(and_(
-            Repost.user_id == auth_user_id,
+            Repost.user_id == user_id,
             Repost.post_id == Post.id)
         )
         .correlate(Post)
@@ -35,7 +33,7 @@ async def get_reposts_by_user(db: DBSession, request: Request, pagination: Pagin
         select(literal(True))
         .select_from(BookmarkPost)
         .where(and_(
-            BookmarkPost.user_id == auth_user_id,
+            BookmarkPost.user_id == user_id,
             BookmarkPost.post_id == Post.id)
         )
         .correlate(Post)
@@ -46,7 +44,7 @@ async def get_reposts_by_user(db: DBSession, request: Request, pagination: Pagin
         select(literal(True))
         .select_from(Follow)
         .where(and_(
-            Follow.follower_id == auth_user_id,
+            Follow.follower_id == user_id,
             Follow.followee_id == User.id)
         )
         .correlate(User)
@@ -66,7 +64,7 @@ async def get_reposts_by_user(db: DBSession, request: Request, pagination: Pagin
             is_reposted,
         )
         .join(User, User.id == Post.user_id)
-        .join(Repost, Repost.user_id == auth_user_id)
+        .join(Repost, Repost.user_id == user_id)
         .where(Repost.post_id == Post.id)
         .order_by(desc(Post.created_at))
         .offset((pagination.page - 1) * pagination.limit)
@@ -137,21 +135,23 @@ async def repost_post_by_id(db: DBSession, post_id: int, repost_create: RepostCr
     auth_user_id = request.state.user.get("id")
     post = await db.get(Post, post_id)
 
-    if auth_user_id == post.user_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="You do not have permission to perform this action"
-        )
-
     if not post:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Post not found"
         )
 
+    if auth_user_id == post.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="You do not have permission to perform this action"
+        )
+
     stmt = select(Repost).where(
-        Repost.user_id == auth_user_id,
-        Repost.post_id == post_id
+        and_(
+            Repost.user_id == auth_user_id,
+            Repost.post_id == post_id
+        )
     )
 
     existing = await db.execute(stmt)
@@ -177,8 +177,10 @@ async def unrepost_post_by_id(db: DBSession, post_id: int, request: Request):
     auth_user_id = request.state.user.get("id")
 
     stmt = select(Repost).where(
-        Repost.user_id == auth_user_id,
-        Repost.post_id == post_id
+        and_(
+            Repost.user_id == auth_user_id,
+            Repost.post_id == post_id
+        )
     )
 
     result = await db.execute(stmt)

@@ -17,6 +17,7 @@ class BusinessCreate(BaseModel):
     description: Optional[str] = None
     place_id: str
     business_type_id: int
+    owner_fullname: str
 
 class BusinessResponse(BusinessBase):
     id: int

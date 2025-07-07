@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
 from fastapi.params import Depends
+from geoalchemy2 import Geography
 from sqlalchemy.orm import joinedload
 from starlette import status
 from starlette.requests import Request
@@ -13,8 +14,8 @@ from core.dependencies import DBSession
 from core.enums.appointment_status_enum import AppointmentStatusEnum
 from core.enums.registration_step_enum import RegistrationStepEnum
 from core.enums.role_enum import RoleEnum
-from models import User, Follow, Appointment, Product, Business, Role, BusinessType, Schedule
-from sqlalchemy import select, func, case, and_, or_, distinct, exists
+from models import User, Follow, Appointment, Product, Business, Role, BusinessType, Schedule, UserCounters
+from sqlalchemy import select, func, case, and_, or_, distinct, exists, literal_column
 from schema.user.user import UsernameUpdate, FullNameUpdate, BioUpdate, GenderUpdate, UserProfileResponse, \
     OpeningHours, UserBaseMinimum, SearchUsername, SearchUsernameResponse, BirthDateUpdate, UserAuthStateResponse
 
@@ -60,13 +61,44 @@ async def generate_username_suggestions(db: DBSession, base: str, max_suggestion
 async def get_user_profile_by_id(db: DBSession, user_id: int, request: Request):
     auth_user_id = request.state.user.get("id")
 
-    user = await db_get_one(db, model=User,
-                            filters={User.id: user_id},
-                            joins=[
-                                joinedload(User.counters),
-                                joinedload(User.owner_business).load_only(Business.id, Business.business_type_id),
-                                joinedload(User.employee_business).load_only(Business.id, Business.business_type_id)
-                            ])
+    # 44.450653, 25.992614
+
+    lat = 44.450653
+    lng = 25.992614
+
+    user_point = func.ST_SetSRID(func.ST_Point(lng, lat), 4326)
+    distance_expr = (
+            func.ST_Distance(Business.coordinates.cast(Geography), user_point.cast(Geography)) / 1000
+    ).label("distance_km") if lat and lng else literal_column("NULL").label("distance_km")
+
+    user_stmt = await db.execute(
+        select(
+            User.id,
+            User.username,
+            User.fullname,
+            User.avatar,
+            User.gender,
+            User.bio,
+            User.profession,
+            User.employee_business_id,
+            Business.id.label("business_id"),
+            Business.business_type_id.label("business_type_id"),
+            Business.address.label("business_address"),
+            distance_expr
+        )
+        .outerjoin(
+            Business,
+            or_(
+                User.employee_business_id == Business.id,
+                User.id == Business.owner_id
+            )
+        )
+        .where(and_(User.id == user_id))
+    )
+
+    user = user_stmt.mappings().first()
+    counters = await db.get(UserCounters, user.id)
+
     is_own_profile = user.id == auth_user_id
     is_follow = False
 
@@ -81,22 +113,12 @@ async def get_user_profile_by_id(db: DBSession, user_id: int, request: Request):
         )
         is_follow = follow_exists
 
-    business_id = (
-        user.owner_business.id if user.owner_business
-        else user.employee_business.id if user.employee_business
-        else None
-    )
-    business_type_id = (
-        user.owner_business.business_type_id if user.owner_business
-        else user.employee_business.business_type_id if user.employee_business
-        else None
-    )
-
     business_ower = None
-    if business_id is not None:
+
+    if user.business_id is not None:
         business = await db_get_one(db,
                                     model=Business,
-                                    filters={Business.id: business_id},
+                                    filters={Business.id: user.business_id},
                                     joins=[joinedload(Business.business_owner)])
 
         business_ower = UserBaseMinimum(
@@ -106,6 +128,8 @@ async def get_user_profile_by_id(db: DBSession, user_id: int, request: Request):
             avatar=business.business_owner.avatar,
             is_follow=False
         )
+
+    is_business_or_employee = user.employee_business_id is not None or business_ower is not None
 
     schedules = await db_get_all(db,
                                  model=Schedule,
@@ -161,9 +185,9 @@ async def get_user_profile_by_id(db: DBSession, user_id: int, request: Request):
         avatar=user.avatar,
         bio=user.bio,
         gender=user.gender,
-        business_id=business_id,
-        business_type_id=business_type_id,
-        counters=user.counters,
+        business_id=user.business_id,
+        business_type_id=user.business_type_id,
+        counters=counters,
         profession=user.profession,
         opening_hours=OpeningHours(
             open_now=open_now,
@@ -172,7 +196,11 @@ async def get_user_profile_by_id(db: DBSession, user_id: int, request: Request):
             next_open_time=next_open_time
         ),
         is_follow=is_follow,
-        business_owner=business_ower
+        business_owner=business_ower,
+        is_own_profile=is_own_profile,
+        is_business_or_employee=is_business_or_employee,
+        distance_km=round(user.distance_km, 1) if user.distance_km else None,
+        address=user.business_address
     )
 
 async def update_user_fullname(db: DBSession, fullname_update: FullNameUpdate, request: Request):

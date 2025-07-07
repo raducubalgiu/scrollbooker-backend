@@ -5,6 +5,7 @@ from sqlalchemy import select, or_
 from starlette import status
 from core.crud_helpers import db_create, db_get_one, db_delete, db_get_all
 from core.dependencies import DBSession
+from core.enums.employment_requests_status_enum import EmploymentRequestsStatusEnum
 from core.enums.role_enum import RoleEnum
 from models import EmploymentRequest, Business, User, Role, Notification, Profession, Schedule
 from schema.booking.employment_request import EmploymentRequestCreate, EmploymentRequestUpdate
@@ -121,30 +122,30 @@ async def accept_employment_request(db: DBSession,
                                     request: Request):
 
     auth_user_id = request.state.user.get("id")
-    employment_request = await db.get(EmploymentRequest, employment_request_id)
 
     try:
-        if employment_update.status == 'accepted':
+        employment_request = await db.get(EmploymentRequest, employment_request_id)
+
+        if employment_update.status == EmploymentRequestsStatusEnum.ACCEPTED:
             employment_request.status = employment_update.status
 
             employee = await db.get(User, auth_user_id)
+
             employee.employee_business_id = employment_request.business_id
+            employee.profession = employment_request.profession
 
-            employee_role = await db_get_one(db, model=Role, filters={Role.name: RoleEnum.EMPLOYEE})
+            employee_role = await db_get_one(db, model=Role, filters={ Role.name: RoleEnum.EMPLOYEE })
             employee.role_id = employee_role.id
-
-            business = await db.get(Business, employment_request.business_id)
-            if not business.has_employees:
-                business.has_employees = True
 
             # Create Employees Schedules
             day_names = list(calendar.day_name)
 
             for day in day_names:
-                day_of_week = day_names.index(day)
+                day_week_index = day_names.index(day)
+
                 new_schedule = Schedule(
                     day_of_week=day,
-                    day_week_index=day_of_week,
+                    day_week_index=day_week_index,
                     user_id=auth_user_id,
                     business_id=employment_request.business_id,
                     start_time=None,

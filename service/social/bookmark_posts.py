@@ -1,9 +1,7 @@
-from operator import and_
-
 from fastapi import HTTPException
 from starlette.requests import Request
 from starlette import status
-from sqlalchemy import select, func, literal, desc, update
+from sqlalchemy import select, func, literal, desc, and_
 
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession, Pagination
@@ -13,10 +11,8 @@ from schema.user.user import UserBaseMinimum
 from service.social.post_media import get_post_media
 from core.logger import logger
 
-async def get_bookmarked_posts_by_user(db: DBSession, request: Request, pagination: Pagination):
-    auth_user_id = request.state.user.get("id")
-
-    count_stmt = select(func.count()).select_from(BookmarkPost).where(BookmarkPost.user_id == auth_user_id)
+async def get_bookmarked_posts_by_user(db: DBSession, user_id: int, pagination: Pagination):
+    count_stmt = select(func.count()).select_from(BookmarkPost).where(and_(BookmarkPost.user_id == user_id))
     count_total = await db.execute(count_stmt)
     count = count_total.scalar_one()
 
@@ -24,7 +20,7 @@ async def get_bookmarked_posts_by_user(db: DBSession, request: Request, paginati
         select(literal(True))
         .select_from(Repost)
         .where(and_(
-            Repost.user_id == auth_user_id,
+            Repost.user_id == user_id,
             Repost.post_id == Post.id)
         )
         .correlate(Post)
@@ -35,7 +31,7 @@ async def get_bookmarked_posts_by_user(db: DBSession, request: Request, paginati
         select(literal(True))
         .select_from(BookmarkPost)
         .where(and_(
-            BookmarkPost.user_id == auth_user_id,
+            BookmarkPost.user_id == user_id,
             BookmarkPost.post_id == Post.id)
         )
         .correlate(Post)
@@ -46,7 +42,7 @@ async def get_bookmarked_posts_by_user(db: DBSession, request: Request, paginati
         select(literal(True))
         .select_from(Follow)
         .where(and_(
-            Follow.follower_id == auth_user_id,
+            Follow.follower_id == user_id,
             Follow.followee_id == User.id)
         )
         .correlate(User)
@@ -66,7 +62,7 @@ async def get_bookmarked_posts_by_user(db: DBSession, request: Request, paginati
             is_reposted,
         )
         .join(User, User.id == Post.user_id)
-        .join(BookmarkPost, BookmarkPost.user_id == auth_user_id)
+        .join(BookmarkPost, BookmarkPost.user_id == user_id)
         .where(BookmarkPost.post_id == Post.id)
         .order_by(desc(Post.created_at))
         .offset((pagination.page - 1) * pagination.limit)
@@ -138,8 +134,10 @@ async def bookmark_post_by_id(db: DBSession, post_id: int, request: Request):
 
     try:
         stmt = select(BookmarkPost).where(
-            BookmarkPost.user_id == auth_user_id,
-            BookmarkPost.post_id == post_id
+            and_(
+                BookmarkPost.user_id == auth_user_id,
+                BookmarkPost.post_id == post_id
+            )
         )
 
         existing = await db.execute(stmt)
@@ -175,8 +173,10 @@ async def unbookmark_post_by_id(db: DBSession, post_id: int, request: Request):
 
     try:
         stmt = select(BookmarkPost).where(
-            BookmarkPost.user_id == auth_user_id,
-            BookmarkPost.post_id == post_id
+            and_(
+                BookmarkPost.user_id == auth_user_id,
+                BookmarkPost.post_id == post_id
+            )
         )
 
         result = await db.execute(stmt)

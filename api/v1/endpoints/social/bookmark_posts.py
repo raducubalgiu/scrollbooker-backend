@@ -10,11 +10,11 @@ from service.social.bookmark_posts import bookmark_post_by_id, unbookmark_post_b
 
 router = APIRouter(tags=["Bookmark Posts"])
 
-@router.get("/bookmark-posts",
+@router.get("/users/{user_id}/bookmark-posts",
             summary='List All Bookmarked Posts By User',
             response_model=PaginatedResponse[UserPostResponse])
-async def get_bookmarked_posts(db: DBSession, request: Request, pagination: Pagination):
-    return await get_bookmarked_posts_by_user(db, request, pagination)
+async def get_bookmarked_posts(db: DBSession, user_id: int, pagination: Pagination):
+    return await get_bookmarked_posts_by_user(db, user_id, pagination)
 
 @router.post("/posts/{post_id}/bookmark-posts",
              summary='Bookmark Post By Post Id',

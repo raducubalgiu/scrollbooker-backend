@@ -230,7 +230,6 @@ async def create_new_business(db: DBSession, business_data: BusinessCreate, requ
 
     try:
         place = await get_place_details(business_data.place_id)
-
         owner = await db.get(User, auth_user_id)
         business_type = await db.get(BusinessType, business_data.business_type_id)
 
@@ -266,6 +265,9 @@ async def create_new_business(db: DBSession, business_data: BusinessCreate, requ
 
         if owner.registration_step is RegistrationStepEnum.COLLECT_BUSINESS:
             owner.registration_step = RegistrationStepEnum.COLLECT_BUSINESS_SERVICES
+
+        owner.fullname = business_data.owner_fullname
+        owner.profession = business_type.name
 
         db.add(owner)
 

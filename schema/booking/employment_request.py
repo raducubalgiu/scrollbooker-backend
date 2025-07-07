@@ -2,6 +2,7 @@ from typing import Optional
 from pydantic import BaseModel
 from datetime import datetime
 
+from core.enums.employment_requests_status_enum import EmploymentRequestsStatusEnum
 from schema.user.user import UserBaseMinimum
 
 class EmploymentRequestBase(BaseModel):
@@ -12,7 +13,7 @@ class EmploymentRequestCreate(EmploymentRequestBase):
     consent_id: int
 
 class EmploymentRequestUpdate(BaseModel):
-    status: str
+    status: EmploymentRequestsStatusEnum
 
 class ProfessionLoadOnly(BaseModel):
     id: int
