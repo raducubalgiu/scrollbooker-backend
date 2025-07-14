@@ -26,7 +26,8 @@ async def get_products_by_user_and_service(db: DBSession, user_id: int, service_
     return await get_products_by_user_id_and_service_id(db, user_id, service_id, pagination)
 
 @router.get("/products/{product_id}",
-    summary='Get Product By Id')
+    summary='Get Product By Id',
+    response_model=ProductResponse)
 async def get_product(db: DBSession, product_id: int):
     return await get_product_by_id(db, product_id)
 

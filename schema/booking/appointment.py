@@ -2,8 +2,8 @@ from typing import Optional
 from pydantic import BaseModel, condecimal, Field
 from datetime import datetime
 
+from core.enums.appointment_channel_enum import AppointmentChannelEnum
 from schema.user.user import UserBaseMinimum
-
 
 class AppointmentResponse(BaseModel):
     id: int
@@ -33,14 +33,17 @@ class AppointmentResponse(BaseModel):
     class Config:
         from_attributes = True
 
-class AppointmentCreateOwnClient(BaseModel):
+class AppointmentCreate(BaseModel):
     start_date: datetime
     end_date: datetime
     user_id: int
     business_id: int
+    customer_id: Optional[int] = None
     currency_id: int
     service_id: int
     product_id: Optional[int] = None
+    channel: AppointmentChannelEnum
+
     customer_fullname: str = Field(min_length=3, max_length=50)
     service_name: str= Field(min_length=3, max_length=50)
     product_name: str = Field(min_length=3, max_length=100)
@@ -86,12 +89,14 @@ class AppointmentProduct(BaseModel):
     price_with_discount: condecimal(gt=0, max_digits=10, decimal_places=2)
     discount: condecimal(max_digits=10, decimal_places=2)
     currency: str
+    exchange_rate: condecimal(gt=0, max_digits=10, decimal_places=2)
 
 class UserAppointmentResponse(BaseModel):
     id: int
-    start_date: str
-    end_date: str
+    start_date: datetime
+    end_date: datetime
     channel: str
     status: str
+    as_customer: bool
     product: AppointmentProduct
     user: UserBaseMinimum

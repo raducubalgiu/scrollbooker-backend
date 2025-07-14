@@ -1,98 +1,164 @@
-import calendar
 from collections import defaultdict
+from typing import Optional
+
 from fastapi import HTTPException
 from datetime import datetime, timedelta, time, timezone, date
 from zoneinfo import ZoneInfo
 
-from sqlalchemy.orm import aliased
+from sqlalchemy.orm import aliased, joinedload
 from starlette.requests import Request
 from starlette import status
-from core.crud_helpers import db_create, db_get_one
+from core.crud_helpers import db_create, db_get_one, PaginatedResponse
 from core.enums.appointment_channel_enum import AppointmentChannelEnum
 from core.enums.appointment_status_enum import AppointmentStatusEnum
-from schema.booking.appointment import AppointmentBlock, AppointmentCancel, AppointmentUnblock, \
-    AppointmentCreateOwnClient
+from core.enums.role_enum import RoleEnum
+from schema.booking.appointment import AppointmentBlock, AppointmentCancel, AppointmentUnblock, AppointmentCreate, \
+    UserAppointmentResponse, AppointmentProduct
 from core.dependencies import DBSession
-from models import Appointment, Schedule, User, Business, Currency, Product
+from models import Appointment, Schedule, User, Business, Currency
 from sqlalchemy import select, and_, or_, desc, func
 from core.logger import logger
+from schema.user.user import UserBaseMinimum
 
-async def get_appointments_by_user_id(db: DBSession, page: int, limit: int, as_customer: bool, request: Request):
-    # user_id can be the id of the business/customer or the id of the customer
+
+async def get_appointments_by_user_id(db: DBSession, page: int, limit: int, request: Request, as_customer: Optional[bool] = None):
     auth_user_id = request.state.user.get("id")
 
-    query = (select(
-        Appointment,
-        User.id,
-        User.fullname,
-        User.username,
-        User.avatar,
-        User.profession,
-        Currency.name
+    user_stmt = await db.execute(
+        select(User)
+        .where(User.id == auth_user_id)
+        .options(joinedload(User.role))
     )
-    .outerjoin(Currency, Currency.id == Appointment.currency_id)
-    .where(Appointment.is_blocked == False))
+    user = user_stmt.scalar_one_or_none()
 
-    if as_customer:
-        query = query.where(Appointment.customer_id == auth_user_id)
-        query = query.outerjoin(User, User.id == Appointment.user_id)
+    is_filter_allowed = user.role.name is RoleEnum.EMPLOYEE
+
+    customer_user = aliased(User)
+    provider_user = aliased(User)
+
+    query = (
+        select(
+            Appointment,
+            customer_user.id, customer_user.fullname, customer_user.username, customer_user.avatar, customer_user.profession,
+            provider_user.id, provider_user.fullname, provider_user.username, provider_user.avatar, provider_user.profession,
+            Currency.name
+        )
+        .join(customer_user, Appointment.customer_id == customer_user.id)
+        .join(provider_user, Appointment.user_id == provider_user.id)
+        .join(Currency, Currency.id == Appointment.currency_id)
+    )
+
+    conditions = [Appointment.is_blocked == False]
+
+    if is_filter_allowed and as_customer is not None:
+        if as_customer:
+            conditions.append(Appointment.customer_id == auth_user_id)
+        else:
+            conditions.append(Appointment.user_id == auth_user_id)
     else:
-        query = query.where(Appointment.user_id == auth_user_id)
-        query = query.outerjoin(User, User.id == Appointment.customer_id)
+        conditions.append(
+            or_(
+                Appointment.customer_id == auth_user_id,
+                Appointment.user_id == auth_user_id
+            )
+        )
 
-    query = query.offset((page - 1) * limit).limit(limit).order_by(desc("created_at"))
+    query = query.where(and_(*conditions))
+    query = query.order_by(desc(Appointment.created_at)).offset((page - 1) * limit).limit(limit)
 
-    appointments_stmt = await db.execute(query)
-    count_query = await db.execute(select(func.count()).select_from(query.subquery()))
-    count = count_query.scalars().first()
-    appointments_result = appointments_stmt.all()
+    total_count = await db.execute(select(func.count()).select_from(query.subquery()))
+    count = total_count.scalars().first()
+
+    result = await db.execute(query)
+    rows = result.all()
 
     appointments = []
 
-    for appointment, u_id, u_fullname, u_username, u_avatar, u_profession, curr_name in appointments_result:
-        appointments.append({
-            "start_date": appointment.start_date,
-            "end_date": appointment.end_date,
-            "channel": appointment.channel,
-            "status": appointment.status,
-            "is_customer": True,
-            "product": {
-                "id": appointment.product_id,
-                "name": appointment.product_name,
-                "price": appointment.product_full_price,
-                "price_with_discount": appointment.product_price_with_discount,
-                "discount": appointment.product_discount,
-                "currency": curr_name,
-                "exchange_rate": appointment.exchange_rate
-            },
-            "user": {
-                "id": u_id,
-                "fullname": u_fullname or appointment.customer_fullname,
-                "username": u_username,
-                "avatar": u_avatar,
-                "profession": u_profession
-            }
-        })
+    for (appointment,
+         c_id, c_fullname, c_username, c_avatar, c_prof,
+         p_id, p_fullname, p_username, p_avatar, p_prof,
+         curr_name
+    ) in rows:
+        is_as_customer = appointment.customer_id == auth_user_id
 
-    return {
-        "count": count,
-        "results": appointments
-    }
+        appointments.append(
+            UserAppointmentResponse(
+                id=appointment.id,
+                start_date=appointment.start_date,
+                end_date=appointment.end_date,
+                channel=appointment.channel,
+                status=appointment.status,
+                as_customer=is_as_customer,
+                product=AppointmentProduct(
+                    id=appointment.product_id,
+                    name=appointment.product_name,
+                    price=appointment.product_full_price,
+                    price_with_discount=appointment.product_price_with_discount,
+                    discount=appointment.product_discount,
+                    currency=curr_name,
+                    exchange_rate=appointment.exchange_rate
+                ),
+                user=UserBaseMinimum(
+                    id= p_id if is_as_customer else c_id,
+                    fullname= p_fullname if is_as_customer else c_fullname,
+                    username= p_username if is_as_customer else c_username,
+                    avatar= p_avatar if is_as_customer else c_avatar,
+                    profession= p_prof if is_as_customer else c_prof
+                )
+            )
+        )
 
-async def create_new_appointment_own_client(db: DBSession, appointment_create: AppointmentCreateOwnClient, request: Request):
+    return PaginatedResponse(
+        count=count,
+        results=appointments
+    )
+
+async def get_appointments_number_by_user_id(db: DBSession, request: Request):
     auth_user_id = request.state.user.get("id")
 
-    if auth_user_id != appointment_create.user_id:
+    stmt = (
+        select(func.count())
+        .select_from(Appointment)
+        .where(
+            and_(
+                or_(
+                    Appointment.customer_id == auth_user_id,
+                    Appointment.user_id == auth_user_id
+                ),
+                Appointment.status != AppointmentStatusEnum.FINISHED,
+                Appointment.status != AppointmentStatusEnum.CANCELED
+            )
+        )
+    )
+    result = await db.execute(stmt)
+
+    return result.scalar() or 0
+
+async def create_new_appointment(db: DBSession, appointment_create: AppointmentCreate, request: Request):
+    auth_user_id = request.state.user.get("id")
+
+    auth_user_stmt = await db.execute(
+        select(User)
+        .where(and_(User.id == auth_user_id))
+        .options(joinedload(User.role))
+    )
+
+    auth_user = auth_user_stmt.scalar_one_or_none()
+
+    if auth_user.role.name is not RoleEnum.CLIENT and auth_user_id is not appointment_create.user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="You do not have permission to perform this action"
         )
 
+    # We need to also check the business/employee schedule
+
     is_slot_booked_result = await db.execute(
         select(Appointment).where(
             and_(
                 Appointment.user_id == auth_user_id,
-                Appointment.start_date == appointment_create.start_date,
+                Appointment.start_date < appointment_create.end_date,
+                Appointment.end_date > appointment_create.start_date,
                 Appointment.status != AppointmentStatusEnum.CANCELED
             )
         ))
@@ -104,9 +170,7 @@ async def create_new_appointment_own_client(db: DBSession, appointment_create: A
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="This slot is already booked")
 
-    return await db_create(db, model=Appointment, create_data=appointment_create, extra_params={
-        "channel": AppointmentChannelEnum.OWN_CLIENT
-    })
+    return await db_create(db, model=Appointment, create_data=appointment_create)
 
 async def create_new_blocked_appointment(db: DBSession, appointments_create: list[AppointmentBlock], request: Request):
     auth_user_id = request.state.user.get("id")
@@ -332,20 +396,17 @@ async def get_daily_available_slots(db: DBSession, day: str, user_id: int, slot_
 
     return slots
 
-async def get_user_calendar_availability(db: DBSession, month: str, user_id: int):
+async def get_user_calendar_availability(db: DBSession, start_date: str, end_date: str, user_id: int):
     business_timezone = await get_business_timezone(db, user_id)
-    await validate_date(month, '%Y-%m')
+    #await validate_date(month, '%Y-%m')
 
     # Create Timezone object
     tz = ZoneInfo(business_timezone)
 
-    year, month_int = map(int, month.split("-"))
-    end_day = calendar.monthrange(year, month_int)[1]
+    start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
+    end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
 
-    start_date_obj = date(year, month_int, 1)
-    end_date_obj = date(year, month_int, end_day)
-
-    # Create Local datetimes
+    # Create Local datetime
     local_start = datetime.combine(start_date_obj, time.min).replace(tzinfo=tz)
     local_end = datetime.combine(end_date_obj, time.max).replace(tzinfo=tz)
 

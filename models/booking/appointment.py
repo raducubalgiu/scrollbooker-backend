@@ -56,5 +56,7 @@ class Appointment(Base):
         Index("idx_appointments_currency_id", "currency_id"),
         Index("idx_appointments_status", "status"),
         Index("idx_appointments_channel", "channel"),
+
+        Index("idx_appointments_start_date_end_date_user_id", "start_date", "end_date", "user_id")
     )
 
