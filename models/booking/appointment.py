@@ -28,7 +28,7 @@ class Appointment(Base):
     product_price_with_discount = Column(DECIMAL, nullable=False)
     product_discount = Column(DECIMAL, nullable=False, default=0)
     exchange_rate = Column(DECIMAL, nullable=False, default=1)
-    message = Column(String(50), nullable=True)
+    message = Column(String(100), nullable=True)
 
     status = Column(Enum(AppointmentStatusEnum), default=AppointmentStatusEnum.IN_PROGRESS, nullable=False, index=True)  # finished - in_progress
     channel = Column(Enum(AppointmentChannelEnum), default=AppointmentChannelEnum.SCROLL_BOOKER, nullable=False, index=True)  # scroll_booker - own_client

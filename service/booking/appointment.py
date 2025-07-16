@@ -13,13 +13,13 @@ from core.enums.appointment_channel_enum import AppointmentChannelEnum
 from core.enums.appointment_status_enum import AppointmentStatusEnum
 from core.enums.role_enum import RoleEnum
 from schema.booking.appointment import AppointmentBlock, AppointmentCancel, AppointmentUnblock, AppointmentCreate, \
-    UserAppointmentResponse, AppointmentProduct
+    UserAppointmentResponse, AppointmentProduct, AppointmentBusiness
 from core.dependencies import DBSession
 from models import Appointment, Schedule, User, Business, Currency
 from sqlalchemy import select, and_, or_, desc, func
 from core.logger import logger
 from schema.user.user import UserBaseMinimum
-
+from service.booking.business import get_business_by_user_id
 
 async def get_appointments_by_user_id(db: DBSession, page: int, limit: int, request: Request, as_customer: Optional[bool] = None):
     auth_user_id = request.state.user.get("id")
@@ -79,7 +79,8 @@ async def get_appointments_by_user_id(db: DBSession, page: int, limit: int, requ
          p_id, p_fullname, p_username, p_avatar, p_prof,
          curr_name
     ) in rows:
-        is_as_customer = appointment.customer_id == auth_user_id
+        is_customer = appointment.customer_id == auth_user_id
+        business = await get_business_by_user_id(db, p_id)
 
         appointments.append(
             UserAppointmentResponse(
@@ -88,7 +89,8 @@ async def get_appointments_by_user_id(db: DBSession, page: int, limit: int, requ
                 end_date=appointment.end_date,
                 channel=appointment.channel,
                 status=appointment.status,
-                as_customer=is_as_customer,
+                is_customer=is_customer,
+                message=appointment.message,
                 product=AppointmentProduct(
                     id=appointment.product_id,
                     name=appointment.product_name,
@@ -99,11 +101,15 @@ async def get_appointments_by_user_id(db: DBSession, page: int, limit: int, requ
                     exchange_rate=appointment.exchange_rate
                 ),
                 user=UserBaseMinimum(
-                    id= p_id if is_as_customer else c_id,
-                    fullname= p_fullname if is_as_customer else c_fullname,
-                    username= p_username if is_as_customer else c_username,
-                    avatar= p_avatar if is_as_customer else c_avatar,
-                    profession= p_prof if is_as_customer else c_prof
+                    id= p_id if is_customer else c_id,
+                    fullname= p_fullname if is_customer else c_fullname,
+                    username= p_username if is_customer else c_username,
+                    avatar= p_avatar if is_customer else c_avatar,
+                    profession= p_prof if is_customer else c_prof
+                ),
+                business=AppointmentBusiness(
+                    address=business.address,
+                    coordinates=business.coordinates
                 )
             )
         )

@@ -51,7 +51,7 @@ async def update_gender(db: DBSession, gender_update: GenderUpdate, request: Req
 async def update_bio(db: DBSession, bio_update: BioUpdate, request: Request):
     return await update_user_bio(db, bio_update, request)
 
-@router.get("/search", response_model=list[UserBaseMinimum])
+@router.get("/search-user-clients", response_model=list[UserBaseMinimum])
 async def search_users_as_clients(db: DBSession, q: str):
     return await search_users_clients(db, q)
 

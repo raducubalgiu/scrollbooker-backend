@@ -1,8 +1,10 @@
+from decimal import Decimal
 from typing import Optional
-from pydantic import BaseModel, condecimal, Field
+from pydantic import BaseModel, condecimal, Field, field_serializer
 from datetime import datetime
 
 from core.enums.appointment_channel_enum import AppointmentChannelEnum
+from schema.booking.business import BusinessCoordinates
 from schema.user.user import UserBaseMinimum
 
 class AppointmentResponse(BaseModel):
@@ -85,11 +87,19 @@ class AppointmentUser(BaseModel):
 class AppointmentProduct(BaseModel):
     id: Optional[int] = None
     name: str
-    price: condecimal(gt=0, max_digits=10, decimal_places=2)
-    price_with_discount: condecimal(gt=0, max_digits=10, decimal_places=2)
-    discount: condecimal(max_digits=10, decimal_places=2)
+    price: Decimal
+    price_with_discount: Decimal
+    discount: Decimal
     currency: str
-    exchange_rate: condecimal(gt=0, max_digits=10, decimal_places=2)
+    exchange_rate: Decimal
+
+    @field_serializer("price", "price_with_discount", "discount", return_type=str)
+    def serialize_price(self, value: Decimal, _info) -> str:
+        return '{0:.2f}'.format(value).rstrip('0').rstrip('.') if value is not None else None
+
+class AppointmentBusiness(BaseModel):
+    address: str
+    coordinates: BusinessCoordinates
 
 class UserAppointmentResponse(BaseModel):
     id: int
@@ -97,6 +107,8 @@ class UserAppointmentResponse(BaseModel):
     end_date: datetime
     channel: str
     status: str
-    as_customer: bool
+    message: Optional[str] = None
+    is_customer: bool
     product: AppointmentProduct
     user: UserBaseMinimum
+    business: AppointmentBusiness

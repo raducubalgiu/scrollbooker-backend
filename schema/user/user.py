@@ -2,8 +2,6 @@ from pydantic import BaseModel, Field, EmailStr, model_validator
 from typing import Optional, List
 from datetime import datetime
 
-from sqlalchemy import Boolean
-
 from core.enums.gender_type_enum import GenderTypeEnum
 from core.enums.registration_step_enum import RegistrationStepEnum
 from schema.booking.product import ProductResponse

@@ -4,11 +4,14 @@ from typing import Optional, List
 from schema.nomenclature.service import ServiceResponse
 from schema.user.user import UserAuthStateResponse
 
+class BusinessCoordinates(BaseModel):
+    lat: float
+    lng: float
 
 class BusinessBase(BaseModel):
     description: Optional[str] = None
     address: str
-    coordinates: tuple[float, float]
+    coordinates: BusinessCoordinates
     owner_id: int = None
     business_type_id: int
     has_employees: bool

@@ -1,9 +1,9 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import joinedload
 from starlette.requests import Request
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, and_
 from starlette import status
-from core.crud_helpers import db_create, db_get_one, db_delete, db_get_all
+from core.crud_helpers import db_create, db_get_one, db_delete
 from core.dependencies import DBSession
 from core.enums.employment_requests_status_enum import EmploymentRequestsStatusEnum
 from core.enums.role_enum import RoleEnum
@@ -12,24 +12,44 @@ from schema.booking.employment_request import EmploymentRequestCreate, Employmen
 from core.logger import logger
 import calendar
 
+from service.booking.business import get_business_by_user_id
+
 async def get_employment_requests_by_user_id(db: DBSession, user_id: int, request: Request):
     auth_user_id = request.state.user.get("id")
+
+    business = await get_business_by_user_id(db, auth_user_id)
     user = await db_get_one(db, model=User, filters={User.id: user_id}, joins=[joinedload(User.role)])
 
-    if user.id != auth_user_id:
+    if not business:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail='Business not found')
+
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail='User not found')
+
+    if business.owner_id is not user.id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='You do not have permission to perform this action')
 
-    field_name = "employer_id" if user.role.name == RoleEnum.BUSINESS else "employee_id"
+    stmt = (
+        select(EmploymentRequest)
+        .where(
+            and_(
+                EmploymentRequest.employer_id == user.id,
+                EmploymentRequest.status == EmploymentRequestsStatusEnum.PENDING
+            )
+        )
+        .options(
+            joinedload(EmploymentRequest.employer),
+            joinedload(EmploymentRequest.employee),
+            joinedload(EmploymentRequest.profession)
+        )
+    )
 
-    employment_requests = await db_get_all(db,
-                                           model=EmploymentRequest,
-                                           filters={getattr(EmploymentRequest, field_name): user_id, EmploymentRequest.status: 'pending'},
-                                           joins=[
-                                               joinedload(EmploymentRequest.employer).load_only(User.id, User.username, User.fullname, User.avatar),
-                                               joinedload(EmploymentRequest.employee).load_only(User.id, User.username, User.fullname, User.avatar),
-                                               joinedload(EmploymentRequest.profession).load_only(Profession.id, Profession.name)
-                                           ])
+    result = await db.execute(stmt)
+    employment_requests = result.scalars().all()
+
     return employment_requests
 
 async def send_employment_request(db: DBSession, employment_create: EmploymentRequestCreate,  request: Request):
@@ -38,7 +58,7 @@ async def send_employment_request(db: DBSession, employment_create: EmploymentRe
     profession = await db_get_one(db, model=Profession, filters={Profession.id: employment_create.profession_id})
 
     if not business:
-        logger.logger(f"Business with ID: {auth_user_id} doesn't have the Business defined")
+        logger.error(f"Business with ID: {auth_user_id} doesn't have the Business defined")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail='You do not have permission to perform this action')
     try :

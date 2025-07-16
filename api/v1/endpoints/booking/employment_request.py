@@ -1,18 +1,19 @@
 from fastapi import APIRouter
 from starlette.requests import Request
 from starlette import status
-from core.dependencies import DBSession, BusinessSession, ClientSession, BusinessAndEmployeesSession
+from core.dependencies import DBSession, BusinessSession, ClientSession, BusinessAndEmployeesSession, \
+    BusinessAndManagerSession
 from service.booking.employment_request import send_employment_request, accept_employment_request, \
     delete_employment_request_by_id, get_employment_requests_by_user_id
-from schema.booking.employment_request import EmploymentRequestCreate, EmploymentRequestUpdate, \
-    EmploymentRequestResponse
+from schema.booking.employment_request import EmploymentRequestCreate, EmploymentRequestUpdate, EmploymentsRequestsResponse
 
 router = APIRouter(tags=["Employment Request"])
 
 @router.get(
     "/users/{user_id}/employment-requests",
     summary="List Employment Requests Filtered By User Id",
-    response_model=list[EmploymentRequestResponse])
+    response_model=list[EmploymentsRequestsResponse],
+    dependencies=[BusinessSession])
 async def get_user_employment_requests(db: DBSession, user_id: int, request: Request):
     return await get_employment_requests_by_user_id(db, user_id, request)
 
@@ -20,7 +21,7 @@ async def get_user_employment_requests(db: DBSession, user_id: int, request: Req
     "/employment-requests",
     summary="Create New Employment Request",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[BusinessSession])
+    dependencies=[BusinessAndManagerSession])
 async def create_request(db: DBSession, employment_create: EmploymentRequestCreate, request: Request):
     return await send_employment_request(db, employment_create, request)
 

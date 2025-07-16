@@ -74,10 +74,13 @@ async def check_resource_ownership(db: DBSession, resource_model: Type[Base], re
 # Roles dependencies
 SuperAdminSession = Depends(allowed_roles([RoleEnum.SUPER_ADMIN]))
 BusinessSession = Depends(allowed_roles([RoleEnum.BUSINESS]))
+ManagerSession = Depends(allowed_roles([RoleEnum.MANAGER]))
 ClientSession = Depends(allowed_roles([RoleEnum.CLIENT]))
 EmployeeSession = Depends(allowed_roles([RoleEnum.EMPLOYEE]))
+
 ClientAndEmployeeSession = Depends(allowed_roles([RoleEnum.CLIENT, RoleEnum.EMPLOYEE]))
 BusinessAndEmployeesSession = Depends(allowed_roles([RoleEnum.BUSINESS, RoleEnum.EMPLOYEE]))
+BusinessAndManagerSession = Depends(allowed_roles([RoleEnum.BUSINESS, RoleEnum.MANAGER]))
 
 # Auth and db dependencies
 UserSession = Depends(get_user_by_token)

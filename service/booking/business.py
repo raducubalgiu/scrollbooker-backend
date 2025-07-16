@@ -17,7 +17,8 @@ from geoalchemy2 import Geography
 from timezonefinder import TimezoneFinder
 
 from models.booking.product_sub_filters import product_sub_filters
-from schema.booking.business import BusinessCreate, BusinessResponse, BusinessHasEmployeesUpdate, BusinessCreateResponse
+from schema.booking.business import BusinessCreate, BusinessResponse, BusinessHasEmployeesUpdate, \
+    BusinessCreateResponse, BusinessCoordinates
 from datetime import timedelta,datetime
 from schema.user.user import UserAuthStateResponse
 from service.integration.google_places import get_place_details
@@ -51,7 +52,7 @@ async def get_business_by_user_id(db: DBSession, user_id: int):
         timezone=business.timezone,
         address=business.address,
         services=business.services,
-        coordinates=(longitude, latitude),
+        coordinates=BusinessCoordinates(lat=latitude, lng=longitude),
         has_employees=business.has_employees
     )
 

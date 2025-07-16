@@ -11,14 +11,17 @@ async def update_appointment_status():
         try:
             now = datetime.now(timezone.utc)
             appointments_result = await db.execute(
-                select(Appointment).where(and_(
-                    Appointment.start_date <= now,
-                    Appointment.status == AppointmentStatusEnum.IN_PROGRESS
-                ))
+                select(Appointment)
+                .where(
+                    and_(
+                        Appointment.start_date <= now,
+                        Appointment.status == AppointmentStatusEnum.IN_PROGRESS
+                    )
+                )
             )
             appointments = appointments_result.scalars().all()
 
-            if len(appointments) > 1:
+            if len(appointments) > 0:
                 logger.info(f"[Scheduler] {now.isoformat()} - Found {len(appointments)} appointments to update")
 
                 for a in appointments:
