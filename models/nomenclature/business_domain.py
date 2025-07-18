@@ -8,6 +8,7 @@ class BusinessDomain(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(255), nullable=False, index=True)
+    short_name = Column(String(50), nullable=False, index=True)
     active = Column(Boolean, nullable=False, default=True, index=True)
 
     business_types = relationship("BusinessType", back_populates="business_domain")
@@ -18,5 +19,6 @@ class BusinessDomain(Base):
 
     __table_args__ = (
         Index("business_domains_name", "name"),
+        Index("business_domains_short_name", "short_name"),
         Index("business_domains_name_active", "name", "active"),
     )

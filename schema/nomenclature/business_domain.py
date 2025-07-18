@@ -4,6 +4,7 @@ from datetime import datetime
 
 class BusinessDomainBase(BaseModel):
     name: str = Field(min_length=5, max_length=255)
+    short_name: str = Field(min_length=3, max_length=50)
 
 class BusinessDomainCreate(BusinessDomainBase):
     pass

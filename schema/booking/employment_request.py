@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-
+from datetime import datetime
 from core.enums.employment_requests_status_enum import EmploymentRequestsStatusEnum
 from schema.nomenclature.profession import ProfessionResponse
 from schema.user.user import UserBaseMinimum
@@ -14,6 +14,7 @@ class EmploymentRequestUpdate(BaseModel):
 
 class EmploymentsRequestsResponse(BaseModel):
     id: int
+    created_at: datetime
     status: EmploymentRequestsStatusEnum
     employee: UserBaseMinimum
     employer: UserBaseMinimum
