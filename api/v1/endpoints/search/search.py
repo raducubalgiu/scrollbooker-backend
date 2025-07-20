@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter
 from fastapi.params import Query
 
@@ -10,5 +12,10 @@ router = APIRouter(prefix="/search", tags=["Search"])
 @router.get("/",
             summary='Search keywords, users, services or business types',
             response_model=list[SearchResponse])
-async def search(db: DBSession, query: str = Query(min_length=1)):
-    return await search_keyword(db, query)
+async def search(
+        db: DBSession,
+        query: str = Query(min_length=1),
+        lat: Optional[float] = None,
+        lng: Optional[float] = None
+):
+    return await search_keyword(db, query, lat, lng)
