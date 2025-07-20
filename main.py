@@ -1,11 +1,10 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.exceptions import RequestValidationError
+from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from core.database import async_engine
 from core.dependencies import UserSession
 from core.middlewares.cors_middleware import CORSCustomMiddleware
 from models import Base
-#from api.v1.endpoints.upload import upload_media
+from api.v1.endpoints.search import search
 from api.v1.endpoints.user import user, role, permission, consent, notification
 from api.v1.endpoints.auth import auth
 from api.v1.endpoints.social import follow, hashtag, post, bookmark_posts,repost, like, comment
@@ -45,6 +44,9 @@ app.include_router(role.router)
 app.include_router(permission.router, dependencies=[UserSession])
 app.include_router(consent.router, dependencies=[UserSession])
 app.include_router(notification.router, dependencies=[UserSession])
+
+# Search
+app.include_router(search.router, dependencies=[UserSession])
 
 # Booking
 app.include_router(currency.router, dependencies=[UserSession])
