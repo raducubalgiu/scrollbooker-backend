@@ -11,7 +11,7 @@ from service.user.user import get_user_followers_by_user_id, \
     get_user_followings_by_user_id, get_user_dashboard_summary_by_id, \
     get_available_professions_by_user_id, search_users_clients, get_product_durations_by_user_id, update_user_fullname, \
     update_user_username, update_user_bio, get_user_profile_by_id, update_user_gender, search_available_username, \
-    update_user_birthdate
+    update_user_birthdate, search_all_users
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -50,6 +50,10 @@ async def update_gender(db: DBSession, gender_update: GenderUpdate, request: Req
 @router.patch("/user-info/bio")
 async def update_bio(db: DBSession, bio_update: BioUpdate, request: Request):
     return await update_user_bio(db, bio_update, request)
+
+@router.get("/search")
+async def search_users(db: DBSession, q: str, request: Request, page: int, limit: int):
+    return await search_all_users(db, q, request, page, limit)
 
 @router.get("/search-user-clients", response_model=list[UserBaseMinimum])
 async def search_users_as_clients(db: DBSession, q: str):

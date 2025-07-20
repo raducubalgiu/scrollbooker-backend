@@ -1,10 +1,10 @@
 from fastapi import HTTPException
 from starlette.requests import Request
 from starlette import status
-from sqlalchemy import select, asc, desc, func, literal, and_
+from sqlalchemy import select, asc, desc, func, literal, and_, or_
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession, Pagination
-from models import User, Follow, PostMedia, Repost, BookmarkPost
+from models import User, Follow, PostMedia, Repost, BookmarkPost, UserCounters, Business
 from schema.social.post import PostCreate, UserPostResponse, PostProduct, PostCounters, \
     LastMinute, PostUserActions
 from models.social.post import Post
@@ -60,11 +60,13 @@ async def get_book_now_posts(db: DBSession, pagination: Pagination, request: Req
             User.username,
             User.avatar,
             User.profession,
+            UserCounters.ratings_average,
             is_follow,
             is_reposted,
             is_bookmarked
         )
         .join(User, User.id == Post.user_id)
+        .join(UserCounters, UserCounters.user_id == User.id)
         .order_by(desc(Post.created_at))
         .offset((pagination.page - 1) * pagination.limit)
         .limit(pagination.limit)
@@ -76,7 +78,7 @@ async def get_book_now_posts(db: DBSession, pagination: Pagination, request: Req
 
     results = []
 
-    for post, u_id, u_fullname, u_username, u_avatar, u_profession, is_follow, is_reposted, is_bookmarked in posts:
+    for post, u_id, u_fullname, u_username, u_avatar, u_profession, u_ratings_average, is_follow, is_reposted, is_bookmarked in posts:
         media_files = media_map.get(post.id, [])
 
         results.append(UserPostResponse(
@@ -88,8 +90,10 @@ async def get_book_now_posts(db: DBSession, pagination: Pagination, request: Req
                 username=u_username,
                 avatar=u_avatar,
                 profession=u_profession,
-                is_follow=is_follow
+                is_follow=is_follow,
+                ratings_average=u_ratings_average,
             ),
+            business_id=post.business_id,
             product=PostProduct(
                 id=post.product_id,
                 name=post.product_name,
@@ -133,10 +137,6 @@ async def get_book_now_posts(db: DBSession, pagination: Pagination, request: Req
 async def get_following_posts(db: DBSession, pagination: Pagination, request: Request):
     auth_user_id = request.state.user.get("id")
 
-    count_stmt = select(func.count()).select_from(Post)
-    count_total = await db.execute(count_stmt)
-    count = count_total.scalar_one()
-
     is_reposted = (
         select(literal(True))
         .select_from(Repost)
@@ -170,7 +170,7 @@ async def get_following_posts(db: DBSession, pagination: Pagination, request: Re
         .exists()
     )
 
-    result = await db.execute(
+    query = (
         select(
             Post,
             User.id,
@@ -178,23 +178,34 @@ async def get_following_posts(db: DBSession, pagination: Pagination, request: Re
             User.username,
             User.avatar,
             User.profession,
+            UserCounters.ratings_average,
             is_follow,
             is_reposted,
             is_bookmarked
         )
         .join(User, User.id == Post.user_id)
-        .order_by(desc(Post.created_at))
-        .offset((pagination.page - 1) * pagination.limit)
-        .limit(pagination.limit)
+        .join(UserCounters, UserCounters.user_id == User.id)
+        .join(Follow, Follow.follower_id == auth_user_id)
+        .where(and_(
+            Follow.follower_id == auth_user_id,
+            Follow.followee_id == User.id
+        ))
     )
-    posts = result.all()
+
+    count_total = await db.execute(query)
+    count = len(count_total.mappings().all())
+
+    result = query.order_by(desc(Post.created_at)).offset((pagination.page - 1) * pagination.limit).limit(pagination.limit)
+
+    posts_result = await db.execute(result)
+    posts = posts_result.all()
 
     post_ids = [p.id for p, *_ in posts]
     media_map = await get_post_media(db, post_ids)
 
     results = []
 
-    for post, u_id, u_fullname, u_username, u_avatar, u_profession, is_follow, is_reposted, is_bookmarked in posts:
+    for post, u_id, u_fullname, u_username, u_avatar, u_profession, u_ratings_average, is_follow, is_reposted, is_bookmarked in posts:
         media_files = media_map.get(post.id, [])
 
         results.append(UserPostResponse(
@@ -206,7 +217,8 @@ async def get_following_posts(db: DBSession, pagination: Pagination, request: Re
                 username=u_username,
                 avatar=u_avatar,
                 profession=u_profession,
-                is_follow=is_follow
+                is_follow=is_follow,
+                ratings_average=u_ratings_average
             ),
             product=PostProduct(
                 id=post.product_id,

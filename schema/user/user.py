@@ -1,7 +1,8 @@
-from pydantic import BaseModel, Field, EmailStr, model_validator
+from decimal import Decimal
+
+from pydantic import BaseModel, Field, EmailStr, field_serializer
 from typing import Optional, List
 from datetime import datetime
-
 from core.enums.gender_type_enum import GenderTypeEnum
 from core.enums.registration_step_enum import RegistrationStepEnum
 from schema.booking.product import ProductResponse
@@ -15,6 +16,7 @@ class UserBaseMinimum(BaseModel):
     profession: Optional[str] = None
     avatar: Optional[str] = None
     is_follow: Optional[bool] = None
+    ratings_average: Optional[Decimal] = None
 
     class Config:
         from_attributes = True

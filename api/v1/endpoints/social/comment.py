@@ -12,7 +12,7 @@ router = APIRouter(prefix="/posts/{post_id}/comments", tags=["Comments"])
 
 @router.get("/",
             summary='List All Comments By Post Id',
-            response_model=PaginatedResponse[CommentResponse])
+            )
 async def get_comments(db: DBSession, post_id: int, pagination: Pagination, request: Request):
     return await get_comments_by_post_id(db, post_id, pagination, request)
 

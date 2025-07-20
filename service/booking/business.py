@@ -23,6 +23,35 @@ from datetime import timedelta,datetime
 from schema.user.user import UserAuthStateResponse
 from service.integration.google_places import get_place_details
 
+async def get_business_by_id(db: DBSession, business_id: int):
+    business_query = await db.execute(
+        select(Business)
+        .where(and_(Business.id == business_id))
+        .options(joinedload(Business.services))
+    )
+
+    business = business_query.unique().scalar_one_or_none()
+
+    if not business:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail='Business not found')
+
+    point = to_shape(business.coordinates)
+    latitude = point.y
+    longitude = point.x
+
+    return BusinessResponse(
+        id=business.id,
+        business_type_id=business.business_type_id,
+        owner_id=business.owner_id,
+        description=business.description,
+        timezone=business.timezone,
+        address=business.address,
+        services=business.services,
+        coordinates=BusinessCoordinates(lat=latitude, lng=longitude),
+        has_employees=business.has_employees
+    )
+
 async def get_business_by_user_id(db: DBSession, user_id: int):
     business_query = await db.execute(select(Business, User.id).where(
         and_(
@@ -55,6 +84,8 @@ async def get_business_by_user_id(db: DBSession, user_id: int):
         coordinates=BusinessCoordinates(lat=latitude, lng=longitude),
         has_employees=business.has_employees
     )
+
+
 
 async def get_business_employees_by_id(db: DBSession, business_id: int, page: int, limit: int):
    stmt = ((select(User, UserCounters, EmploymentRequest.created_at.label("hire_date"))

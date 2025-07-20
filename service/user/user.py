@@ -300,11 +300,62 @@ async def update_user_bio(db: DBSession, bio_update: BioUpdate, request: Request
 
     return { "detail": "Bio successfully updated" }
 
+async def search_all_users(db: DBSession, q: str, request: Request, page: int, limit: int):
+    auth_user_id = request.state.user.get("id")
+    search_term = f"%{q}%"
+
+    is_follow = (
+        select(Follow)
+        .where(
+            and_(
+                Follow.follower_id == auth_user_id,
+                Follow.followee_id == User.id
+            )
+        )
+        .correlate(User)
+        .exists()
+    )
+
+    stmt = (
+        select(
+            User.id,
+            User.username,
+            User.fullname,
+            User.profession,
+            User.avatar,
+            is_follow.label("is_follow"),
+            UserCounters.ratings_average
+        )
+        .join(UserCounters, UserCounters.user_id == User.id)
+        .where(
+            User.is_validated == True,
+            User.active == True,
+            or_(
+                User.username.ilike(search_term),
+                User.fullname.ilike(search_term)
+            )
+        )
+        .order_by(User.username.asc())
+        .offset((page - 1) * limit)
+        .limit(limit)
+    )
+
+    users_stmt = await db.execute(stmt)
+    users = users_stmt.mappings().all()
+
+    return users
+
 async def search_users_clients(db: DBSession, q: str):
-    query = (select(User)
-             .join(User.role)
-             .options(joinedload(User.role))
-             .filter(Role.name == RoleEnum.CLIENT)) #type: ignore
+    query = (
+        select(User)
+         .join(User.role)
+         .options(joinedload(User.role))
+         .where(
+            Role.name == RoleEnum.CLIENT,
+            User.is_validated == True,
+            User.active == True
+        )
+    )
 
     if q:
         search_term = f"%{q}%"
@@ -456,7 +507,7 @@ async def get_user_followings_by_user_id(db: DBSession, user_id: int, page: int,
 
    followings_query = (
        select(User.id, User.username, User.fullname, User.avatar, subquery.label("is_follow"))
-           .join(Follow, Follow.followee_id == User.id) #type: ignore
+           .join(Follow, Follow.followee_id == User.id)
            .where(Follow.follower_id == user_id)
    )
 

@@ -7,8 +7,10 @@ from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession, Pagination
 from schema.social.comment import CommentCreate, CommentResponse
 from sqlalchemy import select, update, insert, func
-from models import Comment, CommentLike, CommentPostLike, Post, User, Review
+from models import Comment, CommentLike, CommentPostLike, Post, User, Review, UserCounters
 from core.logger import logger
+from schema.user.user import UserBaseMinimum
+
 
 async def create_new_comment(db: DBSession, post_id: int, comment_data: CommentCreate, request: Request):
     auth_user_id = request.state.user.get("id")
@@ -124,25 +126,31 @@ async def get_comments_by_post_id(db: DBSession, post_id: int, pagination: Pagin
     count = count_total.scalar_one()
 
     query = await db.execute(
-        select(Comment)
+        select(
+            Comment.id,
+            Comment.text,
+            Comment.post_id,
+            Comment.like_count,
+            Comment.parent_id,
+            Comment.created_at,
+            User.id.label("user_id"),
+            User.username.label("user_username"),
+            User.fullname.label("user_fullname"),
+            User.avatar.label("user_avatar"),
+            User.profession.label("user_profession"),
+            UserCounters.ratings_average.label("user_ratings_average")
+        )
+        .join(User, User.id == Comment.user_id)
+        .join(UserCounters, UserCounters.user_id == Comment.user_id)
         .where(
             Comment.post_id == post_id,
             Comment.parent_id.is_(None)
-        )
-        .options(
-            joinedload(Comment.user).load_only(
-                User.id,
-                User.username,
-                User.fullname,
-                User.avatar,
-                User.profession
-            )
         )
         .offset((pagination.page - 1) * pagination.limit)
         .limit(pagination.limit)
         .order_by(Comment.created_at.asc())
     )
-    comments = query.scalars().all()
+    comments = query.mappings().all()
 
     # Get likes by the authenticated user
     user_likes_query = await db.execute(
@@ -168,7 +176,14 @@ async def get_comments_by_post_id(db: DBSession, post_id: int, pagination: Pagin
         CommentResponse(
             id=comment.id,
             text=comment.text,
-            user=comment.user,
+            user=UserBaseMinimum(
+                id=comment.user_id,
+                username=comment.user_username,
+                fullname=comment.user_fullname,
+                avatar=comment.user_avatar,
+                profession=comment.user_profession,
+                ratings_average=comment.user_ratings_average
+            ),
             post_id=comment.post_id,
             like_count=comment.like_count,
             is_liked=comment.id in user_liked_comments,

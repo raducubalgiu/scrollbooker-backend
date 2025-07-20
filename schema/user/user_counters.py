@@ -1,4 +1,6 @@
-from pydantic import BaseModel, condecimal
+from decimal import Decimal
+
+from pydantic import BaseModel, field_serializer
 
 class UserCountersBase(BaseModel):
     user_id: int
@@ -7,7 +9,11 @@ class UserCountersBase(BaseModel):
     products_count: int
     posts_count: int
     ratings_count: int
-    ratings_average: condecimal(gt=0, max_digits=10, decimal_places=1)
+    ratings_average: Decimal
+
+    @field_serializer("ratings_average", return_type=str)
+    def serialize_price(self, value: Decimal, _info) -> str:
+        return '{0:.2f}'.format(value).rstrip('0').rstrip('.') if value is not None else None
 
     class Config:
         from_attributes = True

@@ -105,6 +105,7 @@ class UserPostResponse(BaseModel):
     user_actions: PostUserActions
     mentions: Optional[List[UserBaseMinimum]] = []
     hashtags: Optional[List[HashtagResponse]] = []
+    business_id: Optional[int] = None
     bookable: bool
     instant_booking: bool
     last_minute: LastMinute

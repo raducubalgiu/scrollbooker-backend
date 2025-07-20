@@ -7,7 +7,8 @@ from core.dependencies import BusinessSession
 from schema.booking.business import BusinessCreate, BusinessResponse, BusinessPlaceAddressResponse, \
     BusinessHasEmployeesUpdate, BusinessCreateResponse
 from service.booking.business import get_businesses_by_distance, create_new_business, \
-    delete_business_by_id, get_business_employees_by_id, get_business_by_user_id, update_business_has_employees
+    delete_business_by_id, get_business_employees_by_id, get_business_by_user_id, update_business_has_employees, \
+    get_business_by_id
 from service.integration.google_places import search_places
 
 router = APIRouter(tags=["Businesses"])
@@ -25,6 +26,13 @@ async def create_business(db: DBSession, business_data: BusinessCreate, request:
             response_model=list[BusinessPlaceAddressResponse])
 async def search_business_address(query: str = Query(min_length=2)):
     return await search_places(query)
+
+@router.get(
+    "/businesses/{business_id}",
+    summary='Get Business By Id',
+    response_model=BusinessResponse)
+async def get_business_by_user(db: DBSession, business_id: int):
+    return await get_business_by_id(db, business_id)
 
 @router.get(
     "/users/{user_id}/businesses",
