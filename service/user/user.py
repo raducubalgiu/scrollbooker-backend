@@ -19,7 +19,6 @@ from sqlalchemy import select, func, case, and_, or_, distinct, exists, literal_
 from schema.user.user import UsernameUpdate, FullNameUpdate, BioUpdate, GenderUpdate, UserProfileResponse, \
     OpeningHours, UserBaseMinimum, SearchUsername, SearchUsernameResponse, BirthDateUpdate, UserAuthStateResponse
 
-
 async def search_available_username(db: DBSession, query: SearchUsername = Depends()):
     result = await db.execute(select(User.id).where(and_(User.username == query.username)))
     user = result.scalar_one_or_none()
@@ -299,76 +298,6 @@ async def update_user_bio(db: DBSession, bio_update: BioUpdate, request: Request
     await db_update(db, model=User, update_data=bio_update, filters={"id": auth_user_id})
 
     return { "detail": "Bio successfully updated" }
-
-async def search_all_users(db: DBSession, q: str, request: Request, page: int, limit: int):
-    auth_user_id = request.state.user.get("id")
-    search_term = f"%{q}%"
-
-    is_follow = (
-        select(Follow)
-        .where(
-            and_(
-                Follow.follower_id == auth_user_id,
-                Follow.followee_id == User.id
-            )
-        )
-        .correlate(User)
-        .exists()
-    )
-
-    stmt = (
-        select(
-            User.id,
-            User.username,
-            User.fullname,
-            User.profession,
-            User.avatar,
-            is_follow.label("is_follow"),
-            UserCounters.ratings_average
-        )
-        .join(UserCounters, UserCounters.user_id == User.id)
-        .where(
-            User.is_validated == True,
-            User.active == True,
-            or_(
-                User.username.ilike(search_term),
-                User.fullname.ilike(search_term)
-            )
-        )
-        .order_by(User.username.asc())
-        .offset((page - 1) * limit)
-        .limit(limit)
-    )
-
-    users_stmt = await db.execute(stmt)
-    users = users_stmt.mappings().all()
-
-    return users
-
-async def search_users_clients(db: DBSession, q: str):
-    query = (
-        select(User)
-         .join(User.role)
-         .options(joinedload(User.role))
-         .where(
-            Role.name == RoleEnum.CLIENT,
-            User.is_validated == True,
-            User.active == True
-        )
-    )
-
-    if q:
-        search_term = f"%{q}%"
-        query = query.filter(
-            or_(
-                User.username.ilike(search_term),
-                User.fullname.ilike(search_term)
-            )
-        )
-
-    users_stmt = await db.execute(query.order_by(User.username.asc()).limit(20))
-    users = users_stmt.scalars().all()
-    return users
 
 async def get_product_durations_by_user_id(db: DBSession, user_id):
     durations_results = await db.execute(select(distinct(Product.duration)).where(Product.user_id == user_id)) #type: ignore
