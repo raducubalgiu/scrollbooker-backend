@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, Date, ForeignKey, Float, TIMESTAMP, func, Enum, Index
+from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import relationship
 
@@ -34,6 +35,7 @@ class User(Base):
     email_verified = Column(Boolean, nullable=False, default=False)
     registration_step = Column(Enum(RegistrationStepEnum), nullable=True)
     is_validated = Column(Boolean, nullable=False, default=True)
+    search_vector = Column(TSVECTOR)
 
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
@@ -131,4 +133,5 @@ class User(Base):
         Index("idx_user_validated", "is_validated"),
         Index("idx_user_role", "role_id"),
         Index("idx_user_username_fullname_profession_avatar", "username", "fullname", "profession", "avatar"),
+        Index("idx_users_search_vector", "search_vector", postgresql_using="gin")
     )

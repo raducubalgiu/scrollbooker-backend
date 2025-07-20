@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, TIMESTAMP, func, Index, ForeignKey
+from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import relationship
 from models import Base
 from models.nomenclature.business_type_filters import business_type_filters
@@ -21,6 +22,8 @@ class BusinessType(Base):
     filters = relationship("Filter", secondary=business_type_filters, back_populates="business_types")
     professions = relationship("Profession", secondary=business_type_professions, back_populates="business_types")
 
+    search_vector = Column(TSVECTOR)
+
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
@@ -28,5 +31,6 @@ class BusinessType(Base):
         Index("business_types_name", "name"),
         Index("business_types_business_domain_id", "business_domain_id"),
         Index("business_types_name_active", "name", "active"),
-        Index("business_types_name_active_business_domain_id", "name", "active", "business_domain_id")
+        Index("business_types_name_active_business_domain_id", "name", "active", "business_domain_id"),
+        Index("idx_business_types_search_vector", "search_vector", postgresql_using="gin")
     )
