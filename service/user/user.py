@@ -17,8 +17,7 @@ from core.enums.role_enum import RoleEnum
 from models import User, Follow, Appointment, Product, Business, Role, BusinessType, Schedule, UserCounters
 from sqlalchemy import select, func, case, and_, or_, distinct, exists, literal_column
 from schema.user.user import UsernameUpdate, FullNameUpdate, BioUpdate, GenderUpdate, UserProfileResponse, \
-    OpeningHours, UserBaseMinimum, SearchUsername, SearchUsernameResponse, BirthDateUpdate, UserAuthStateResponse, \
-    UsernameUpdateResponse
+    OpeningHours, UserBaseMinimum, SearchUsername, SearchUsernameResponse, BirthDateUpdate, UserAuthStateResponse, UserUpdateResponse
 
 
 async def search_available_username(db: DBSession, query: SearchUsername = Depends()):
@@ -206,9 +205,16 @@ async def get_user_profile_by_id(db: DBSession, user_id: int, request: Request):
 
 async def update_user_fullname(db: DBSession, fullname_update: FullNameUpdate, request: Request):
     auth_user_id = request.state.user.get("id")
-    await db_update(db, model=User, update_data=fullname_update, filters={"id": auth_user_id})
+    user = await db_update(db, model=User, update_data=fullname_update, filters={"id": auth_user_id})
 
-    return { "detail": "Fullname successfully updated" }
+    return UserUpdateResponse(
+        id=user.id,
+        fullname=user.fullname,
+        username=user.username,
+        bio=user.bio,
+        date_of_birth=user.date_of_birth,
+        gender=user.gender
+    )
 
 async def update_user_username(db: DBSession, username_update: UsernameUpdate, request: Request):
     auth_user_id = request.state.user.get("id")
@@ -233,7 +239,14 @@ async def update_user_username(db: DBSession, username_update: UsernameUpdate, r
     await db.commit()
     await db.refresh(user)
 
-    return UsernameUpdateResponse(username=user.username)
+    return UserUpdateResponse(
+        id=user.id,
+        fullname=user.fullname,
+        username=user.username,
+        bio=user.bio,
+        date_of_birth=user.date_of_birth,
+        gender=user.gender
+    )
 
 async def update_user_birthdate(db: DBSession, birthdate_update: BirthDateUpdate, request: Request):
     auth_user_id = request.state.user.get("id")
@@ -250,16 +263,17 @@ async def update_user_birthdate(db: DBSession, birthdate_update: BirthDateUpdate
     if birthdate is not None:
         user.date_of_birth = date.fromisoformat(birthdate)
 
-    if user.registration_step is RegistrationStepEnum.COLLECT_CLIENT_BIRTHDATE:
-        user.registration_step = RegistrationStepEnum.COLLECT_CLIENT_GENDER
-
     db.add(user)
     await db.commit()
     await db.refresh(user)
 
-    return UserAuthStateResponse(
-        is_validated=user.is_validated,
-        registration_step=user.registration_step
+    return UserUpdateResponse(
+        id=user.id,
+        fullname=user.fullname,
+        username=user.username,
+        bio=user.bio,
+        date_of_birth=user.date_of_birth,
+        gender=user.gender
     )
 
 async def update_user_gender(db: DBSession, gender_update: GenderUpdate, request: Request):
@@ -281,16 +295,27 @@ async def update_user_gender(db: DBSession, gender_update: GenderUpdate, request
     await db.commit()
     await db.refresh(user)
 
-    return UserAuthStateResponse(
-        is_validated=user.is_validated,
-        registration_step=user.registration_step
+    return UserUpdateResponse(
+        id=user.id,
+        fullname=user.fullname,
+        username=user.username,
+        bio=user.bio,
+        date_of_birth=user.date_of_birth,
+        gender=user.gender
     )
 
 async def update_user_bio(db: DBSession, bio_update: BioUpdate, request: Request):
     auth_user_id = request.state.user.get("id")
-    await db_update(db, model=User, update_data=bio_update, filters={"id": auth_user_id})
+    user= await db_update(db, model=User, update_data=bio_update, filters={"id": auth_user_id})
 
-    return { "detail": "Bio successfully updated" }
+    return UserUpdateResponse(
+        id=user.id,
+        fullname=user.fullname,
+        username=user.username,
+        bio=user.bio,
+        date_of_birth=user.date_of_birth,
+        gender=user.gender
+    )
 
 async def get_product_durations_by_user_id(db: DBSession, user_id):
     durations_results = await db.execute(select(distinct(Product.duration)).where(Product.user_id == user_id)) #type: ignore

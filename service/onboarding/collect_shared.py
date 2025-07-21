@@ -10,25 +10,17 @@ from core.enums.role_enum import RoleEnum
 from models import User
 from schema.onboarding.onboarding import OnBoardingResponse
 from schema.user.user import UsernameUpdate
+from service.onboarding.verify_registration_step import verify_registration_step
 from service.user.user import update_user_username
 
 async def collect_user_username(db: DBSession, username_update: UsernameUpdate, request: Request):
-    auth_user_id = request.state.user.get("id")
-
-    auth_user_stmt = await db.execute(
-        select(User.registration_step)
-        .where(User.id == auth_user_id)
-    )
-    auth_user = auth_user_stmt.mappings().first()
-
-    if auth_user.registration_step is not RegistrationStepEnum.COLLECT_USER_USERNAME:
-        logger.error(f"ERROR: User with id: {auth_user_id} is trying to update his username in step: {auth_user.registration_step}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='You do not have permissions to perform this action'
+    try:
+        await verify_registration_step(
+            db=db,
+            request=request,
+            registration_step=RegistrationStepEnum.COLLECT_USER_USERNAME
         )
 
-    try:
         updated_username = await update_user_username(db, username_update, request)
 
         if not updated_username:
@@ -37,30 +29,30 @@ async def collect_user_username(db: DBSession, username_update: UsernameUpdate, 
                 detail='Username could not be updated'
             )
 
-        updated_user_stmt = await db.execute(
+        user_stmt = await db.execute(
             select(User)
-            .where(User.username == updated_username.username)
+            .where(User.id == updated_username.id)
             .options(joinedload(User.role))
         )
-        updated_user = updated_user_stmt.scalar_one_or_none()
+        user = user_stmt.scalar_one_or_none()
 
-        if not updated_user:
+        if not user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail='User not found'
             )
 
-        if updated_user.role.name is RoleEnum.BUSINESS:
-            updated_user.registration_step = RegistrationStepEnum.COLLECT_BUSINESS
+        if user.role.name is RoleEnum.BUSINESS:
+            user.registration_step = RegistrationStepEnum.COLLECT_BUSINESS
         else:
-            updated_user.registration_step = RegistrationStepEnum.COLLECT_CLIENT_BIRTHDATE
+            user.registration_step = RegistrationStepEnum.COLLECT_CLIENT_BIRTHDATE
 
-        db.add(updated_user)
+        db.add(user)
         await db.commit()
 
         return OnBoardingResponse(
-            is_validated=updated_user.is_validated,
-            registration_step=updated_user.registration_step
+            is_validated=user.is_validated,
+            registration_step=user.registration_step
         )
     except Exception as e:
         await db.rollback()

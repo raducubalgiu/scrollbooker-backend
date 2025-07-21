@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, Field, EmailStr, field_serializer
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, date
 from core.enums.gender_type_enum import GenderTypeEnum
 from core.enums.registration_step_enum import RegistrationStepEnum
 from schema.booking.product import ProductResponse
@@ -52,21 +52,27 @@ class FullNameUpdate(BaseModel):
 class UsernameUpdate(BaseModel):
     username: str = Field(max_length=35)
 
-class UsernameUpdateResponse(BaseModel):
-    username: str
-
-class UserAuthStateResponse(BaseModel):
-    is_validated: bool
-    registration_step: Optional[RegistrationStepEnum] = None
-
-class BioUpdate(BaseModel):
-    bio: str = Field(None, max_length=100)
+class BirthDateUpdate(BaseModel):
+    birthdate: Optional[str] = None
 
 class GenderUpdate(BaseModel):
     gender: GenderTypeEnum
 
-class BirthDateUpdate(BaseModel):
-    birthdate: Optional[str] = None
+class BioUpdate(BaseModel):
+    bio: str = Field(None, max_length=100)
+
+class UserUpdateResponse(BaseModel):
+    id: int
+    fullname: str
+    username: str
+    bio: Optional[str] = None
+    date_of_birth: Optional[date] = None
+    gender: Optional[str] = None
+
+
+class UserAuthStateResponse(BaseModel):
+    is_validated: bool
+    registration_step: Optional[RegistrationStepEnum] = None
 
 class OpeningHours(BaseModel):
     open_now: bool
