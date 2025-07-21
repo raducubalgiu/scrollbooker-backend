@@ -30,7 +30,7 @@ class UserInfoResponse(BaseModel):
 
 class UserInfoUpdate(BaseModel):
     username: str = Field(min_length=3, max_length=35)
-    fullname: Optional[str] = Field(max_length=30)
+    fullname: Optional[str] = Field(max_length=35)
     bio: str
     profession: str
 

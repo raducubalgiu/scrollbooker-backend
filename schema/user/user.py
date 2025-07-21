@@ -23,7 +23,7 @@ class UserBaseMinimum(BaseModel):
 
 class UserBase(BaseModel):
     id: int
-    fullname: Optional[str] = Field(max_length=30)
+    fullname: Optional[str] = Field(max_length=35)
     username: str = Field(min_length=3, max_length=35)
     bio: Optional[str] = Field(None, max_length=100)
     email: EmailStr
@@ -47,7 +47,7 @@ class UserResponse(UserBase):
         from_attributes = True
 
 class FullNameUpdate(BaseModel):
-    fullname: str = Field(max_length=30)
+    fullname: str = Field(max_length=35)
 
 class UsernameUpdate(BaseModel):
     username: str = Field(max_length=35)

@@ -50,11 +50,17 @@ async def search_keyword(
             Business.id == User.employee_business_id,
             Business.owner_id == User.id
         ))
-        .where(or_(
-            User.username.ilike(f"%{query}%"),
-            User.fullname.ilike(f"%{query}%"),
-            User.profession.ilike(f"%{query}%")
-        ))
+        .where(
+            and_(
+                or_(
+                    User.username.ilike(f"%{query}%"),
+                    User.fullname.ilike(f"%{query}%"),
+                    User.profession.ilike(f"%{query}%"),
+                ),
+                User.is_validated == True,
+                User.active == True
+            )
+        )
         .order_by("distance")
         .limit(max_per_type)
     )
@@ -161,6 +167,7 @@ async def search_all_users(
             User.fullname.ilike(search_term)
         )
     ]
+
 
     if role_client:
         filters.append(Role.name == RoleEnum.CLIENT)

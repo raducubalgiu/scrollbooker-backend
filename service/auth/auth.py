@@ -4,23 +4,19 @@ from pydantic import EmailStr
 from starlette.requests import Request
 from fastapi import HTTPException
 from sqlalchemy.orm import joinedload
-from sqlalchemy import select, and_, or_
+from sqlalchemy import select, or_, desc
 from starlette import status
 from datetime import timedelta
 from dotenv import load_dotenv
-
-from core.enums.day_of_week_enum import DayOfWeekEnum
 from core.enums.registration_step_enum import RegistrationStepEnum
 from core.enums.role_enum import RoleEnum
 from core.logger import logger
 from core.crud_helpers import db_get_one
 from core.security import hash_password, verify_password, create_token, decode_token
 from core.dependencies import DBSession
-from core.send_email import send_verification_email
-from models import User, UserCounters, Role, Business, Permission, Schedule
+from models import User, UserCounters, Role, Business, Permission
 from schema.auth.auth import UserRegister, UserInfoResponse, UserInfoUpdate
 from jose import JWTError
-import uuid
 
 from schema.auth.token import RefreshToken
 load_dotenv()
@@ -36,29 +32,20 @@ async def register_user(db: DBSession, user_register: UserRegister):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail='User already registered')
 
-        for _ in range(5):
-            temp_username = uuid.uuid4().hex
-            username_str = str(temp_username)
-            result = await db.execute(select(User).where(and_(User.username == username_str)))
-
-            if not result.scalar():
-                username = temp_username
-                break
-
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail='Failed to generate unique username after multiple attempts'
-            )
-
         hashed = await hash_password(user_register.password)
         role = await db_get_one(db, model=Role, filters={Role.name: user_register.role_name})
+
+        users_stmt = await db.execute(select(User.id).order_by(desc("id")))
+        last_user = users_stmt.mappings().first()
+
+        username = f"user{last_user.id}"
+        fullname = f"user{last_user.id}"
 
         new_user = User(
             email=user_register.email,
             password=hashed,
             username=username,
-            fullname=username,
+            fullname=fullname,
             role_id=role.id,
             is_validated=False,
             registration_step=RegistrationStepEnum.COLLECT_USER_EMAIL_VALIDATION

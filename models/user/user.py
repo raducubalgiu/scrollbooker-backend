@@ -14,7 +14,7 @@ class User(Base):
     password = Column(String(255), nullable=False)
     email = Column(String, unique=True, nullable=False, index=True)
 
-    fullname = Column(String(100), nullable=True)
+    fullname = Column(String(35), nullable=True)
     username = Column(String(35), unique=True, nullable=False, index=True)
     avatar = Column(String)
     profession = Column(String(100), nullable=False, default='Creator')
