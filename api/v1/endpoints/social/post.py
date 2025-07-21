@@ -1,4 +1,6 @@
-from fastapi import APIRouter
+from typing import Optional, List
+
+from fastapi import APIRouter, Query
 from starlette import status
 from starlette.requests import Request
 
@@ -11,9 +13,15 @@ from service.social.comment import create_new_comment, like_post_comment, unlike
 
 router = APIRouter(tags=["Posts"])
 
-@router.get("/posts/book-now")
-async def get_book_now(db: DBSession, pagination: Pagination, request: Request):
-    return await get_book_now_posts(db, pagination, request)
+@router.get("/posts/book-now",
+            summary='Get User Book Now Feed')
+async def get_book_now(
+        db: DBSession,
+        pagination: Pagination,
+        request: Request,
+        business_types: Optional[List[int]] = Query(default=None)
+):
+    return await get_book_now_posts(db, pagination, request, business_types)
 
 @router.get("/posts/following")
 async def get_following(db: DBSession, pagination: Pagination, request: Request):

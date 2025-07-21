@@ -1,4 +1,6 @@
-from fastapi import HTTPException
+from typing import Optional, List
+
+from fastapi import HTTPException, Query
 from starlette.requests import Request
 from starlette import status
 from sqlalchemy import select, asc, desc, func, literal, and_, or_
@@ -12,12 +14,13 @@ from core.logger import logger
 from schema.user.user import UserBaseMinimum
 from service.social.post_media import get_post_media
 
-async def get_book_now_posts(db: DBSession, pagination: Pagination, request: Request):
+async def get_book_now_posts(
+        db: DBSession,
+        pagination: Pagination,
+        request: Request,
+        business_types: Optional[List[int]] = Query(default=None)
+):
     auth_user_id = request.state.user.get("id")
-
-    count_stmt = select(func.count()).select_from(Post)
-    count_total = await db.execute(count_stmt)
-    count = count_total.scalar_one()
 
     is_liked = (
         select(literal(True))
@@ -63,27 +66,47 @@ async def get_book_now_posts(db: DBSession, pagination: Pagination, request: Req
         .exists()
     )
 
-    result = await db.execute(
-        select(
-            Post,
-            User.id,
-            User.fullname,
-            User.username,
-            User.avatar,
-            User.profession,
-            UserCounters.ratings_average,
-            is_liked,
-            is_follow,
-            is_reposted,
-            is_bookmarked
-        )
+    base_query = (
+        select(Post.id)
         .join(User, User.id == Post.user_id)
         .join(UserCounters, UserCounters.user_id == User.id)
+    )
+
+    if business_types:
+        base_query = base_query.where(Post.business_type_id.in_(business_types))
+
+    count_query = select(func.count()).select_from(base_query.subquery())
+    count_total = await db.execute(count_query)
+    count = count_total.scalar_one()
+
+    query = (select(
+        Post,
+        User.id,
+        User.fullname,
+        User.username,
+        User.avatar,
+        User.profession,
+        UserCounters.ratings_average,
+        is_liked,
+        is_follow,
+        is_reposted,
+        is_bookmarked
+    )
+    .join(User, User.id == Post.user_id)
+    .join(UserCounters, UserCounters.user_id == User.id))
+
+    if business_types:
+        query = query.where(Post.business_type_id.in_(business_types))
+
+    query = (
+        query
         .order_by(desc(Post.created_at))
         .offset((pagination.page - 1) * pagination.limit)
         .limit(pagination.limit)
     )
-    posts = result.all()
+
+    posts_result = await db.execute(query)
+    posts = posts_result.all()
 
     post_ids = [p.id for p, *_ in posts]
     media_map = await get_post_media(db, post_ids)

@@ -2,7 +2,6 @@ from typing import Optional, Union
 
 from fastapi import APIRouter
 from fastapi.params import Query
-from sqlalchemy import false
 from starlette.requests import Request
 
 from core.crud_helpers import PaginatedResponse
