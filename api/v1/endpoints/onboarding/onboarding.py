@@ -5,7 +5,7 @@ from core.dependencies import DBSession
 from schema.onboarding.onboarding import OnBoardingResponse
 from schema.user.user import UsernameUpdate, BirthDateUpdate, GenderUpdate
 from service.onboarding.collect_client import collect_client_birthdate, collect_client_gender
-from service.onboarding.collect_shared import collect_user_username
+from service.onboarding.collect_shared import collect_user_username, collect_user_location_permission
 
 router = APIRouter(prefix="/onboarding", tags=["Onboarding"])
 
@@ -26,3 +26,9 @@ async def collect_birthdate(db: DBSession, birthdate_update: BirthDateUpdate, re
               response_model=OnBoardingResponse)
 async def collect_gender(db: DBSession, gender_update: GenderUpdate, request: Request):
     return await collect_client_gender(db, gender_update, request)
+
+@router.patch("/collect-user-location-permission",
+              summary='Collect User Location Permission',
+              response_model=OnBoardingResponse)
+async def collect_location_permission(db: DBSession, request: Request):
+    return await collect_user_location_permission(db, request)

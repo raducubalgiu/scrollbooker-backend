@@ -61,3 +61,19 @@ async def collect_user_username(db: DBSession, username_update: UsernameUpdate, 
             status_code=status.HTTP_400_BAD_REQUEST,
             detail='User not found'
         )
+
+async def collect_user_location_permission(db: DBSession, request: Request):
+    auth_user_id = request.state.user.get("id")
+
+    user = await db.get(User, auth_user_id)
+
+    user.is_validated = True
+    user.registration_step = None
+
+    db.add(user)
+    await db.commit()
+
+    return OnBoardingResponse(
+        is_validated=user.is_validated,
+        registration_step=user.registration_step
+    )
