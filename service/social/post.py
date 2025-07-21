@@ -4,7 +4,7 @@ from starlette import status
 from sqlalchemy import select, asc, desc, func, literal, and_, or_
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession, Pagination
-from models import User, Follow, PostMedia, Repost, BookmarkPost, UserCounters, Business
+from models import User, Follow, PostMedia, Repost, BookmarkPost, UserCounters, Business, Like
 from schema.social.post import PostCreate, UserPostResponse, PostProduct, PostCounters, \
     LastMinute, PostUserActions
 from models.social.post import Post
@@ -18,6 +18,17 @@ async def get_book_now_posts(db: DBSession, pagination: Pagination, request: Req
     count_stmt = select(func.count()).select_from(Post)
     count_total = await db.execute(count_stmt)
     count = count_total.scalar_one()
+
+    is_liked = (
+        select(literal(True))
+        .select_from(Like)
+        .where(and_(
+            Like.user_id == auth_user_id,
+            Like.post_id == Post.id)
+        )
+        .correlate(Post)
+        .exists()
+    )
 
     is_reposted = (
         select(literal(True))
@@ -61,6 +72,7 @@ async def get_book_now_posts(db: DBSession, pagination: Pagination, request: Req
             User.avatar,
             User.profession,
             UserCounters.ratings_average,
+            is_liked,
             is_follow,
             is_reposted,
             is_bookmarked
@@ -78,7 +90,7 @@ async def get_book_now_posts(db: DBSession, pagination: Pagination, request: Req
 
     results = []
 
-    for post, u_id, u_fullname, u_username, u_avatar, u_profession, u_ratings_average, is_follow, is_reposted, is_bookmarked in posts:
+    for post, u_id, u_fullname, u_username, u_avatar, u_profession, u_ratings_average, is_liked, is_follow, is_reposted, is_bookmarked in posts:
         media_files = media_map.get(post.id, [])
 
         results.append(UserPostResponse(
@@ -112,7 +124,7 @@ async def get_book_now_posts(db: DBSession, pagination: Pagination, request: Req
             ),
             media_files=media_files,
             user_actions=PostUserActions(
-                is_liked=False,
+                is_liked=is_liked,
                 is_bookmarked=is_bookmarked,
                 is_reposted=is_reposted,
             ),

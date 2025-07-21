@@ -7,6 +7,7 @@ from models import Base
 from api.v1.endpoints.search import search
 from api.v1.endpoints.user import user, role, permission, consent, notification
 from api.v1.endpoints.auth import auth
+from api.v1.endpoints.onboarding import onboarding
 from api.v1.endpoints.social import follow, hashtag, post, bookmark_posts,repost, like, comment
 from api.v1.endpoints.booking import business, product, appointment, schedule, review, employment_request
 from api.v1.endpoints.nomenclature import business_domain, business_type, service, filter, sub_filter, service_domain, profession, currency, problem
@@ -34,6 +35,9 @@ register_exception_handler(app)
 
 # Auth
 app.include_router(auth.router)
+
+# OnBoarding
+app.include_router(onboarding.router, dependencies=[UserSession])
 
 # Upload media
 #app.include_router(upload_media.router, dependencies=[UserSession])

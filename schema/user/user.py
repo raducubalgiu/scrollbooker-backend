@@ -52,6 +52,9 @@ class FullNameUpdate(BaseModel):
 class UsernameUpdate(BaseModel):
     username: str = Field(max_length=35)
 
+class UsernameUpdateResponse(BaseModel):
+    username: str
+
 class UserAuthStateResponse(BaseModel):
     is_validated: bool
     registration_step: Optional[RegistrationStepEnum] = None

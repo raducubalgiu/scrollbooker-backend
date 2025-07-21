@@ -17,7 +17,9 @@ from core.enums.role_enum import RoleEnum
 from models import User, Follow, Appointment, Product, Business, Role, BusinessType, Schedule, UserCounters
 from sqlalchemy import select, func, case, and_, or_, distinct, exists, literal_column
 from schema.user.user import UsernameUpdate, FullNameUpdate, BioUpdate, GenderUpdate, UserProfileResponse, \
-    OpeningHours, UserBaseMinimum, SearchUsername, SearchUsernameResponse, BirthDateUpdate, UserAuthStateResponse
+    OpeningHours, UserBaseMinimum, SearchUsername, SearchUsernameResponse, BirthDateUpdate, UserAuthStateResponse, \
+    UsernameUpdateResponse
+
 
 async def search_available_username(db: DBSession, query: SearchUsername = Depends()):
     result = await db.execute(select(User.id).where(and_(User.username == query.username)))
@@ -227,20 +229,11 @@ async def update_user_username(db: DBSession, username_update: UsernameUpdate, r
     user.username = username_update.username
     user.fullname = username_update.username
 
-    if user.registration_step is RegistrationStepEnum.COLLECT_USER_USERNAME:
-        if user.role.name is RoleEnum.BUSINESS:
-            user.registration_step = RegistrationStepEnum.COLLECT_BUSINESS
-        else:
-            user.registration_step = RegistrationStepEnum.COLLECT_CLIENT_BIRTHDATE
-
     db.add(user)
     await db.commit()
     await db.refresh(user)
 
-    return UserAuthStateResponse(
-        is_validated=user.is_validated,
-        registration_step=user.registration_step
-    )
+    return UsernameUpdateResponse(username=user.username)
 
 async def update_user_birthdate(db: DBSession, birthdate_update: BirthDateUpdate, request: Request):
     auth_user_id = request.state.user.get("id")
