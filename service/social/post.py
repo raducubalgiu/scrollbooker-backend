@@ -3,7 +3,7 @@ from typing import Optional, List
 from fastapi import HTTPException, Query
 from starlette.requests import Request
 from starlette import status
-from sqlalchemy import select, asc, desc, func, literal, and_, or_
+from sqlalchemy import select, desc, func, literal, and_
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession, Pagination
 from models import User, Follow, PostMedia, Repost, BookmarkPost, UserCounters, Business, Like
