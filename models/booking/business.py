@@ -14,6 +14,7 @@ class Business(Base):
     address = Column(String, nullable=False)
     description = Column(String, nullable=True)
     has_employees = Column(Boolean, nullable=False, default=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

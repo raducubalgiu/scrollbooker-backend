@@ -1,14 +1,14 @@
 from fastapi import APIRouter, Query
 from starlette import status
 from starlette.requests import Request
-from typing import List
+from typing import List, Optional
 from core.dependencies import DBSession
 from core.dependencies import BusinessSession
 from schema.booking.business import BusinessCreate, BusinessResponse, BusinessPlaceAddressResponse, \
     BusinessHasEmployeesUpdate, BusinessCreateResponse
 from service.booking.business import get_businesses_by_distance, create_new_business, \
     delete_business_by_id, get_business_employees_by_id, get_business_by_user_id, update_business_has_employees, \
-    get_business_by_id
+    get_business_by_id, get_user_recommended_businesses
 from service.integration.google_places import search_places
 
 router = APIRouter(tags=["Businesses"])
@@ -26,6 +26,16 @@ async def create_business(db: DBSession, business_data: BusinessCreate, request:
             response_model=list[BusinessPlaceAddressResponse])
 async def search_business_address(query: str = Query(min_length=2)):
     return await search_places(query)
+
+@router.get("/businesses/recommended",
+            summary='List Recommended Businesses')
+async def get_recommended_businesses(
+        db: DBSession,
+        lat: Optional[float] = None,
+        lng: Optional[float] = None,
+        timezone: Optional[str] = None,
+        limit: Optional[int] = 10):
+    return await get_user_recommended_businesses(db, lat, lng, timezone, limit)
 
 @router.get(
     "/businesses/{business_id}",

@@ -6,7 +6,7 @@ from core.dependencies import DBSession
 from schema.social.follow import FollowResponse
 from service.social.follow import follow_user, is_user_follow, unfollow_user
 
-router = APIRouter(tags=["Follows"])
+router = APIRouter(prefix="/follows/{followee_id}",  tags=["Follows"])
 
 @router.get("/",
     summary='Check Follow',
@@ -15,7 +15,7 @@ async def is_follow(db: DBSession, followee_id: int, request: Request):
     return await is_user_follow(db, followee_id, request)
 
 @router.post(
-    "/follows/{followee_id}",
+    "/",
     summary='Follow User',
     status_code=status.HTTP_201_CREATED)
 async def follow(db: DBSession, followee_id: int, request: Request):

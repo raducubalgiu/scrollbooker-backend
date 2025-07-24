@@ -1,4 +1,6 @@
-from typing import List
+from typing import List, Optional
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
 from sqlalchemy.orm import joinedload
 from starlette.requests import Request
 from fastapi import HTTPException, Query
@@ -11,16 +13,16 @@ from core.dependencies import DBSession
 from starlette import status
 from models import Business, Service, Product, Appointment, User, UserCounters, Schedule, Follow, \
     SubFilter, EmploymentRequest, BusinessType
-from sqlalchemy import select, and_, or_, func, not_, exists, text
+from sqlalchemy import select, and_, or_, func, not_, exists, text, literal_column
 from geoalchemy2.shape import to_shape
 from geoalchemy2 import Geography
 from timezonefinder import TimezoneFinder
 
 from models.booking.product_sub_filters import product_sub_filters
 from schema.booking.business import BusinessCreate, BusinessResponse, BusinessHasEmployeesUpdate, \
-    BusinessCreateResponse, BusinessCoordinates
+    BusinessCreateResponse, BusinessCoordinates, RecommendedBusinessesResponse
 from datetime import timedelta,datetime
-from schema.user.user import UserAuthStateResponse
+from schema.user.user import UserAuthStateResponse, UserBaseMinimum
 from service.integration.google_places import get_place_details
 
 async def get_business_by_id(db: DBSession, business_id: int):
@@ -85,17 +87,16 @@ async def get_business_by_user_id(db: DBSession, user_id: int):
         has_employees=business.has_employees
     )
 
-
-
 async def get_business_employees_by_id(db: DBSession, business_id: int, page: int, limit: int):
-   stmt = ((select(User, UserCounters, EmploymentRequest.created_at.label("hire_date"))
-           .join(EmploymentRequest, and_(
-                  EmploymentRequest.business_id == business_id,
-                  EmploymentRequest.employee_id == User.id)
-            )
-            .join(UserCounters, UserCounters.user_id == User.id) # type: ignore
-           .where(User.employee_business_id == business_id) #type: ignore
-        ).order_by("hire_date"))
+   stmt = (
+       select(User, UserCounters, EmploymentRequest.created_at.label("hire_date"))
+       .join(EmploymentRequest, and_(
+              EmploymentRequest.business_id == business_id,
+              EmploymentRequest.employee_id == User.id)
+        )
+        .join(UserCounters, UserCounters.user_id == User.id)
+        .where(User.employee_business_id == business_id)
+        ).order_by("hire_date")
 
    count_employees = await db.execute(stmt)
    count = len(count_employees.all())
@@ -117,6 +118,79 @@ async def get_business_employees_by_id(db: DBSession, business_id: int, page: in
            } for employee, counters, hire_date in employees
        ]
    }
+
+async def get_user_recommended_businesses(
+    db: DBSession,
+    lat: Optional[float] = None,
+    lng: Optional[float] = None,
+    timezone: Optional[str] = None,
+    limit: Optional[int] = 10
+):
+    if not timezone:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='Timezone was not provided'
+        )
+
+    try:
+        tz = ZoneInfo(timezone)
+    except ZoneInfoNotFoundError:
+        raise ValueError(f"Invalid timezone: {timezone}")
+
+
+    local_now = datetime.now(tz)
+    current_time = local_now.time()
+    day_str = local_now.strftime("%A")
+
+    is_open_subquery = (
+        select(literal_column("1"))
+        .select_from(Schedule)
+        .where(
+            and_(
+                Schedule.user_id == User.id,
+                Schedule.day_of_week == day_str,
+                Schedule.start_time <= current_time,
+                Schedule.end_time >= current_time
+            )
+        )
+        .limit(1)
+        .correlate(User)
+    )
+
+    is_open = exists(is_open_subquery)
+
+    user_point = func.ST_SetSRID(func.ST_Point(lng, lat), 4326)
+    distance = func.ST_Distance(Business.coordinates.cast(Geography), user_point.cast(Geography)) / 1000
+
+    query = (
+        select(Business, User.id, User.fullname, User.username, User.profession, User.profession,
+               UserCounters.ratings_average, distance, is_open)
+        .join(User, User.id == Business.owner_id)
+        .outerjoin(UserCounters, User.id == UserCounters.user_id)
+        .order_by(distance, UserCounters.ratings_average)
+        .limit(limit)
+    )
+
+    result = await db.execute(query)
+
+    businesses = [
+        RecommendedBusinessesResponse(
+            user=UserBaseMinimum(
+                id=u_id,
+                fullname=u_fullname,
+                username=u_username,
+                profession=u_profession,
+                avatar=u_avatar,
+                ratings_average=u_ratings_average
+            ),
+            distance=round(distance, 2) if distance is not None else None,
+            is_open=is_open
+        ) for business, u_id, u_fullname, u_username, u_profession, u_avatar, u_ratings_average, distance, is_open in
+        result.all()
+    ]
+
+    return businesses
+
 
 async def get_businesses_by_distance(
         db: DBSession,
