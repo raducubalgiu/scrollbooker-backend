@@ -1,6 +1,7 @@
 from decimal import Decimal
 from typing import Literal, Optional
 from pydantic import BaseModel
+from datetime import datetime
 
 class SearchServiceBusinessTypeResponse(BaseModel):
     id: int
@@ -22,3 +23,11 @@ class SearchResponse(BaseModel):
     user: Optional[SearchUserResponse] = None,
     service: Optional[SearchServiceBusinessTypeResponse] = None
     business_type: Optional[SearchServiceBusinessTypeResponse] = None
+
+class UserSearchHistoryResponse(BaseModel):
+    id: int
+    keyword: str
+    created_at: datetime
+
+class SearchCreate(BaseModel):
+    keyword: str

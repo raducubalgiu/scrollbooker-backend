@@ -17,13 +17,13 @@ class PostFixedSlots(BaseModel):
 class PostBase(BaseModel):
     business_type_id: int
 
-    product_name: str = Field(max_length=100)
-    product_description: str = Field(max_length=200)
-    product_duration: int
-    product_price: condecimal(gt=0, max_digits=10, decimal_places=2)
-    product_price_with_discount: condecimal(gt=0, max_digits=10, decimal_places=2)
-    product_discount: condecimal(lt=100, max_digits=5, decimal_places=2) = Decimal("00.00")
-    product_currency: str = Field(min_length=3, max_length=3)
+    product_name: Optional[str] = None
+    product_description: Optional[str] = None
+    product_duration: Optional[int] = None
+    product_price: Optional[Decimal] = None
+    product_price_with_discount: Optional[Decimal] = None
+    product_discount: Optional[Decimal] = None
+    product_currency: Optional[str] = None
 
     hashtags: Optional[List[str]] = []
     mentions: Optional[List[int]] = []
@@ -64,9 +64,9 @@ class PostProduct(BaseModel):
     name: str
     description: Optional[str] = None
     duration: int
-    price: condecimal()
-    price_with_discount: condecimal()
-    discount: condecimal()
+    price: Decimal
+    price_with_discount: Decimal
+    discount: Decimal
     currency: str
 
     class Config:
@@ -99,7 +99,7 @@ class UserPostResponse(BaseModel):
     id: int
     description: Optional[str] = None
     user: UserBaseMinimum
-    product: PostProduct
+    product: Optional[PostProduct] = None
     counters: PostCounters
     media_files: List[PostMediaResponse]
     user_actions: PostUserActions

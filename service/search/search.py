@@ -1,13 +1,15 @@
 from typing import Optional
-
 from geoalchemy2 import Geography
 from sqlalchemy.orm import Query
-from sqlalchemy import select, or_, func, and_
+from sqlalchemy import select, or_, func, and_, desc
 from starlette.requests import Request
+
+from core.crud_helpers import db_delete
 from core.dependencies import DBSession
 from core.enums.role_enum import RoleEnum
-from models import SearchKeyword, User, Service, BusinessType, UserCounters, Business, Role, Follow
-from schema.search.search import SearchResponse, SearchServiceBusinessTypeResponse, SearchUserResponse
+from models import SearchKeyword, User, Service, BusinessType, UserCounters, Business, Role, Follow, UserSearchHistory
+from schema.search.search import SearchResponse, SearchServiceBusinessTypeResponse, SearchUserResponse, SearchCreate,  UserSearchHistoryResponse
+from service.booking.business import get_user_recommended_businesses
 
 async def search_keyword(
         db: DBSession,
@@ -29,7 +31,7 @@ async def search_keyword(
 
     keywords_result = await db.execute(stmt_keywords)
     keywords = [
-        SearchResponse(type="keyword", label=row.keyword)
+        SearchResponse(type="keyword", label=row.keyword, user=None, service=None, business_type=None)
         for row in keywords_result.scalars()
     ]
 
@@ -210,3 +212,79 @@ async def search_all_users(
     users = users_stmt.mappings().all()
 
     return users
+
+async def get_user_search_history(
+        db: DBSession,
+        request: Request,
+        lat: Optional[float] = None,
+        lng: Optional[float] = None,
+        timezone: Optional[str] = None
+):
+    auth_user_id = request.state.user.get("id")
+
+    search_result = await db.execute(
+        select(UserSearchHistory)
+        .where(UserSearchHistory.user_id == auth_user_id)
+        .order_by(desc(UserSearchHistory.created_at))
+        .limit(20)
+    )
+    search = search_result.scalars().all()
+
+    recommended_businesses = await get_user_recommended_businesses(db, lat, lng, timezone)
+
+    return {
+        "recommended_businesses": recommended_businesses,
+        "recently_search": search
+    }
+
+async def create_user_search(db: DBSession, search_create: SearchCreate, request: Request):
+    auth_user_id = request.state.user.get("id")
+
+    result = await db.execute(
+        select(SearchKeyword)
+        .where(SearchKeyword.keyword == search_create.keyword)
+    )
+    existing = result.scalar_one_or_none()
+
+    if existing:
+        existing.count += 1
+    else:
+        new_keyword = SearchKeyword(keyword=search_create.keyword)
+        db.add(new_keyword)
+
+    user_search_result = await db.execute(
+        select(UserSearchHistory)
+        .where(and_(
+            UserSearchHistory.keyword == search_create.keyword,
+            UserSearchHistory.user_id == auth_user_id
+        ))
+    )
+    existing_user_search = user_search_result.scalar_one_or_none()
+
+    if existing_user_search:
+        existing_user_search.count += 1
+        await db.commit()
+        return UserSearchHistoryResponse(
+            id=existing_user_search.id,
+            keyword=existing_user_search.keyword,
+            created_at=existing_user_search.created_at
+        )
+
+    new_user_search = UserSearchHistory(
+        user_id=auth_user_id,
+        keyword=search_create.keyword
+    )
+    db.add(new_user_search)
+    await db.flush()
+
+    await db.commit()
+
+    return UserSearchHistoryResponse(
+        id=new_user_search.id,
+        keyword=new_user_search.keyword,
+        created_at=new_user_search.created_at
+    )
+
+async def delete_user_search(db: DBSession, search_id: int, request: Request):
+    return await db_delete(db, model=UserSearchHistory, resource_id=search_id)
+

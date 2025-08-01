@@ -39,6 +39,7 @@ from models.social.comment.comment_post_likes import CommentPostLike
 
 # SEARCH
 from models.search.search import SearchKeyword
+from models.search.user_search_history import UserSearchHistory
 
 # USER
 from models.user.user import User

@@ -1,14 +1,14 @@
-from typing import Optional, Union
-
+from typing import Optional, Union, List
 from fastapi import APIRouter
 from fastapi.params import Query
 from starlette.requests import Request
-
+from starlette import status
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession
-from schema.search.search import SearchResponse
+from schema.search.search import SearchResponse, SearchCreate, UserSearchHistoryResponse
 from schema.user.user import UserBaseMinimum
-from service.search.search import search_keyword, search_all_users
+from service.search.search import search_keyword, search_all_users, create_user_search, get_user_search_history, \
+    delete_user_search
 
 router = APIRouter(prefix="/search", tags=["Search"])
 
@@ -35,3 +35,26 @@ async def search_users(
         role_client: Optional[bool] = False
 ):
     return await search_all_users(db, query, request, page, limit, role_client)
+
+@router.get("/user-history",
+            summary='List User Search History')
+async def get_user_search(
+        db: DBSession,
+        request: Request,
+        lat: Optional[float] = None,
+        lng: Optional[float] = None,
+        timezone: Optional[str] = None
+):
+    return await get_user_search_history(db, request, lat, lng, timezone)
+
+@router.post("/user-history",
+            summary="Create Search keyword",
+            response_model=UserSearchHistoryResponse)
+async def create_search(db: DBSession, search_create: SearchCreate, request: Request):
+    return await create_user_search(db, search_create, request)
+
+@router.delete("/user-history/{search_id}",
+               summary="Delete User Search",
+               status_code=status.HTTP_204_NO_CONTENT)
+async def delete_search(db: DBSession, search_id: int, request: Request):
+    return await delete_user_search(db, search_id, request)

@@ -138,7 +138,7 @@ async def get_book_now_posts(
                 price_with_discount=post.product_price_with_discount,
                 discount=post.product_discount,
                 currency=post.product_currency
-            ),
+            ) if post.product_name else None,
             counters=PostCounters(
                 comment_count=post.comment_count,
                 like_count=post.like_count,
@@ -264,7 +264,7 @@ async def get_following_posts(db: DBSession, pagination: Pagination, request: Re
                 price_with_discount=post.product_price_with_discount,
                 discount=post.product_discount,
                 currency=post.product_currency
-            ),
+            ) if post.product_name else None,
             counters=PostCounters(
                 comment_count=post.comment_count,
                 like_count=post.like_count,
@@ -294,46 +294,6 @@ async def get_following_posts(db: DBSession, pagination: Pagination, request: Re
         count=count,
         results=results
     )
-
-async def create_new_post(db: DBSession, post_create: PostCreate, request: Request):
-    auth_user_id = request.state.user.get("id")
-
-    try:
-        post_data = post_create.model_dump(exclude={"media_files"})
-        post_data["user_id"] = auth_user_id
-
-        post = Post(**post_data)
-        db.add(post)
-
-        await db.flush()
-
-        media_files = []
-
-        for i, media_file in enumerate(post_create.media_files):
-            media_files.append(
-                PostMedia(
-                    url=media_file.url,
-                    type=media_file.type,
-                    thumbnail_url=media_file.thumbnail_url,
-                    duration=media_file.duration,
-                    post_id=post.id,
-                    order_index=i
-                )
-            )
-
-        db.add_all(media_files)
-
-        await db.commit()
-
-        return { "detail": "Post Created Successfully" }
-
-    except Exception as e:
-        await db.rollback()
-        logger.error(f"Post could not be created. Error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='Something went wrong'
-        )
 
 async def get_posts_by_user_id(db: DBSession, user_id: int, pagination: Pagination, request: Request):
     auth_user_id = request.state.user.get("id")
@@ -423,7 +383,7 @@ async def get_posts_by_user_id(db: DBSession, user_id: int, pagination: Paginati
                     price_with_discount=post.product_price_with_discount,
                     discount=post.product_discount,
                     currency=post.product_currency
-                ),
+                ) if post.product_name else None,
                 counters=PostCounters(
                     comment_count=post.comment_count,
                     like_count=post.like_count,
@@ -453,3 +413,43 @@ async def get_posts_by_user_id(db: DBSession, user_id: int, pagination: Paginati
         count=count,
         results=results
     )
+
+async def create_new_post(db: DBSession, post_create: PostCreate, request: Request):
+    auth_user_id = request.state.user.get("id")
+
+    try:
+        post_data = post_create.model_dump(exclude={"media_files"})
+        post_data["user_id"] = auth_user_id
+
+        post = Post(**post_data)
+        db.add(post)
+
+        await db.flush()
+
+        media_files = []
+
+        for i, media_file in enumerate(post_create.media_files):
+            media_files.append(
+                PostMedia(
+                    url=media_file.url,
+                    type=media_file.type,
+                    thumbnail_url=media_file.thumbnail_url,
+                    duration=media_file.duration,
+                    post_id=post.id,
+                    order_index=i
+                )
+            )
+
+        db.add_all(media_files)
+
+        await db.commit()
+
+        return { "detail": "Post Created Successfully" }
+
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Post could not be created. Error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='Something went wrong'
+        )
