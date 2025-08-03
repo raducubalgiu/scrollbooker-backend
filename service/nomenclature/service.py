@@ -1,5 +1,5 @@
 from starlette import status
-from sqlalchemy import select, or_, and_, delete, insert, false
+from sqlalchemy import select, or_, and_, delete, insert, false, distinct
 from sqlalchemy.orm import joinedload
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
@@ -41,6 +41,24 @@ async def get_services_by_business_id(db: DBSession, business_id: int):
     business = result.scalars().first()
 
     return business.services
+
+async def get_services_by_user_id(db: DBSession, user_id: int):
+    stmt = (
+        select(Service)
+        .join(business_services, business_services.c.service_id == Service.id)
+        .join(Business, Business.id == business_services.c.business_id)
+        .join(User, or_(
+            User.id == Business.owner_id,
+            User.employee_business_id == Business.id
+        ))
+        .join(Product, Product.service_id == Service.id)
+        .where(User.id == user_id)
+        .distinct()
+    )
+    result = await db.execute(stmt)
+    services = result.scalars().all()
+
+    return services
 
 async def create_new_service(db: DBSession, new_service: ServiceCreate):
     return await db_create(db, model=Service, create_data=new_service)

@@ -11,7 +11,7 @@ from schema.nomenclature.service import ServiceResponse, ServiceCreate, ServiceU
 from service.nomenclature.service import create_new_service, \
     delete_service_by_id, update_service_by_id, get_all_services, attach_services_to_business_type, \
     detach_services_from_business_type, get_services_by_business_id, get_services_by_service_domain_id, \
-    get_services_by_business_type_id, update_services_by_business_id
+    get_services_by_business_type_id, update_services_by_business_id, get_services_by_user_id
 
 router = APIRouter(tags=["Services"])
 
@@ -38,8 +38,14 @@ async def get_services_by_service_domain(db: DBSession, service_domain_id: int, 
 @router.get("/businesses/{business_id}/services",
     summary='List All Services Filtered by Business Id',
     response_model=list[ServiceResponse])
-async def get_services_by_user(db: DBSession, business_id: int):
+async def get_services_by_business(db: DBSession, business_id: int):
     return await get_services_by_business_id(db, business_id)
+
+@router.get("/users/{user_id}/services",
+            summary='List All Services Filtered By User Id - Only Services with Products',
+            response_model=list[ServiceResponse])
+async def get_services_by_user(db: DBSession, user_id: int):
+    return await get_services_by_user_id(db, user_id)
 
 @router.post("/services",
     summary='Create New Service',
