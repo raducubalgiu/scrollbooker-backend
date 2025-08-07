@@ -15,7 +15,7 @@ from core.enums.role_enum import RoleEnum
 from schema.booking.appointment import AppointmentBlock, AppointmentCancel, AppointmentUnblock, AppointmentCreate, \
     UserAppointmentResponse, AppointmentProduct, AppointmentBusiness
 from core.dependencies import DBSession
-from models import Appointment, Schedule, User, Business, Currency
+from models import Appointment, Schedule, User, Business, Currency, Service
 from sqlalchemy import select, and_, or_, desc, func
 from core.logger import logger
 from schema.user.user import UserBaseMinimum
@@ -176,7 +176,19 @@ async def create_new_appointment(db: DBSession, appointment_create: AppointmentC
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="This slot is already booked")
 
-    return await db_create(db, model=Appointment, create_data=appointment_create)
+    service = await db.get(Service, appointment_create.service_id)
+
+    appointment = Appointment(
+        **appointment_create.model_dump(),
+        service_name=service.name
+    )
+
+    db.add(appointment)
+
+    await db.commit()
+    await db.refresh(appointment)
+
+    return appointment
 
 async def create_new_blocked_appointment(db: DBSession, appointments_create: list[AppointmentBlock], request: Request):
     auth_user_id = request.state.user.get("id")

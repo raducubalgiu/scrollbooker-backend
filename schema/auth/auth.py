@@ -20,6 +20,8 @@ class UserRegisterResponse(UserBase):
 
 class UserInfoResponse(BaseModel):
     id: int
+    username: str
+    fullname: str
     business_id: Optional[int] = None
     business_type_id: Optional[int] = None
     is_validated: bool

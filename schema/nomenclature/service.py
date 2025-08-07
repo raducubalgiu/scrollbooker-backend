@@ -2,6 +2,9 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
 
+from schema.user.user import UserBaseMinimum
+
+
 class ServiceBase(BaseModel):
     name: str = Field(min_length=3, max_length=50)
     business_domain_id: int
@@ -26,6 +29,11 @@ class ServiceResponse(ServiceBase):
 
     class Config:
         from_attributes = True
+
+class ServiceWithEmployeesResponse(BaseModel):
+    service: ServiceResponse
+    products_count: int
+    employees: List[UserBaseMinimum] = []
 
 class Filter(BaseModel):
     id: int

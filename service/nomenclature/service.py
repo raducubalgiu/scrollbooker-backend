@@ -1,18 +1,22 @@
 from starlette import status
-from sqlalchemy import select, or_, and_, delete, insert, false, distinct
+from sqlalchemy import select, or_, and_, delete, insert, func
 from sqlalchemy.orm import joinedload
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 
 from core.dependencies import DBSession, Pagination
 from core.enums.registration_step_enum import RegistrationStepEnum
+from core.enums.role_enum import RoleEnum
 from models import Service, BusinessType, Business, User, business_services, Product
-from schema.nomenclature.service import ServiceCreate, ServiceUpdate, ServiceResponse, ServiceIdsUpdate
+from schema.nomenclature.service import ServiceCreate, ServiceUpdate, ServiceResponse, ServiceIdsUpdate, \
+    ServiceWithEmployeesResponse
 from core.crud_helpers import db_create, db_delete, db_update, db_get_all, db_insert_many_to_many, \
     db_remove_many_to_many, db_get_one
 from models.nomenclature.service_business_types import service_business_types
 from core.logger import logger
-from schema.user.user import UserAuthStateResponse
+from schema.user.user import UserAuthStateResponse, UserBaseMinimum
+from service.booking.business import get_business_by_user_id
+from collections import defaultdict
 
 
 async def get_all_services(db: DBSession, pagination: Pagination):
@@ -43,8 +47,51 @@ async def get_services_by_business_id(db: DBSession, business_id: int):
     return business.services
 
 async def get_services_by_user_id(db: DBSession, user_id: int):
+    user_result = await db.execute(
+        select(User)
+        .where(User.id == user_id)
+        .options(joinedload(User.role))
+    )
+    user = user_result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    business_query = await db.execute(
+        select(Business)
+        .where(and_(
+            User.id == user_id,
+            or_(
+                Business.owner_id == user_id,
+                Business.id == User.employee_business_id
+            )
+        ))
+    )
+    business = business_query.unique().scalar_one_or_none()
+
+    employees_query = await db.execute(
+        select(User)
+        .where(User.employee_business_id == business.id)
+        .options(joinedload(User.counters))
+    )
+    employees = employees_query.scalars().all()
+
+    products_query = await db.execute(
+        select(Product.user_id, Product.service_id)
+        .where(Product.business_id == business.id)
+    )
+
+    products = products_query.all()
+
+    service_employees_map = defaultdict(set)
+    for user_id, service_id in products:
+        service_employees_map[service_id].add(user_id)
+
     stmt = (
-        select(Service)
+        select(Service, func.count(Product.id).label("products_count"))
         .join(business_services, business_services.c.service_id == Service.id)
         .join(Business, Business.id == business_services.c.business_id)
         .join(User, or_(
@@ -53,12 +100,40 @@ async def get_services_by_user_id(db: DBSession, user_id: int):
         ))
         .join(Product, Product.service_id == Service.id)
         .where(User.id == user_id)
-        .distinct()
+        .group_by(Service.id)
     )
-    result = await db.execute(stmt)
-    services = result.scalars().all()
 
-    return services
+    result = await db.execute(stmt)
+    services = result.all()
+
+    response = []
+
+    for service, products_count in services:
+        employee_ids = service_employees_map.get(service.id, set())
+
+        service_employees = [
+            UserBaseMinimum(
+                id=emp.id,
+                fullname=emp.fullname,
+                username=emp.username,
+                profession=emp.profession,
+                avatar=emp.avatar,
+                is_follow=None,
+                ratings_average=emp.counters.ratings_average
+            )
+            for emp in employees
+            if emp.id in employee_ids
+            and user.role.name is RoleEnum.BUSINESS
+        ]
+
+        response.append(
+            ServiceWithEmployeesResponse(
+                service=service,
+                products_count=products_count,
+                employees=service_employees
+            )
+        )
+    return response
 
 async def create_new_service(db: DBSession, new_service: ServiceCreate):
     return await db_create(db, model=Service, create_data=new_service)

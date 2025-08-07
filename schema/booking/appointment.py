@@ -47,7 +47,6 @@ class AppointmentCreate(BaseModel):
     channel: AppointmentChannelEnum
 
     customer_fullname: str = Field(min_length=3, max_length=50)
-    service_name: str= Field(min_length=3, max_length=50)
     product_name: str = Field(min_length=3, max_length=100)
     product_full_price: Decimal
     product_price_with_discount: Decimal

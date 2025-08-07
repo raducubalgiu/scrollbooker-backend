@@ -73,7 +73,7 @@ async def register_user(db: DBSession, user_register: UserRegister):
         await db.commit()
         await db.refresh(new_user)
 
-        return await generate_tokens(username, new_user.email, new_user.id, role.name)
+        return await generate_tokens(new_user.id, username, fullname, new_user.email, role.name)
     except Exception as e:
         await db.rollback()
         logger.error(f"User could not be registered. Error {e}")
@@ -147,18 +147,30 @@ async def login_user(db: DBSession, username: str, password: str):
     if not password:
         raise HTTPException(status_code=400, detail="Password doesn't match")
 
-    return await generate_tokens(username, user.email, user.id, user.role.name)
+    return await generate_tokens(user.id, username, user.fullname, user.email, user.role.name)
 
 # Generate access and refresh tokens
-async def generate_tokens(username: str, email: EmailStr, user_id: int, role: str):
+async def generate_tokens(user_id: int, username: str, fullname: str, email: EmailStr, role: str):
     access_token = await create_token(
-        data={"sub": username, "email": email, "id": user_id, "role": role},
+        data={
+            "id": user_id,
+            "sub": username,
+            "fullname": fullname,
+            "email": email,
+            "role": role,
+        },
         expires_at=timedelta(minutes=float(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))),
         secret_key=os.getenv("SECRET_KEY")
     )
 
     refresh_token = await create_token(
-        data={"sub": username, "email": email, "id": user_id, "role": role},
+        data={
+            "id": user_id,
+            "sub": username,
+            "fullname": fullname,
+            "email": email,
+            "role": role
+        },
         expires_at=timedelta(days=float(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS"))),
         secret_key=os.getenv("REFRESH_SECRET_KEY")
     )
@@ -191,7 +203,7 @@ async def get_refresh_token(db: DBSession, token: RefreshToken):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
         logger.info(f"The Token was refreshed for user: {username}")
-        return await generate_tokens(username, email, user.id, user.role.name)
+        return await generate_tokens(user.id, username, user.fullname, email, user.role.name)
 
     except JWTError as e:
         logger.error(f"Token could not be refreshed.Error: {e}")
@@ -242,6 +254,8 @@ async def get_user_info(db: DBSession, token: str):
 
         return UserInfoResponse(
             id=user.id,
+            username=user.username,
+            fullname=user.fullname,
             business_id=business_id,
             business_type_id=business_type_id,
             is_validated=user.is_validated,
@@ -326,6 +340,8 @@ async def update_user_info(db: DBSession, user_update: UserInfoUpdate ,token: st
 
         return UserInfoResponse(
             id=user.id,
+            username=user.username,
+            fullname=user.fullname,
             business_id=business_id,
             is_validated=user.is_validated
         )
