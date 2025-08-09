@@ -11,9 +11,9 @@ class ProductBase(BaseModel):
     service_id: int
     business_id: int
     currency_id: int
-    price: condecimal(gt=0, max_digits=10, decimal_places=2)
-    price_with_discount: condecimal(gt=0, max_digits=10, decimal_places=2)
-    discount: condecimal(lt=100, max_digits=5, decimal_places=2) = Decimal("00.00")
+    price: Decimal
+    price_with_discount: Decimal
+    discount: Decimal
 
 class ProductUpdate(ProductBase):
     pass

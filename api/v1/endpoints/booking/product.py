@@ -1,6 +1,7 @@
 from typing import Union
 
 from fastapi import APIRouter
+from fastapi.params import Query
 from starlette.requests import Request
 from starlette import status
 
@@ -22,8 +23,14 @@ async def get_products_by_user(db: DBSession, user_id: int, pagination: Paginati
     "/users/{user_id}/services/{service_id}/products",
     summary="List All Products Filtered By User Id and Service Id",
     response_model=Union[PaginatedResponse[ProductResponse], list[ProductResponse]])
-async def get_products_by_user_and_service(db: DBSession, user_id: int, service_id: int, pagination: Pagination):
-    return await get_products_by_user_id_and_service_id(db, user_id, service_id, pagination)
+async def get_products_by_user_and_service(
+        db: DBSession,
+        user_id: int,
+        service_id: int,
+        pagination: Pagination,
+        employee_id: int = Query(None),
+):
+    return await get_products_by_user_id_and_service_id(db, user_id, service_id, pagination, employee_id)
 
 @router.get("/products/{product_id}",
     summary='Get Product By Id',

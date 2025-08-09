@@ -5,8 +5,8 @@ from sqlalchemy import select, func, literal, and_, desc
 
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession, Pagination
-from models import User, Follow, Repost, BookmarkPost
-from schema.social.post import UserPostResponse, PostProduct, PostCounters, \
+from models import User, Follow, Repost, BookmarkPost, Product
+from schema.social.post import UserPostResponse, PostCounters, \
     LastMinute, PostUserActions
 from models.social.post import Post
 from schema.social.repost import RepostCreate
@@ -59,12 +59,14 @@ async def get_reposts_by_user(db: DBSession, user_id: int, pagination: Paginatio
             User.username,
             User.avatar,
             User.profession,
+            Product,
             is_follow,
             is_bookmarked,
             is_reposted,
         )
         .join(User, User.id == Post.user_id)
         .join(Repost, Repost.user_id == user_id)
+        .join(Product, Product.user_id == Post.user_id)
         .where(Repost.post_id == Post.id)
         .order_by(desc(Post.created_at))
         .offset((pagination.page - 1) * pagination.limit)
@@ -77,7 +79,7 @@ async def get_reposts_by_user(db: DBSession, user_id: int, pagination: Paginatio
 
     results = []
 
-    for post, u_id, u_fullname, u_username, u_avatar, u_profession, is_follow, is_reposted, is_bookmarked in posts:
+    for post, u_id, u_fullname, u_username, u_avatar, u_profession, product, is_follow, is_reposted, is_bookmarked in posts:
         media_files = media_map.get(post.id, [])
 
         results.append(UserPostResponse(
@@ -91,21 +93,13 @@ async def get_reposts_by_user(db: DBSession, user_id: int, pagination: Paginatio
                 profession=u_profession,
                 is_follow=is_follow
             ),
-            product=PostProduct(
-                id=post.product_id,
-                name=post.product_name,
-                description=post.product_name,
-                duration=post.product_duration,
-                price=post.product_price,
-                price_with_discount=post.product_price_with_discount,
-                discount=post.product_discount,
-                currency=post.product_currency
-            ),
+            product=product,
             counters=PostCounters(
                 comment_count=post.comment_count,
                 like_count=post.like_count,
                 bookmark_count=post.bookmark_count,
-                share_count=post.share_count
+                share_count=post.share_count,
+                bookings_count=post.bookings_count
             ),
             media_files=media_files,
             user_actions=PostUserActions(

@@ -1,9 +1,7 @@
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from models import Base
-from sqlalchemy import Column, Integer, String, TIMESTAMP, func, ForeignKey, Boolean, ARRAY, Text, BigInteger, Index, \
-    DECIMAL
-
+from sqlalchemy import Column, Integer, String, TIMESTAMP, func, ForeignKey, Boolean, ARRAY, Text, BigInteger, Index
 class Post(Base):
     __tablename__ = "posts"
 
@@ -15,14 +13,6 @@ class Post(Base):
     business_type_id = Column(Integer, ForeignKey("business_types.id", ondelete="CASCADE"), nullable=False, index=True)
     business_id = Column(Integer, ForeignKey("businesses.id", ondelete="SET NULL"), nullable=False)
     instant_booking = Column(Boolean, nullable=False, default=True, index=True)
-
-    product_name = Column(String(100), nullable=True)
-    product_description = Column(String(200), nullable=True)
-    product_duration = Column(Integer, nullable=True)
-    product_price = Column(DECIMAL, nullable=True)
-    product_price_with_discount = Column(DECIMAL, nullable=True)
-    product_discount = Column(DECIMAL, nullable=True)
-    product_currency = Column(String(3), nullable=True)
 
     bookable = Column(Boolean, nullable=False, default=True)
     is_last_minute = Column(Boolean, nullable=False, default=False)
@@ -37,6 +27,7 @@ class Post(Base):
     share_count = Column(Integer, nullable=False, default=0)
     comment_count = Column(Integer, nullable=False, default=0)
     bookmark_count = Column(Integer, nullable=False, default=0)
+    bookings_count = Column(Integer, nullable=False, default=0)
 
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
@@ -46,6 +37,7 @@ class Post(Base):
     bookmark_posts = relationship("BookmarkPost", back_populates="post")
     reposts = relationship("Repost", back_populates="post")
     user = relationship("User", back_populates="posts")
+    product = relationship("Product", back_populates="posts")
     comments = relationship("Comment", back_populates="post", cascade="all, delete")
     media_files = relationship(
         "PostMedia",

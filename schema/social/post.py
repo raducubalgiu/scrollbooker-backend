@@ -1,7 +1,9 @@
 from decimal import Decimal
 from typing import Optional, List
 from datetime import datetime
-from pydantic import BaseModel, Field, condecimal
+from pydantic import BaseModel
+
+from schema.booking.product import ProductResponse
 from schema.social.hashtag import HashtagResponse
 from schema.social.post_media import PostMediaBase, PostMediaResponse
 from schema.user.user import UserBaseMinimum
@@ -16,14 +18,6 @@ class PostFixedSlots(BaseModel):
 
 class PostBase(BaseModel):
     business_type_id: int
-
-    product_name: Optional[str] = None
-    product_description: Optional[str] = None
-    product_duration: Optional[int] = None
-    product_price: Optional[Decimal] = None
-    product_price_with_discount: Optional[Decimal] = None
-    product_discount: Optional[Decimal] = None
-    product_currency: Optional[str] = None
 
     hashtags: Optional[List[str]] = []
     mentions: Optional[List[int]] = []
@@ -48,10 +42,12 @@ class PostCreate(PostBase):
 class PostResponse(PostBase):
     id: int
     user_id: int
-    like_count: bool
-    share_count: bool
-    comment_count: bool
-    bookmark_count: bool
+
+    like_count: int
+    share_count: int
+    comment_count: int
+    bookmark_count: int
+    bookings_count: int
 
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -59,15 +55,22 @@ class PostResponse(PostBase):
     class Config:
         from_attributes = True
 
+class PostProductCurrency(BaseModel):
+    id: int
+    name: str
+
+    class Config:
+        from_attributes = True
+
 class PostProduct(BaseModel):
-    id: Optional[int] = None
+    id: int
     name: str
     description: Optional[str] = None
     duration: int
     price: Decimal
     price_with_discount: Decimal
     discount: Decimal
-    currency: str
+    currency: PostProductCurrency
 
     class Config:
         from_attributes = True
@@ -77,6 +80,7 @@ class PostCounters(BaseModel):
     like_count: int
     bookmark_count: int
     share_count: int
+    bookings_count: int
 
     class Config:
         from_attributes = True

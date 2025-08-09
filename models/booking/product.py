@@ -31,6 +31,7 @@ class Product(Base):
     appointments = relationship("Appointment", back_populates="product")
     reviews = relationship("Review", back_populates="product")
     currency = relationship('Currency', back_populates="products")
+    posts = relationship("Post", back_populates="product")
     sub_filters = relationship("SubFilter", secondary=product_sub_filters, back_populates="products")
 
     __table_args__ = (

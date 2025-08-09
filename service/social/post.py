@@ -6,9 +6,9 @@ from starlette import status
 from sqlalchemy import select, desc, func, literal, and_
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession, Pagination
-from models import User, Follow, PostMedia, Repost, BookmarkPost, UserCounters, Business, Like
-from schema.social.post import PostCreate, UserPostResponse, PostProduct, PostCounters, \
-    LastMinute, PostUserActions
+from models import User, Follow, PostMedia, Repost, BookmarkPost, UserCounters, Like, Product, Currency
+from schema.social.post import PostCreate, UserPostResponse, PostCounters, LastMinute, PostUserActions, PostProduct, \
+    PostProductCurrency
 from models.social.post import Post
 from core.logger import logger
 from schema.user.user import UserBaseMinimum
@@ -69,7 +69,6 @@ async def get_book_now_posts(
     base_query = (
         select(Post.id)
         .join(User, User.id == Post.user_id)
-        .join(UserCounters, UserCounters.user_id == User.id)
     )
 
     if business_types:
@@ -79,21 +78,26 @@ async def get_book_now_posts(
     count_total = await db.execute(count_query)
     count = count_total.scalar_one()
 
-    query = (select(
-        Post,
-        User.id,
-        User.fullname,
-        User.username,
-        User.avatar,
-        User.profession,
-        UserCounters.ratings_average,
-        is_liked,
-        is_follow,
-        is_reposted,
-        is_bookmarked
-    )
-    .join(User, User.id == Post.user_id)
-    .join(UserCounters, UserCounters.user_id == User.id))
+    query = (
+        select(
+            Post,
+            User.id,
+            User.fullname,
+            User.username,
+            User.avatar,
+            User.profession,
+            UserCounters.ratings_average,
+            Product,
+            Currency,
+            is_liked,
+            is_follow,
+            is_reposted,
+            is_bookmarked
+        )
+        .join(User, User.id == Post.user_id)
+        .outerjoin(Product, Product.id == Post.product_id)
+        .outerjoin(Currency, Currency.id == Product.currency_id)
+        .join(UserCounters, UserCounters.user_id == User.id))
 
     if business_types:
         query = query.where(Post.business_type_id.in_(business_types))
@@ -113,7 +117,7 @@ async def get_book_now_posts(
 
     results = []
 
-    for post, u_id, u_fullname, u_username, u_avatar, u_profession, u_ratings_average, is_liked, is_follow, is_reposted, is_bookmarked in posts:
+    for post, u_id, u_fullname, u_username, u_avatar, u_profession, u_ratings_average, product, currency, is_liked, is_follow, is_reposted, is_bookmarked in posts:
         media_files = media_map.get(post.id, [])
 
         results.append(UserPostResponse(
@@ -130,20 +134,24 @@ async def get_book_now_posts(
             ),
             business_id=post.business_id,
             product=PostProduct(
-                id=post.product_id,
-                name=post.product_name,
-                description=post.product_name,
-                duration=post.product_duration,
-                price=post.product_price,
-                price_with_discount=post.product_price_with_discount,
-                discount=post.product_discount,
-                currency=post.product_currency
-            ) if post.product_name else None,
+                id=product.id,
+                name=product.name,
+                description=product.description,
+                duration=product.duration,
+                price=product.price,
+                price_with_discount=product.price_with_discount,
+                discount=product.discount,
+                currency=PostProductCurrency(
+                    id=currency.id,
+                    name=currency.name
+                )
+            ) if product is not None else None,
             counters=PostCounters(
                 comment_count=post.comment_count,
                 like_count=post.like_count,
                 bookmark_count=post.bookmark_count,
-                share_count=post.share_count
+                share_count=post.share_count,
+                bookings_count=post.bookings_count
             ),
             media_files=media_files,
             user_actions=PostUserActions(
@@ -214,6 +222,7 @@ async def get_following_posts(db: DBSession, pagination: Pagination, request: Re
             User.avatar,
             User.profession,
             UserCounters.ratings_average,
+            Product,
             is_follow,
             is_reposted,
             is_bookmarked
@@ -221,6 +230,7 @@ async def get_following_posts(db: DBSession, pagination: Pagination, request: Re
         .join(User, User.id == Post.user_id)
         .join(UserCounters, UserCounters.user_id == User.id)
         .join(Follow, Follow.follower_id == auth_user_id)
+        .join(Product, Product.user_id == Post.user_id)
         .where(and_(
             Follow.follower_id == auth_user_id,
             Follow.followee_id == User.id
@@ -240,7 +250,7 @@ async def get_following_posts(db: DBSession, pagination: Pagination, request: Re
 
     results = []
 
-    for post, u_id, u_fullname, u_username, u_avatar, u_profession, u_ratings_average, is_follow, is_reposted, is_bookmarked in posts:
+    for post, u_id, u_fullname, u_username, u_avatar, u_profession, u_ratings_average, product, is_follow, is_reposted, is_bookmarked in posts:
         media_files = media_map.get(post.id, [])
 
         results.append(UserPostResponse(
@@ -255,21 +265,13 @@ async def get_following_posts(db: DBSession, pagination: Pagination, request: Re
                 is_follow=is_follow,
                 ratings_average=u_ratings_average
             ),
-            product=PostProduct(
-                id=post.product_id,
-                name=post.product_name,
-                description=post.product_name,
-                duration=post.product_duration,
-                price=post.product_price,
-                price_with_discount=post.product_price_with_discount,
-                discount=post.product_discount,
-                currency=post.product_currency
-            ) if post.product_name else None,
+            product=product,
             counters=PostCounters(
                 comment_count=post.comment_count,
                 like_count=post.like_count,
                 bookmark_count=post.bookmark_count,
-                share_count=post.share_count
+                share_count=post.share_count,
+                bookings_count=post.bookings_count
             ),
             media_files=media_files,
             user_actions=PostUserActions(
@@ -343,11 +345,15 @@ async def get_posts_by_user_id(db: DBSession, user_id: int, pagination: Paginati
             User.username,
             User.avatar,
             User.profession,
+            Product,
+            Currency,
             is_follow,
             is_reposted,
             is_bookmarked
         )
         .join(User, User.id == Post.user_id)
+        .outerjoin(Product, Product.id == Post.product_id)
+        .outerjoin(Currency, Currency.id == Product.currency_id)
         .where(Post.user_id == user_id)
         .order_by(desc(Post.created_at))
         .offset((pagination.page - 1) * pagination.limit)
@@ -360,7 +366,7 @@ async def get_posts_by_user_id(db: DBSession, user_id: int, pagination: Paginati
 
     results = []
 
-    for post, u_id, u_fullname, u_username, u_avatar, u_profession, is_follow, is_reposted, is_bookmarked in posts:
+    for post, u_id, u_fullname, u_username, u_avatar, u_profession, product, currency, is_follow, is_reposted, is_bookmarked in posts:
         media_files = media_map.get(post.id, [])
 
         results.append(UserPostResponse(
@@ -375,20 +381,24 @@ async def get_posts_by_user_id(db: DBSession, user_id: int, pagination: Paginati
                     is_follow=is_follow
                 ),
                 product=PostProduct(
-                    id=post.product_id,
-                    name=post.product_name,
-                    description=post.product_name,
-                    duration=post.product_duration,
-                    price=post.product_price,
-                    price_with_discount=post.product_price_with_discount,
-                    discount=post.product_discount,
-                    currency=post.product_currency
-                ) if post.product_name else None,
+                    id=product.id,
+                    name=product.name,
+                    description=product.description,
+                    duration=product.duration,
+                    price=product.price,
+                    price_with_discount=product.price_with_discount,
+                    discount=product.discount,
+                    currency=PostProductCurrency(
+                        id=currency.id,
+                        name=currency.name
+                    )
+                ) if product is not None else None,
                 counters=PostCounters(
                     comment_count=post.comment_count,
                     like_count=post.like_count,
                     bookmark_count=post.bookmark_count,
-                    share_count=post.share_count
+                    share_count=post.share_count,
+                    bookings_count=post.bookings_count
                 ),
                 media_files=media_files,
                 user_actions=PostUserActions(
