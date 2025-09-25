@@ -1,5 +1,4 @@
-from typing import Optional, Dict, Any, List
-
+from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field
 
 from schema.user.user import UserBaseMinimum
@@ -20,6 +19,7 @@ class NotificationResponse(NotificationBase):
     is_read: bool
     is_deleted: bool
     sender: UserBaseMinimum = None
+    is_follow: bool
 
     class Config:
         from_attributes = True
