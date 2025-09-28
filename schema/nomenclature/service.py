@@ -4,7 +4,6 @@ from datetime import datetime
 
 from schema.user.user import UserBaseMinimum
 
-
 class ServiceBase(BaseModel):
     name: str = Field(min_length=3, max_length=50)
     business_domain_id: int

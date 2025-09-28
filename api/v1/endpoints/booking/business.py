@@ -58,7 +58,9 @@ async def get_business_employees(db: DBSession, business_id: int, page: int, lim
     return await get_business_employees_by_id(db, business_id, page, limit)
 
 @router.patch("/businesses/update-has-employees",
-              summary='Update Business has employees')
+              summary='Update Business has employees',
+              response_model=BusinessResponse,
+              dependencies=[BusinessSession])
 async def update_has_employees(db: DBSession, business_update: BusinessHasEmployeesUpdate, request: Request):
     return await update_business_has_employees(db, business_update, request)
 

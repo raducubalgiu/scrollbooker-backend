@@ -6,12 +6,10 @@ from starlette import status
 from sqlalchemy import select, or_
 from core.crud_helpers import db_get_one, db_get_all
 from core.dependencies import DBSession, check_resource_ownership
-from core.enums.registration_step_enum import RegistrationStepEnum
 from schema.booking.schedule import ScheduleCreate, ScheduleUpdate
 from models import Schedule, Business, User
 import calendar
 from core.logger import logger
-from schema.user.user import UserAuthStateResponse
 
 from service.booking.business import get_business_by_user_id
 
@@ -85,9 +83,7 @@ async def update_user_schedule(db: DBSession, schedule_id: int, schedule_update:
 
     return schedule
 
-async def update_user_many_schedules(db: DBSession, schedule_update: List[ScheduleUpdate], request: Request):
-    auth_user_id = request.state.user.get("id")
-
+async def update_user_schedules(db: DBSession, schedule_update: List[ScheduleUpdate], request: Request):
     try:
         updated_schedules = []
 
@@ -95,19 +91,7 @@ async def update_user_many_schedules(db: DBSession, schedule_update: List[Schedu
             updated_schedule = await update_user_schedule(db, schedule.id, schedule, request)
             updated_schedules.append(updated_schedule)
 
-        user = await db.get(User, auth_user_id)
-
-        if user.registration_step is RegistrationStepEnum.COLLECT_BUSINESS_SCHEDULES:
-            user.registration_step = RegistrationStepEnum.COLLECT_BUSINESS_HAS_EMPLOYEES
-
-        db.add(user)
-        await db.commit()
-        await db.refresh(user)
-
-        return UserAuthStateResponse(
-            is_validated=user.is_validated,
-            registration_step=user.registration_step
-        )
+        return updated_schedules
 
     except Exception as e:
         await db.rollback()

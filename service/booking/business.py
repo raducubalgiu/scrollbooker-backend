@@ -437,21 +437,10 @@ async def update_business_has_employees(db: DBSession, business_update: Business
 
         business.has_employees = business_update.has_employees
         db.add(business)
-
-        owner = await db.get(User, auth_user_id)
-
-        if owner.registration_step is RegistrationStepEnum.COLLECT_BUSINESS_HAS_EMPLOYEES:
-            owner.registration_step = RegistrationStepEnum.COLLECT_BUSINESS_VALIDATION
-
-        db.add(owner)
-
         await db.commit()
-        await db.refresh(owner)
+        await db.refresh(business)
 
-        return UserAuthStateResponse(
-            is_validated=owner.is_validated,
-            registration_step=owner.registration_step
-        )
+        return await get_business_by_id(db, business_id=business.id)
 
     except Exception as e:
         logger.error(f"Business could not be updated. ERROR: {e}")

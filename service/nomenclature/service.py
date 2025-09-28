@@ -15,13 +15,16 @@ from core.crud_helpers import db_create, db_delete, db_update, db_get_all, db_in
 from models.nomenclature.service_business_types import service_business_types
 from core.logger import logger
 from schema.user.user import UserAuthStateResponse, UserBaseMinimum
-from service.booking.business import get_business_by_user_id
 from collections import defaultdict
-
 
 async def get_all_services(db: DBSession, pagination: Pagination):
     return await db_get_all(db,
-        model=Service, schema=ServiceResponse, page=pagination.page, limit=pagination.limit, order_by="created_at", descending=True)
+                            model=Service,
+                            schema=ServiceResponse,
+                            page=pagination.page,
+                            limit=pagination.limit,
+                            order_by="created_at",
+                            descending=True)
 
 async def get_services_by_business_type_id(db: DBSession, business_type_id: int):
     business_type = await db_get_one(db,
@@ -31,7 +34,12 @@ async def get_services_by_business_type_id(db: DBSession, business_type_id: int)
     return business_type.services
 
 async def get_services_by_service_domain_id(db: DBSession, service_domain_id: int, pagination: Pagination):
-    return await db_get_all(db, model=Service, schema=ServiceResponse, filters={Service.service_domain_id: service_domain_id}, page=pagination.page, limit=pagination.limit)
+    return await db_get_all(db,
+                            model=Service,
+                            schema=ServiceResponse,
+                            filters={Service.service_domain_id: service_domain_id},
+                            page=pagination.page,
+                            limit=pagination.limit)
 
 async def get_services_by_business_id(db: DBSession, business_id: int):
     stmt = (
@@ -207,20 +215,8 @@ async def update_services_by_business_id(db: DBSession, services_update: Service
                 ]
             )
 
-        owner = await db.get(User, owner_id)
-
-        if owner.registration_step is RegistrationStepEnum.COLLECT_BUSINESS_SERVICES:
-            owner.registration_step = RegistrationStepEnum.COLLECT_BUSINESS_SCHEDULES
-
-        db.add(owner)
-
         await db.commit()
-        await db.refresh(owner)
-
-        return UserAuthStateResponse(
-            is_validated=owner.is_validated,
-            registration_step=owner.registration_step
-        )
+        return await get_services_by_business_id(db, business_id)
 
     except Exception as e:
         await db.rollback()

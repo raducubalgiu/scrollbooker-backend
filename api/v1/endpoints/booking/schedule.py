@@ -3,8 +3,7 @@ from typing import List
 from fastapi import APIRouter
 from starlette.requests import Request
 from schema.booking.schedule import ScheduleCreate, ScheduleUpdate, ScheduleResponse
-from schema.user.user import UserAuthStateResponse
-from service.booking.schedule import create_user_schedule, update_user_schedule, update_user_many_schedules, \
+from service.booking.schedule import create_user_schedule, update_user_schedule, update_user_schedules, \
     get_schedules_by_user_id
 from core.dependencies import DBSession, BusinessAndEmployeesSession
 
@@ -35,7 +34,7 @@ async def update_schedule(db: DBSession, schedule_id: int, schedule_update: Sche
 @router.put(
     "/schedules",
     summary='Update Many Schedules',
-    response_model=UserAuthStateResponse,
+    response_model=list[ScheduleResponse],
     dependencies=[BusinessAndEmployeesSession])
 async def update_many_schedules(db: DBSession, schedule_update: List[ScheduleUpdate], request: Request):
-    return await update_user_many_schedules(db, schedule_update, request)
+    return await update_user_schedules(db, schedule_update, request)
