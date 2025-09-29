@@ -31,6 +31,13 @@ class Business(Base):
     appointments = relationship("Appointment", back_populates="business")
     employment_requests = relationship("EmploymentRequest", back_populates="business")
 
+    media_files = relationship(
+        "BusinessMedia",
+        back_populates="business",
+        cascade="all, delete",
+        order_by="PostMedia.order_index"
+    )
+
     __table_args__ = (
         Index("idx_business_coordinates", "coordinates", postgresql_using="gist"),
         Index("idx_business_timezone", "timezone"),

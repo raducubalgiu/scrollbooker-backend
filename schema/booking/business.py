@@ -4,7 +4,6 @@ from typing import Optional, List
 from schema.nomenclature.service import ServiceResponse
 from schema.user.user import UserAuthStateResponse, UserBaseMinimum
 
-
 class BusinessCoordinates(BaseModel):
     lat: float
     lng: float
