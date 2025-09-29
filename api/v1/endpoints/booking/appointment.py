@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 
 from fastapi import APIRouter
 from starlette import status
@@ -7,7 +7,8 @@ from starlette.requests import Request
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession, BusinessAndEmployeesSession
 from schema.booking.appointment import AppointmentResponse, AppointmentBlock, \
-    AppointmentCancel, AppointmentTimeslotsResponse, AppointmentUnblock, AppointmentCreate, UserAppointmentResponse
+    AppointmentCancel, AppointmentTimeslotsResponse, AppointmentUnblock, AppointmentCreate, UserAppointmentResponse, \
+    CalendarEventsResponse
 from service.booking.appointment import create_new_appointment, get_daily_available_slots, \
     get_user_calendar_events, create_new_blocked_appointment, get_user_calendar_availability, cancel_user_appointment, \
     unblock_user_appointment, get_appointments_by_user_id, get_appointments_number_by_user_id
@@ -56,11 +57,13 @@ async def get_daily_timeslots(db: DBSession, day: str, user_id: int, slot_durati
 
 @router.get("/calendar-available-days",
             summary='Get User available days',
-            response_model=list[str])
+            response_model=List[str])
 async def get_calendar_available_days(db: DBSession, start_date: str, end_date: str, user_id: int):
     return await get_user_calendar_availability(db, start_date, end_date, user_id)
 
 @router.get("/calendar-events",
-            summary='Get Business/Employee Calendar Events')
+            summary='Get Business/Employee Calendar Events',
+            response_model=CalendarEventsResponse,
+            dependencies=[BusinessAndEmployeesSession])
 async def get_calendar_events(db: DBSession, start_date: str, end_date: str, user_id: int, slot_duration: int):
     return await get_user_calendar_events(db, start_date, end_date, user_id, slot_duration)

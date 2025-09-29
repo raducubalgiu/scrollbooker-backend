@@ -2,18 +2,19 @@ from collections import defaultdict
 from typing import Optional
 
 from fastapi import HTTPException
-from datetime import datetime, timedelta, time, timezone, date
+from datetime import datetime, timedelta, time, timezone
 from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import aliased, joinedload
 from starlette.requests import Request
 from starlette import status
-from core.crud_helpers import db_create, db_get_one, PaginatedResponse
+from core.crud_helpers import db_get_one, PaginatedResponse
 from core.enums.appointment_channel_enum import AppointmentChannelEnum
 from core.enums.appointment_status_enum import AppointmentStatusEnum
 from core.enums.role_enum import RoleEnum
 from schema.booking.appointment import AppointmentBlock, AppointmentCancel, AppointmentUnblock, AppointmentCreate, \
-    UserAppointmentResponse, AppointmentProduct, AppointmentBusiness
+    UserAppointmentResponse, AppointmentProduct, AppointmentBusiness, CalendarEventsSlot, CalendarEventsInfo, \
+    CalendarEventsResponse, CalendarEventsDay
 from core.dependencies import DBSession
 from models import Appointment, Schedule, User, Business, Currency, Service
 from sqlalchemy import select, and_, or_, desc, func
@@ -498,7 +499,7 @@ async def get_user_calendar_events(db: DBSession, start_date: str, end_date: str
     start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
     end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
 
-    # Create Local datetimes
+    # Create Local date times
     local_start = datetime.combine(start_date_obj, time.min).replace(tzinfo=tz)
     local_end = datetime.combine(end_date_obj, time.max).replace(tzinfo=tz)
 
@@ -506,12 +507,13 @@ async def get_user_calendar_events(db: DBSession, start_date: str, end_date: str
     start_utc = local_start.astimezone(ZoneInfo('UTC'))
     end_utc = local_end.astimezone(ZoneInfo('UTC'))
 
-    schedules_stmt = select(Schedule).where(Schedule.user_id == user_id) #type: ignore
+    schedules_stmt = select(Schedule).where(Schedule.user_id == user_id)
     schedules_result = await db.execute(schedules_stmt)
-    schedules = {schedule.day_of_week: schedule for schedule in schedules_result.scalars().all()}
+    schedules = { schedule.day_of_week: schedule for schedule in schedules_result.scalars().all() }
 
     global_start_time = time.max
     global_end_time = time.min
+
     for schedule in schedules.values():
         if schedule.start_time and schedule.start_time < global_start_time:
             global_start_time = schedule.start_time
@@ -522,33 +524,24 @@ async def get_user_calendar_events(db: DBSession, start_date: str, end_date: str
 
     appointments_stmt = (
         select(
-            Appointment.id,
-            Appointment.start_date,
-            Appointment.end_date,
-            Appointment.service_name,
-            Appointment.product_name,
-            Appointment.product_full_price,
-            Appointment.product_price_with_discount,
-            Appointment.product_discount,
-            Appointment.channel,
-            Appointment.customer_fullname,
-            Appointment.is_blocked,
-            Appointment.message,
+            Appointment,
             Currency.id,
             Currency.name,
-            Customer.id.label("customer_id"),
-            Customer.fullname.label("customer_fullname"),
-            Customer.username.label("customer_username"),
-            Customer.avatar.label("customer_avatar")
+            Customer.id.label("c_id"),
+            Customer.fullname.label("c_fullname"),
+            Customer.username.label("c_username"),
+            Customer.avatar.label("c_avatar")
         )
-        .join(User, User.id == Appointment.user_id) #type: ignore
+        .join(User, User.id == Appointment.user_id)
         .outerjoin(Customer, Customer.id == Appointment.customer_id)
         .outerjoin(Currency, Currency.id == Appointment.currency_id)
         .where(
-            Appointment.user_id == user_id, # type: ignore
-            Appointment.start_date >= start_utc,
-            Appointment.end_date <= end_utc,
-            #Appointment.status != AppointmentStatusEnum.CANCELED
+            and_(
+                Appointment.user_id == user_id,
+                Appointment.start_date >= start_utc,
+                Appointment.end_date <= end_utc,
+                Appointment.status != AppointmentStatusEnum.CANCELED
+            )
         ))
 
     appointment_results = await db.execute(appointments_stmt)
@@ -556,32 +549,32 @@ async def get_user_calendar_events(db: DBSession, start_date: str, end_date: str
 
     # Group appointments by date and slot duration
     grouped_appointments = defaultdict(list)
-    for a_id, a_start, a_end, a_serv_name, a_prod_name, a_prod_full_price, a_prod_price_with_discount, a_prod_discount, a_channel, a_customer_fullname, a_is_blocked, a_message, a_currency_id, a_currency_name, customer_id, customer_fullname, customer_username, customer_avatar in appointments:
-        appointment_date = a_start.date()
+    for appointment, currency_id, currency_name, c_id, c_fullname, c_username, c_avatar in appointments:
+        appointment_date = appointment.start_date.date()
 
         grouped_appointments[appointment_date].append({
-            "id": a_id,
-            "start_date": a_start,
-            "end_date": a_end,
-            "channel": a_channel,
-            "service_name": a_serv_name,
-            "is_blocked": a_is_blocked,
-            "message": a_message,
+            "id": appointment.id,
+            "start_date": appointment.start_date,
+            "end_date": appointment.end_date,
+            "channel": appointment.channel,
+            "service_name": appointment.service_name,
+            "is_blocked": appointment.is_blocked,
+            "message": appointment.message,
             "product": {
-                "product_name": a_prod_name,
-                "product_full_price": a_prod_full_price,
-                "product_price_with_discount": a_prod_price_with_discount,
-                "product_discount": a_prod_discount,
+                "product_name": appointment.product_name,
+                "product_full_price": appointment.product_full_price,
+                "product_price_with_discount": appointment.product_price_with_discount,
+                "product_discount": appointment.product_discount,
             },
             "currency": {
-                "id": a_currency_id,
-                "name": a_currency_name
+                "id": currency_id,
+                "name": currency_name
             },
             "customer": {
-                "id": customer_id,
-                "fullname": customer_fullname or a_customer_fullname,
-                "username": customer_username,
-                "avatar": customer_avatar
+                "id": c_id,
+                "fullname": c_fullname or appointment.customer_fullname,
+                "username": c_username,
+                "avatar": c_avatar
             }
         })
 
@@ -596,11 +589,14 @@ async def get_user_calendar_events(db: DBSession, start_date: str, end_date: str
         is_booked_day = True
 
         if not schedule or not schedule.start_time or not schedule.end_time:
-            slots.append({
-                "date": current_date.isoformat(),
-                "is_closed": True,
-                "slots": []
-            })
+            slots.append(
+                CalendarEventsDay(
+                    day=current_date.isoformat(),
+                    is_booked=True,
+                    is_closed=False,
+                    slots=[]
+                )
+            )
         else:
             day_slots = []
 
@@ -631,25 +627,26 @@ async def get_user_calendar_events(db: DBSession, start_date: str, end_date: str
                         slot_start_utc = booked_start_time.astimezone(ZoneInfo('UTC'))
                         slot_end_utc = booked_end_time.astimezone(ZoneInfo('UTC'))
 
-
-                        day_slots.append({
-                            "id": a["id"],
-                            "start_date_locale": booked_start_time.strftime('%Y-%m-%dT%H:%M:%S'),
-                            "end_date_locale": booked_end_time.strftime('%Y-%m-%dT%H:%M:%S'),
-                            "start_date_utc": slot_start_utc.isoformat(),
-                            "end_date_utc": slot_end_utc.isoformat(),
-                            "is_booked": False if a["is_blocked"] else True,
-                            "is_closed": False,
-                            "is_blocked": a["is_blocked"],
-                            "info": {
-                                "currency": a["currency"],
-                                "channel": a["channel"],
-                                "service_name": a["service_name"],
-                                "product": a["product"],
-                                "customer": a["customer"],
-                                "message": a["message"]
-                            }
-                        })
+                        day_slots.append(
+                            CalendarEventsSlot(
+                                id=a["id"],
+                                start_date_locale=booked_start_time.strftime('%Y-%m-%dT%H:%M:%S'),
+                                end_date_locale=booked_end_time.strftime('%Y-%m-%dT%H:%M:%S'),
+                                start_date_utc=slot_start_utc.isoformat(),
+                                end_date_utc=slot_end_utc.isoformat(),
+                                is_booked=False if a["is_blocked"] else True,
+                                is_closed=False,
+                                is_blocked=a["is_blocked"],
+                                info=CalendarEventsInfo(
+                                    currency=a["currency"],
+                                    channel=a["channel"],
+                                    service_name=a["service_name"],
+                                    product=a["product"],
+                                    customer=a["customer"],
+                                    message=a["message"]
+                                )
+                            )
+                        )
 
                         # Update minSlot and maxSlot
                         if min_slot_time is None or booked_start_time < min_slot_time:
@@ -668,17 +665,19 @@ async def get_user_calendar_events(db: DBSession, start_date: str, end_date: str
                 is_closed = not is_within_schedule
                 day_appointments = grouped_appointments[current_slot_start.date()]
 
-                day_slots.append({
-                    "id": None,
-                    "start_date_locale": current_slot_start.strftime('%Y-%m-%dT%H:%M:%S'),
-                    "end_date_locale": current_slot_end.strftime('%Y-%m-%dT%H:%M:%S'),
-                    "start_date_utc": slot_start_utc.isoformat(),
-                    "end_date_utc": slot_end_utc.isoformat(),
-                    "is_booked": False,
-                    "is_closed": is_closed,
-                    "is_blocked": False,
-                    "info": None,
-                })
+                day_slots.append(
+                    CalendarEventsSlot(
+                        id=None,
+                        start_date_locale=current_slot_start.strftime('%Y-%m-%dT%H:%M:%S'),
+                        end_date_locale=current_slot_end.strftime('%Y-%m-%dT%H:%M:%S'),
+                        start_date_utc=slot_start_utc.isoformat(),
+                        end_date_utc=slot_end_utc.isoformat(),
+                        is_booked=False,
+                        is_closed=is_closed,
+                        is_blocked=False,
+                        info=None
+                    )
+                )
 
                 # Update minSlot and maxSlot
                 if min_slot_time is None or current_slot_start < min_slot_time:
@@ -691,25 +690,27 @@ async def get_user_calendar_events(db: DBSession, start_date: str, end_date: str
             if day_slots and end_time_local > max_slot_time:
                 max_slot_time = end_time_local
 
-            if all(slot["is_booked"] or slot["is_closed"] for slot in day_slots):
+            if all(slot.is_booked or slot.is_closed for slot in day_slots):
                 is_booked_day = True
             else:
                 is_booked_day = False
 
-            slots.append({
-                "date": current_date.isoformat(),
-                "is_booked": is_booked_day,
-                "is_closed": False,
-                "slots": day_slots
-            })
+            slots.append(
+                CalendarEventsDay(
+                    day=current_date.isoformat(),
+                    is_booked=is_booked_day,
+                    is_closed=False,
+                    slots=day_slots
+                )
+            )
+
         current_date += timedelta(days=1)
 
-    return {
-        "min_slot_time": min_slot_time.strftime('%H:%M:%S') if min_slot_time else None,
-        "max_slot_time": max_slot_time.strftime('%H:%M:%S') if max_slot_time else None,
-        "data": slots
-    }
-
+    return CalendarEventsResponse(
+        min_slot_time=min_slot_time.strftime('%H:%M:%S') if min_slot_time else None,
+        max_slot_time=max_slot_time.strftime('%H:%M:%S') if max_slot_time else None,
+        days=slots
+    )
 
 
 

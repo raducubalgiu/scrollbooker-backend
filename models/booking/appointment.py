@@ -1,5 +1,4 @@
-from sqlalchemy import Column, Integer, TIMESTAMP, ForeignKey, func, String, Enum, Index, Boolean, Float, \
-    DECIMAL
+from sqlalchemy import Column, Integer, TIMESTAMP, ForeignKey, func, String, Enum, Index, Boolean, DECIMAL
 from sqlalchemy.orm import relationship
 
 from core.enums.appointment_channel_enum import AppointmentChannelEnum

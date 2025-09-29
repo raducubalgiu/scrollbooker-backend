@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, condecimal, Field, field_serializer
 from datetime import datetime
 
@@ -111,3 +111,43 @@ class UserAppointmentResponse(BaseModel):
     product: AppointmentProduct
     user: UserBaseMinimum
     business: AppointmentBusiness
+
+class CalendarEventsCurrency(BaseModel):
+    id: int
+    name: str
+
+class CalendarEventsProduct(BaseModel):
+    product_name: str
+    product_full_price: Decimal
+    product_price_with_discount: Decimal
+    product_discount: Decimal
+
+class CalendarEventsInfo(BaseModel):
+    currency: CalendarEventsCurrency
+    channel: str
+    service_name: str
+    product: CalendarEventsProduct
+    customer: UserBaseMinimum
+    message: Optional[str] = None
+
+class CalendarEventsSlot(BaseModel):
+    id: Optional[int] = None
+    start_date_locale: str
+    end_date_locale: str
+    start_date_utc: str
+    end_date_utc: str
+    is_booked: bool
+    is_closed: bool
+    is_blocked: bool
+    info: Optional[CalendarEventsInfo] = None
+
+class CalendarEventsDay(BaseModel):
+    day: str
+    is_booked: bool
+    is_closed: bool
+    slots: List[CalendarEventsSlot]
+
+class CalendarEventsResponse(BaseModel):
+    min_slot_time: Optional[str] = None
+    max_slot_time: Optional[str] = None
+    days: List[CalendarEventsDay]
