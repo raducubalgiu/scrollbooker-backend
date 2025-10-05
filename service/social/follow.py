@@ -5,6 +5,7 @@ from sqlalchemy import select, insert, and_, update, func, delete
 
 from core.dependencies import DBSession
 from core.enums.follow_type import FollowTypeEnum
+from core.enums.notification_type import NotificationTypeEnum
 from models import Follow, User, UserCounters, Notification
 from core.logger import logger
 from schema.social.follow import FollowResponse
@@ -84,7 +85,7 @@ async def follow_user(
 
             # Send Followee follow notification
             notification = Notification(
-                type="follow",
+                type=NotificationTypeEnum.FOLLOW,
                 sender_id=follower_id,
                 receiver_id=followee_id,
                 data={},
