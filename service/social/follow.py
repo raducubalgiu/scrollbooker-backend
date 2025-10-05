@@ -1,13 +1,41 @@
-from fastapi import HTTPException
-from sqlalchemy import select, insert, delete, and_
-from sqlalchemy.orm import joinedload
-from starlette.requests import Request
-from starlette import status
+from typing import Optional
+
+from fastapi import HTTPException, Request, Response, status
+from sqlalchemy import select, insert, and_, update, func, delete
+
 from core.dependencies import DBSession
+from core.enums.follow_type import FollowTypeEnum
 from models import Follow, User, UserCounters, Notification
 from core.logger import logger
+from schema.social.follow import FollowResponse
 
-async def is_user_follow(db: DBSession, followee_id: int, request: Request):
+async def _update_counters(
+        db: DBSession,
+        followee_id: int,
+        follower_id: int,
+        action_type: FollowTypeEnum
+) -> None:
+    delta = 1 if action_type == FollowTypeEnum.FOLLOW else -1
+
+    # Target User (followers count)
+    await db.execute(
+        update(UserCounters)
+        .where(UserCounters.user_id == followee_id)
+        .values(followers_count=func.greatest(UserCounters.followers_count + delta, 0))
+    )
+
+    # Authenticated User: followings_count
+    await db.execute(
+        update(UserCounters)
+        .where(UserCounters.user_id == follower_id)
+        .values(followings_count=func.greatest(UserCounters.followings_count + delta, 0))
+    )
+
+async def is_user_follow(
+        db: DBSession,
+        followee_id: int,
+        request: Request
+) -> Optional[FollowResponse]:
     follower_id = request.state.user.get("id")
 
     follower = await db.get(User, follower_id)
@@ -16,12 +44,10 @@ async def is_user_follow(db: DBSession, followee_id: int, request: Request):
     if follower and followee:
         result = await db.execute(
             select(Follow)
-            .where(
-                and_(
-                    Follow.follower_id == follower_id,
-                    Follow.followee_id == followee_id
-                )
-            )
+            .where(and_(
+                Follow.follower_id == follower_id,
+                Follow.followee_id == followee_id
+            ))
         )
 
         is_follow = result.scalar_one_or_none()
@@ -29,69 +55,80 @@ async def is_user_follow(db: DBSession, followee_id: int, request: Request):
     else:
         raise HTTPException(status_code=404, detail='User not found')
 
-async def follow_user(db :DBSession, followee_id: int, request: Request):
+async def follow_user(
+        db :DBSession,
+        followee_id: int,
+        request: Request
+) -> Response:
     follower_id = request.state.user.get("id")
-    is_follow = await is_user_follow(db, followee_id, request)
-
-    if is_follow:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Already followed!')
 
     try:
-        await db.execute(
-            insert(Follow)
-            .values(
+        async with db.begin():
+            # Check Follow
+            is_follow = await is_user_follow(db, followee_id, request)
+            if is_follow:
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Already followed!')
+
+            # Follow
+            await db.execute(
+                insert(Follow)
+                .values(follower_id=follower_id, followee_id=followee_id))
+
+            # Update Counters
+            await _update_counters(
+                db=db,
+                followee_id=followee_id,
                 follower_id=follower_id,
-                followee_id=followee_id)
-        )
-        query_follower_counters = await db.execute(
-            select(UserCounters)
-            .where(UserCounters.user_id == follower_id)
-        )
-        query_followee_counters = await db.execute(
-            select(UserCounters)
-            .where(UserCounters.user_id == followee_id)
-        )
+                action_type=FollowTypeEnum.FOLLOW
+            )
 
-        follower_counters = query_follower_counters.scalar()
-        followee_counters = query_followee_counters.scalar()
+            # Send Followee follow notification
+            notification = Notification(
+                type="follow",
+                sender_id=follower_id,
+                receiver_id=followee_id,
+                data={},
+                message=None
+            )
+            db.add(notification)
 
-        follower_counters.followings_count = follower_counters.followings_count + 1
-        followee_counters.followers_count = followee_counters.followers_count + 1
-
-        notification = Notification(
-            type="follow",
-            sender_id=follower_id,
-            receiver_id=followee_id,
-            data={},
-            message=None
-        )
-        db.add(notification)
-
-        await db.commit()
-        return { "detail": "Follow request was successfully" }
+        return Response(status_code=status.HTTP_201_CREATED)
     except Exception as e:
-        await db.rollback()
         logger.error(f"User: {followee_id} could not be followed by User: {follower_id}. Error: {e}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail='Something went wrong')
 
-async def unfollow_user(db :DBSession, followee_id: int, request: Request):
-    is_follow = await is_user_follow(db, followee_id, request)
+async def unfollow_user(
+        db :DBSession,
+        followee_id: int,
+        request: Request
+) -> Response:
     follower_id = request.state.user.get("id")
 
-    if not is_follow:
-        raise HTTPException(status_code=400, detail='Not follow this user!')
-
     try:
-        await db.delete(is_follow)
-        query_counters = await db.execute(
-            select(UserCounters).where(UserCounters.user_id == follower_id))  # type: ignore
-        user_counters = query_counters.scalar()
-        user_counters.followings_count = user_counters.followings_count - 1 if user_counters.followings_count > 0 else 0
+        async with db.begin():
+            # Check Follow
+            is_follow = await is_user_follow(db, followee_id, request)
+            if not is_follow:
+                raise HTTPException(status_code=400, detail='Not follow this user!')
 
-        await db.commit()
+            # Unfollow
+            await db.execute(
+                delete(Follow).where(and_(
+                    Follow.follower_id == follower_id,
+                    Follow.followee_id == followee_id
+                ))
+            )
+
+            # Update Counters
+            await _update_counters(
+                db=db,
+                followee_id=followee_id,
+                follower_id=follower_id,
+                action_type=FollowTypeEnum.UNFOLLOW
+            )
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
     except Exception as e:
-        await db.rollback()
         logger.error(f"User: {followee_id} could not be unfollowed by the User: {follower_id}. Error: {e}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail='Something went wrong')
