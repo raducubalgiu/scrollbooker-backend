@@ -1,23 +1,26 @@
 import os
-from fastapi import HTTPException, Depends, Query
+from fastapi import HTTPException, Depends, Query, status, Request
 from typing import Annotated, List, Type, Optional
+try:
+    from typing import TypeAlias
+except ImportError:
+    from typing_extensions import TypeAlias
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+
 from .database import get_db
 from models import Base
-from starlette import status
 from core.security import decode_token, oauth2_bearer
-from starlette.requests import Request
 from core.logger import logger
 from .enums.role_enum import RoleEnum
-
 
 class PaginationParams:
     def __init__(self, page: Optional[int] = Query(None, ge=1), limit: Optional[int] = Query(None, ge=1)):
         self.page = page
         self.limit = limit
 
-DBSession = Annotated[AsyncSession, Depends(get_db)]
+DBSession: TypeAlias = Annotated[AsyncSession, Depends(get_db)]
 Pagination = Annotated[PaginationParams, Depends()]
 
 async def get_user_by_token(token: str = Depends(oauth2_bearer)):

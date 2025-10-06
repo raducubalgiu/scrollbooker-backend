@@ -14,10 +14,15 @@ async def get_all_business_domain(db: DBSession, pagination: Pagination):
                             descending=True)
 
 async def create_new_business_domain(db: DBSession, business_domain_create: BusinessDomainCreate):
-    return await db_create(db, model=BusinessDomain, create_data=business_domain_create)
+    return await db_create(db,
+                           model=BusinessDomain,
+                           create_data=business_domain_create)
 
 async def update_business_domain_by_id(db: DBSession, business_domain_update: BusinessDomainUpdate, business_domain_id: int):
-    return await db_update(db, model= BusinessDomain, update_data=business_domain_update, resource_id=business_domain_id)
+    return await db_update(db,
+                           model= BusinessDomain,
+                           update_data=business_domain_update,
+                           resource_id=business_domain_id)
 
 async def delete_business_domain_by_id(db: DBSession, business_domain_id: int):
     return await db_delete(db, model=BusinessDomain, resource_id=business_domain_id)
