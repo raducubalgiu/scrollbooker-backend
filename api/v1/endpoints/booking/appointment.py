@@ -9,23 +9,12 @@ from core.dependencies import DBSession, BusinessAndEmployeesSession, ClientAndE
 from schema.booking.appointment import AppointmentResponse, AppointmentBlock, \
     AppointmentCancel, AppointmentTimeslotsResponse, AppointmentScrollBookerCreate, UserAppointmentResponse, \
     CalendarEventsResponse, AppointmentOwnClientCreate
-from service.booking.appointment import create_new_scroll_booker_appointment, get_daily_available_slots, \
-    get_user_calendar_events, create_new_blocked_appointment, get_user_calendar_availability, cancel_user_appointment, \
-    get_appointments_by_user_id, get_appointments_number_by_user_id, create_new_own_client_appointment
+from service.booking.apppointment.create_update_appointments import create_new_scroll_booker_appointment, create_new_blocked_appointment, cancel_user_appointment, create_new_own_client_appointment
+from service.booking.apppointment.get_appointments import get_appointments_by_user_id, \
+    get_appointments_number_by_user_id, get_daily_available_slots, get_user_calendar_availability, \
+    get_user_calendar_events
 
 router = APIRouter(prefix="/appointments", tags=["Appointments"])
-
-@router.get("/",
-            summary='List All Appointments Filtered By User',
-            response_model=PaginatedResponse[UserAppointmentResponse])
-async def get_appointments_by_user(db: DBSession, page: int, limit: int, request: Request, as_customer: Optional[bool] = None):
-    return await get_appointments_by_user_id(db, page, limit, request, as_customer)
-
-@router.get("/count",
-            summary='Get User Appointments Number',
-            response_model=int)
-async def get_appointment_number_by_user(db: DBSession, request: Request):
-    return await get_appointments_number_by_user_id(db, request)
 
 @router.post("/create-scrollbooker-appointment",
             summary='Create New Appointment - Client & Employee',
@@ -58,9 +47,21 @@ async def create_blocked_appointment(db: DBSession, appointments_create: Appoint
 
 @router.put("/cancel-appointment",
             summary='Cancel Appointment',
-            response_model=AppointmentResponse)
+            status_code=status.HTTP_204_NO_CONTENT)
 async def cancel_appointment(db: DBSession, appointment_cancel: AppointmentCancel, request: Request):
     return await cancel_user_appointment(db, appointment_cancel, request)
+
+@router.get("/",
+            summary='List All Appointments Filtered By User',
+            response_model=PaginatedResponse[UserAppointmentResponse])
+async def get_appointments_by_user(db: DBSession, page: int, limit: int, request: Request, as_customer: Optional[bool] = None):
+    return await get_appointments_by_user_id(db, page, limit, request, as_customer)
+
+@router.get("/count",
+            summary='Get User Appointments Number',
+            response_model=int)
+async def get_appointment_number_by_user(db: DBSession, request: Request):
+    return await get_appointments_number_by_user_id(db, request)
 
 @router.get("/timeslots",
             summary='Get User daily available timeslots',
