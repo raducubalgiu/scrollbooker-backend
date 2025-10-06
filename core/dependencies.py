@@ -16,12 +16,16 @@ from core.logger import logger
 from .enums.role_enum import RoleEnum
 
 class PaginationParams:
-    def __init__(self, page: Optional[int] = Query(None, ge=1), limit: Optional[int] = Query(None, ge=1)):
+    def __init__(
+            self,
+            page: Optional[int] = Query(None, ge=1),
+            limit: Optional[int] = Query(None, ge=1)
+    ):
         self.page = page
         self.limit = limit
 
 DBSession: TypeAlias = Annotated[AsyncSession, Depends(get_db)]
-Pagination = Annotated[PaginationParams, Depends()]
+Pagination: TypeAlias = Annotated[PaginationParams, Depends()]
 
 async def get_user_by_token(token: str = Depends(oauth2_bearer)):
     payload = await decode_token(token, os.getenv("SECRET_KEY"))

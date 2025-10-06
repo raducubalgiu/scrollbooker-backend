@@ -79,7 +79,7 @@ async def db_get_all(
         if filters:
             for field, value in filters.items():
                 column = getattr(model, field) if isinstance(field, str) else field
-                query_all = query_all.where(column == value) #type: ignore
+                query_all = query_all.where(column == value)
 
         if order_by:
             if isinstance(order_by, str):
