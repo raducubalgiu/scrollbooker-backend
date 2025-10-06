@@ -7,11 +7,10 @@ from starlette.requests import Request
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession, BusinessAndEmployeesSession
 from schema.booking.appointment import AppointmentResponse, AppointmentBlock, \
-    AppointmentCancel, AppointmentTimeslotsResponse, AppointmentUnblock, AppointmentCreate, UserAppointmentResponse, \
+    AppointmentCancel, AppointmentTimeslotsResponse, AppointmentCreate, UserAppointmentResponse, \
     CalendarEventsResponse
 from service.booking.appointment import create_new_appointment, get_daily_available_slots, \
-    get_user_calendar_events, create_new_blocked_appointment, get_user_calendar_availability, cancel_user_appointment, \
-    unblock_user_appointment, get_appointments_by_user_id, get_appointments_number_by_user_id
+    get_user_calendar_events, create_new_blocked_appointment, get_user_calendar_availability, cancel_user_appointment, get_appointments_by_user_id, get_appointments_number_by_user_id
 
 router = APIRouter(prefix="/appointments", tags=["Appointments"])
 
@@ -34,14 +33,8 @@ async def create_appointment(db: DBSession, appointment_create: AppointmentCreat
 @router.post("/block-appointments",
              status_code=status.HTTP_201_CREATED,
              dependencies=[BusinessAndEmployeesSession])
-async def create_blocked_appointment(db: DBSession, appointments_create: list[AppointmentBlock], request: Request):
+async def create_blocked_appointment(db: DBSession, appointments_create: AppointmentBlock, request: Request):
     return await create_new_blocked_appointment(db, appointments_create, request)
-
-@router.post("/unblock-appointment",
-             status_code=status.HTTP_204_NO_CONTENT,
-             dependencies=[BusinessAndEmployeesSession])
-async def unblock_appointment(db: DBSession, appointment_unblock: AppointmentUnblock, request: Request):
-    return await unblock_user_appointment(db, appointment_unblock, request)
 
 @router.put("/cancel-appointment",
             summary='Cancel Appointment',

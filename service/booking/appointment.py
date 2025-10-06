@@ -12,11 +12,11 @@ from core.crud_helpers import db_get_one, PaginatedResponse
 from core.enums.appointment_channel_enum import AppointmentChannelEnum
 from core.enums.appointment_status_enum import AppointmentStatusEnum
 from core.enums.role_enum import RoleEnum
-from schema.booking.appointment import AppointmentBlock, AppointmentCancel, AppointmentUnblock, AppointmentCreate, \
+from schema.booking.appointment import AppointmentBlock, AppointmentCancel, AppointmentCreate, \
     UserAppointmentResponse, AppointmentProduct, AppointmentBusiness, CalendarEventsSlot, CalendarEventsInfo, \
     CalendarEventsResponse, CalendarEventsDay
 from core.dependencies import DBSession
-from models import Appointment, Schedule, User, Business, Currency, Service
+from models import Appointment, Schedule, User, Business, Currency, Service, Product
 from sqlalchemy import select, and_, or_, desc, func
 from core.logger import logger
 from schema.user.user import UserBaseMinimum
@@ -46,6 +46,7 @@ async def get_appointments_by_user_id(db: DBSession, page: int, limit: int, requ
         )
         .join(customer_user, Appointment.customer_id == customer_user.id)
         .join(provider_user, Appointment.user_id == provider_user.id)
+        .outerjoin(Product, Product.id == Appointment.product_id)
         .join(Currency, Currency.id == Appointment.currency_id)
     )
 
@@ -97,6 +98,7 @@ async def get_appointments_by_user_id(db: DBSession, page: int, limit: int, requ
                     name=appointment.product_name,
                     price=appointment.product_full_price,
                     price_with_discount=appointment.product_price_with_discount,
+                    duration=appointment.product_duration,
                     discount=appointment.product_discount,
                     currency=curr_name,
                     exchange_rate=appointment.exchange_rate
@@ -191,29 +193,32 @@ async def create_new_appointment(db: DBSession, appointment_create: AppointmentC
 
     return appointment
 
-async def create_new_blocked_appointment(db: DBSession, appointments_create: list[AppointmentBlock], request: Request):
+async def create_new_blocked_appointment(db: DBSession, appointments_create: AppointmentBlock, request: Request):
     auth_user_id = request.state.user.get("id")
 
-    for appointment_create in appointments_create:
-        if auth_user_id != appointment_create.user_id:
+    for app_create in appointments_create.slots:
+        if auth_user_id != appointments_create.user_id:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                                 detail="You do not have permission to perform this action")
 
-        is_slot_booked = await db_get_one(db, model=Appointment, raise_not_found=False, filters={
-            Appointment.user_id: auth_user_id,
-            Appointment.start_date: appointment_create.start_date,
-            Appointment.end_date: appointment_create.end_date
-        })
+        is_slot_booked = await db_get_one(db,
+                                          model=Appointment,
+                                          raise_not_found=False,
+                                          filters={
+                                                Appointment.user_id: auth_user_id,
+                                                Appointment.start_date: app_create.start_date,
+                                                Appointment.end_date: app_create.end_date
+                                          })
 
         if is_slot_booked:
             logger.error(
-                f"Business/Employee with id: {auth_user_id} already has an appointment starting at: {appointment_create.start_date}, ending at: {appointment_create.end_date}")
+                f"Business/Employee with id: {auth_user_id} already has an appointment starting at: {app_create.start_date}, ending at: {app_create.end_date}")
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                                 detail="This slot is already booked")
 
         business_result = await db.execute(
             select(Business)
-            .join(User, User.id == auth_user_id) #type: ignore
+            .join(User, User.id == auth_user_id)
             .where(or_(
                 Business.owner_id == User.id,
                 User.employee_business_id == Business.id
@@ -226,10 +231,10 @@ async def create_new_blocked_appointment(db: DBSession, appointments_create: lis
                                 detail='Business not found')
 
         new_appointment = Appointment(
-            start_date=appointment_create.start_date,
-            end_date=appointment_create.end_date,
-            message=appointment_create.message,
-            user_id=appointment_create.user_id,
+            start_date=app_create.start_date,
+            end_date=app_create.end_date,
+            message=appointments_create.message,
+            user_id=appointments_create.user_id,
             status=AppointmentStatusEnum.FINISHED,
             channel=AppointmentChannelEnum.OWN_CLIENT,
             business_id=business.id,
@@ -238,38 +243,12 @@ async def create_new_blocked_appointment(db: DBSession, appointments_create: lis
             product_name='Blocked',
             product_full_price=1,
             product_price_with_discount=1,
+            product_duration=0,
             product_discount=0,
             currency=None,
             is_blocked=True
         )
         db.add(new_appointment)
-    await db.commit()
-
-async def unblock_user_appointment(db: DBSession, appointment_unblock: AppointmentUnblock, request: Request):
-    auth_user_id = request.state.user.get("id")
-
-    blocked_appointment = await db_get_one(db, model=Appointment, filters={
-        Appointment.start_date: appointment_unblock.start_date,
-        Appointment.end_date: appointment_unblock.end_date,
-        Appointment.user_id: auth_user_id,
-        Appointment.is_blocked: True
-    })
-
-    if not blocked_appointment:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail='Blocked Appointment not found')
-
-    if auth_user_id != blocked_appointment.user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail='You do not have permission to perform this action')
-
-    now_utc = datetime.now(timezone.utc)
-
-    if now_utc > blocked_appointment.start_date:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail="Appointments from the past can not be edited")
-
-    await db.delete(blocked_appointment)
     await db.commit()
 
 async def cancel_user_appointment(db: DBSession, appointment_cancel: AppointmentCancel, request: Request):
@@ -312,7 +291,7 @@ async def get_business_timezone(db: DBSession, user_id: int):
             Business.owner_id == User.id,
             Business.id == User.employee_business_id
         ))
-        .where(User.id == user_id))  # type: ignore
+        .where(User.id == user_id))
 
     business_timezone = business_timezone_result.scalar_one_or_none()
 
@@ -638,11 +617,11 @@ async def get_user_calendar_events(db: DBSession, start_date: str, end_date: str
                                 is_closed=False,
                                 is_blocked=a["is_blocked"],
                                 info=CalendarEventsInfo(
-                                    currency=a["currency"],
+                                    currency=None if a["is_blocked"] else a["currency"],
                                     channel=a["channel"],
                                     service_name=a["service_name"],
                                     product=a["product"],
-                                    customer=a["customer"],
+                                    customer=None if a["is_blocked"] else a["customer"],
                                     message=a["message"]
                                 )
                             )
@@ -707,8 +686,8 @@ async def get_user_calendar_events(db: DBSession, start_date: str, end_date: str
         current_date += timedelta(days=1)
 
     return CalendarEventsResponse(
-        min_slot_time=min_slot_time.strftime('%H:%M:%S') if min_slot_time else None,
-        max_slot_time=max_slot_time.strftime('%H:%M:%S') if max_slot_time else None,
+        min_slot_time=min_slot_time.strftime('%Y-%m-%dT%H:%M:%S') if min_slot_time else None,
+        max_slot_time=max_slot_time.strftime('%Y-%m-%dT%H:%M:%S') if max_slot_time else None,
         days=slots
     )
 

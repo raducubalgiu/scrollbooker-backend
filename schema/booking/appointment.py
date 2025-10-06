@@ -5,6 +5,7 @@ from datetime import datetime
 
 from core.enums.appointment_channel_enum import AppointmentChannelEnum
 from schema.booking.business import BusinessCoordinates
+from schema.nomenclature.currency import CurrencyMiniResponse
 from schema.user.user import UserBaseMinimum
 
 class AppointmentResponse(BaseModel):
@@ -43,28 +44,29 @@ class AppointmentCreate(BaseModel):
     customer_id: Optional[int] = None
     currency_id: int
     service_id: int
-    product_id: Optional[int] = None
-    channel: AppointmentChannelEnum
 
-    customer_fullname: str = Field(min_length=3, max_length=50)
+    product_id: Optional[int] = None
     product_name: str = Field(min_length=3, max_length=100)
     product_full_price: Decimal
     product_price_with_discount: Decimal
+    product_duration: int
     product_discount: Decimal
+
+    channel: AppointmentChannelEnum
+    customer_fullname: str = Field(min_length=3, max_length=50)
 
 class AppointmentCancel(BaseModel):
     appointment_id: int
     message: str = Field(min_length=3, max_length=50)
 
-class AppointmentBlock(BaseModel):
-    message: str = Field(min_length=3, max_length=50)
+class AppointmentBlockSlot(BaseModel):
     start_date: datetime
     end_date: datetime
-    user_id: int
 
-class AppointmentUnblock(BaseModel):
-    start_date: datetime
-    end_date:datetime
+class AppointmentBlock(BaseModel):
+    message: str = Field(min_length=3, max_length=50)
+    user_id: int
+    slots: List[AppointmentBlockSlot]
 
 class AppointmentTimeslot(BaseModel):
     start_date_utc: str
@@ -76,18 +78,12 @@ class AppointmentTimeslotsResponse(BaseModel):
     is_closed: bool
     available_slots: list[AppointmentTimeslot]
 
-class AppointmentUser(BaseModel):
-    id: Optional[int] = None
-    fullname: str
-    username: Optional[str] = None
-    avatar: Optional[str] = None
-    profession: Optional[str] = None
-
 class AppointmentProduct(BaseModel):
     id: Optional[int] = None
     name: str
     price: Decimal
     price_with_discount: Decimal
+    duration: int
     discount: Decimal
     currency: str
     exchange_rate: Decimal
@@ -112,10 +108,6 @@ class UserAppointmentResponse(BaseModel):
     user: UserBaseMinimum
     business: AppointmentBusiness
 
-class CalendarEventsCurrency(BaseModel):
-    id: int
-    name: str
-
 class CalendarEventsProduct(BaseModel):
     product_name: str
     product_full_price: Decimal
@@ -123,11 +115,11 @@ class CalendarEventsProduct(BaseModel):
     product_discount: Decimal
 
 class CalendarEventsInfo(BaseModel):
-    currency: CalendarEventsCurrency
+    currency: Optional[CurrencyMiniResponse] = None
     channel: str
     service_name: str
     product: CalendarEventsProduct
-    customer: UserBaseMinimum
+    customer: Optional[UserBaseMinimum] = None
     message: Optional[str] = None
 
 class CalendarEventsSlot(BaseModel):

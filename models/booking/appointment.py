@@ -18,16 +18,18 @@ class Appointment(Base):
     business_id = Column(Integer, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=False, index=True)
     customer_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     service_id = Column(Integer, ForeignKey("services.id", ondelete="SET NULL"), nullable=True, index=True)
-    product_id = Column(Integer, ForeignKey("products.id", ondelete="SET NULL"), nullable=True, index=True)
 
-    customer_fullname = Column(String(50), nullable=False)
-    service_name = Column(String(50), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="SET NULL"), nullable=True, index=True)
     product_name = Column(String(100), nullable=False)
     product_full_price = Column(DECIMAL, nullable=False)
     product_price_with_discount = Column(DECIMAL, nullable=False)
     product_discount = Column(DECIMAL, nullable=False, default=0)
+    product_duration = Column(Integer, nullable=True)
     exchange_rate = Column(DECIMAL, nullable=False, default=1)
     message = Column(String(100), nullable=True)
+
+    customer_fullname = Column(String(50), nullable=False)
+    service_name = Column(String(50), nullable=False)
 
     status = Column(Enum(AppointmentStatusEnum), default=AppointmentStatusEnum.IN_PROGRESS, nullable=False, index=True)  # finished - in_progress
     channel = Column(Enum(AppointmentChannelEnum), default=AppointmentChannelEnum.SCROLL_BOOKER, nullable=False, index=True)  # scroll_booker - own_client
