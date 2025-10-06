@@ -25,7 +25,7 @@ from datetime import timedelta,datetime
 from schema.user.user import UserAuthStateResponse, UserBaseMinimum
 from service.integration.google_places import get_place_details
 
-async def get_business_by_id(db: DBSession, business_id: int):
+async def get_business_by_id(db: DBSession, business_id: int) -> BusinessResponse:
     business_query = await db.execute(
         select(Business)
         .where(and_(Business.id == business_id))
@@ -54,7 +54,7 @@ async def get_business_by_id(db: DBSession, business_id: int):
         has_employees=business.has_employees
     )
 
-async def get_business_by_user_id(db: DBSession, user_id: int):
+async def get_business_by_user_id(db: DBSession, user_id: int) -> BusinessResponse:
     business_query = await db.execute(select(Business, User.id).where(
         and_(
             User.id == user_id,

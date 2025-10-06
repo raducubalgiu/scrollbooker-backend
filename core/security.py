@@ -19,6 +19,14 @@ async def hash_password(password: str) -> str:
 
 # Verify password
 async def verify_password(plain_password: str, hashed_password: str) -> bool:
+    if not isinstance(plain_password, (str, bytes)):
+        print('plain_password type: ', type(plain_password), "repr:", repr(plain_password)[:120])
+    b = plain_password.encode("utf-8") if isinstance(plain_password, str) else plain_password
+    print("plain_password bytes:", len(b), "preview", repr(plain_password)[:120])
+
+    # sanity check pe hash
+    print("hashed startswith:", str(hashed_password)[:4], "len:", len(str(hashed_password)))
+
     return await run_in_threadpool(pwd_context.verify, plain_password, hashed_password)
 
 # Create JWT Token

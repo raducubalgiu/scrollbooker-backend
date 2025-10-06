@@ -5,12 +5,13 @@ from starlette import status
 from starlette.requests import Request
 
 from core.crud_helpers import PaginatedResponse
-from core.dependencies import DBSession, BusinessAndEmployeesSession
+from core.dependencies import DBSession, BusinessAndEmployeesSession, ClientAndEmployeeSession
 from schema.booking.appointment import AppointmentResponse, AppointmentBlock, \
-    AppointmentCancel, AppointmentTimeslotsResponse, AppointmentCreate, UserAppointmentResponse, \
-    CalendarEventsResponse
-from service.booking.appointment import create_new_appointment, get_daily_available_slots, \
-    get_user_calendar_events, create_new_blocked_appointment, get_user_calendar_availability, cancel_user_appointment, get_appointments_by_user_id, get_appointments_number_by_user_id
+    AppointmentCancel, AppointmentTimeslotsResponse, AppointmentScrollBookerCreate, UserAppointmentResponse, \
+    CalendarEventsResponse, AppointmentOwnClientCreate
+from service.booking.appointment import create_new_scroll_booker_appointment, get_daily_available_slots, \
+    get_user_calendar_events, create_new_blocked_appointment, get_user_calendar_availability, cancel_user_appointment, \
+    get_appointments_by_user_id, get_appointments_number_by_user_id, create_new_own_client_appointment
 
 router = APIRouter(prefix="/appointments", tags=["Appointments"])
 
@@ -26,11 +27,30 @@ async def get_appointments_by_user(db: DBSession, page: int, limit: int, request
 async def get_appointment_number_by_user(db: DBSession, request: Request):
     return await get_appointments_number_by_user_id(db, request)
 
-@router.post("/")
-async def create_appointment(db: DBSession, appointment_create: AppointmentCreate, request: Request):
-    return await create_new_appointment(db, appointment_create, request)
+@router.post("/create-scrollbooker-appointment",
+            summary='Create New Appointment - Client & Employee',
+            response_model=AppointmentResponse,
+            dependencies=[ClientAndEmployeeSession])
+async def create_scroll_booker_appointment(
+        db: DBSession,
+        appointment_create: AppointmentScrollBookerCreate,
+        request: Request
+):
+    return await create_new_scroll_booker_appointment(db, appointment_create, request)
 
-@router.post("/block-appointments",
+@router.post("/create-own-client-appointment",
+            summary='Create New Appointment - Client & Employee',
+            response_model=AppointmentResponse,
+            dependencies=[BusinessAndEmployeesSession])
+async def create_own_client_appointment(
+        db: DBSession,
+        appointment_create: AppointmentOwnClientCreate,
+        request: Request
+):
+    return await create_new_own_client_appointment(db, appointment_create, request)
+
+@router.post("/create-block-appointments",
+             summary='Create Block Appointments - Business & Employees',
              status_code=status.HTTP_201_CREATED,
              dependencies=[BusinessAndEmployeesSession])
 async def create_blocked_appointment(db: DBSession, appointments_create: AppointmentBlock, request: Request):

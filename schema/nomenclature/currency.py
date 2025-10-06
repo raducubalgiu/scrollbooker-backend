@@ -20,5 +20,12 @@ class CurrencyResponse(CurrencyBase):
     class Config:
         from_attributes = True
 
+class CurrencyMiniResponse(BaseModel):
+    id: int
+    name: str
+
+    class Config:
+        from_attributes = True
+
 class UserCurrenciesUpdate(BaseModel):
     currency_ids: List[int]

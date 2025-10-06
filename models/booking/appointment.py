@@ -13,18 +13,20 @@ class Appointment(Base):
     end_date = Column(TIMESTAMP(timezone=True), nullable=False, index=True)
 
     # Foreign keys
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
-    currency_id = Column(Integer, ForeignKey("currencies.id", ondelete="CASCADE"), index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    currency_id = Column(Integer, ForeignKey("currencies.id", ondelete="CASCADE"), nullable=False, index=True)
     business_id = Column(Integer, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=False, index=True)
+
     customer_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     service_id = Column(Integer, ForeignKey("services.id", ondelete="SET NULL"), nullable=True, index=True)
-
     product_id = Column(Integer, ForeignKey("products.id", ondelete="SET NULL"), nullable=True, index=True)
+
     product_name = Column(String(100), nullable=False)
     product_full_price = Column(DECIMAL, nullable=False)
     product_price_with_discount = Column(DECIMAL, nullable=False)
     product_discount = Column(DECIMAL, nullable=False, default=0)
     product_duration = Column(Integer, nullable=True)
+
     exchange_rate = Column(DECIMAL, nullable=False, default=1)
     message = Column(String(100), nullable=True)
 
