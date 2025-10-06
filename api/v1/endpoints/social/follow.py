@@ -1,5 +1,5 @@
 from typing import Optional
-from fastapi import APIRouter, Request, status
+from fastapi import APIRouter, Request, status, Response
 
 from core.dependencies import DBSession
 from schema.social.follow import FollowResponse
@@ -16,13 +16,12 @@ async def is_follow(db: DBSession, followee_id: int, request: Request):
 @router.post("/",
      summary='Follow User',
      status_code=status.HTTP_201_CREATED)
-async def follow(db: DBSession, followee_id: int, request: Request):
+async def follow(db: DBSession, followee_id: int, request: Request) -> Response:
     return await follow_user(db, followee_id, request)
 
-@router.delete(
-    "/",
+@router.delete("/",
     summary='Unfollow User',
     status_code=status.HTTP_204_NO_CONTENT)
-async def unfollow(db: DBSession, followee_id: int, request: Request):
+async def unfollow(db: DBSession, followee_id: int, request: Request) -> Response:
     return await unfollow_user(db, followee_id, request)
 

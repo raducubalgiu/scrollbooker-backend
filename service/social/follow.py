@@ -66,8 +66,7 @@ async def follow_user(
     try:
         async with db.begin():
             # Check Follow
-            is_follow = await is_user_follow(db, followee_id, request)
-            if is_follow:
+            if await is_user_follow(db, followee_id, request):
                 raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Already followed!')
 
             # Follow
@@ -109,8 +108,7 @@ async def unfollow_user(
     try:
         async with db.begin():
             # Check Follow
-            is_follow = await is_user_follow(db, followee_id, request)
-            if not is_follow:
+            if await is_user_follow(db, followee_id, request):
                 raise HTTPException(status_code=400, detail='Not follow this user!')
 
             # Unfollow
