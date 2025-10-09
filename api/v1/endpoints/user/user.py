@@ -5,12 +5,12 @@ from starlette.requests import Request
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession
 from schema.user.user import UserBaseMinimum, UsernameUpdate, FullNameUpdate, BioUpdate, GenderUpdate, SearchUsername, \
-    SearchUsernameResponse, BirthDateUpdate, UserUpdateResponse
+    SearchUsernameResponse, BirthDateUpdate, UserUpdateResponse, WebsiteUpdate, PublicEmailUpdate
 from service.user.user import get_user_followers_by_user_id, \
     get_user_followings_by_user_id, get_user_dashboard_summary_by_id, \
     get_available_professions_by_user_id, get_product_durations_by_user_id, update_user_fullname, \
     update_user_username, update_user_bio, get_user_profile_by_id, update_user_gender, search_available_username, \
-    update_user_birthdate
+    update_user_birthdate, update_user_website, update_user_public_email
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -54,6 +54,18 @@ async def update_gender(db: DBSession, gender_update: GenderUpdate, request: Req
               response_model=UserUpdateResponse)
 async def update_bio(db: DBSession, bio_update: BioUpdate, request: Request):
     return await update_user_bio(db, bio_update, request)
+
+@router.patch("/user-info/website",
+              summary='Update User Website',
+              response_model=UserUpdateResponse)
+async def update_website(db: DBSession, website: WebsiteUpdate, request: Request):
+    return await update_user_website(db, website, request)
+
+@router.patch("/user-info/public-email",
+              summary='Update User Public Email',
+              response_model=UserUpdateResponse)
+async def update_public_email(db: DBSession, public_email: PublicEmailUpdate, request: Request):
+    return await update_user_public_email(db, public_email, request)
 
 @router.get("/{user_id}/dashboard-summary")
 async def get_user_dashboard_summary(db: DBSession, user_id: int, start_date: str, end_date: str, all_employees: bool = Query(False)):

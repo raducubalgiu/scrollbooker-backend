@@ -28,7 +28,6 @@ class UserBase(BaseModel):
     bio: Optional[str] = Field(None, max_length=100)
     email: EmailStr
     date_of_birth: Optional[datetime] = None
-    phone_number: Optional[str] = Field(None, max_length=20)
     last_known_lat: Optional[float] = None
     last_known_lng: Optional[float] = None
     active: bool = Field(default=True)
@@ -47,10 +46,10 @@ class UserResponse(UserBase):
         from_attributes = True
 
 class FullNameUpdate(BaseModel):
-    fullname: str = Field(max_length=35)
+    fullname: str = Field(min_length=3, max_length=35)
 
 class UsernameUpdate(BaseModel):
-    username: str = Field(max_length=35)
+    username: str = Field(min_length=3, max_length=35)
 
 class BirthDateUpdate(BaseModel):
     birthdate: Optional[str] = None
@@ -59,7 +58,13 @@ class GenderUpdate(BaseModel):
     gender: GenderTypeEnum
 
 class BioUpdate(BaseModel):
-    bio: str = Field(None, max_length=100)
+    bio: str = Field(None, min_length=3, max_length=100)
+
+class WebsiteUpdate(BaseModel):
+    website: str = Field(None, min_length=3, max_length=255)
+
+class PublicEmailUpdate(BaseModel):
+    public_email: str = Field(None, min_length=3, max_length=100)
 
 class UserUpdateResponse(BaseModel):
     id: int
@@ -68,7 +73,8 @@ class UserUpdateResponse(BaseModel):
     bio: Optional[str] = None
     date_of_birth: Optional[date] = None
     gender: Optional[str] = None
-
+    website: Optional[str] = None
+    public_email: Optional[str] = None
 
 class UserAuthStateResponse(BaseModel):
     is_validated: bool
@@ -87,6 +93,13 @@ class UserProfileResponse(BaseModel):
     avatar: Optional[str] = None
     gender: Optional[str] = None
     bio: Optional[str] = None
+
+    website: Optional[str] = None
+    public_email: Optional[str] = None
+    instagram: Optional[str] = None
+    youtube: Optional[str] = None
+    tiktok: Optional[str] = None
+
     business_id: Optional[int] = None
     business_type_id: Optional[int] = None
     counters: UserCountersBase

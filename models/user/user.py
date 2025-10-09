@@ -21,17 +21,18 @@ class User(Base):
     bio = Column(String(100), nullable=True)
 
     gender = Column(Enum(GenderTypeEnum), default=GenderTypeEnum.OTHER)
-
     date_of_birth = Column(Date, nullable=True)
+
+    website = Column(String(255), nullable=True)
+    public_email = Column(String(255), nullable=True)
+    instagram = Column(String(255), nullable=True)
+    youtube = Column(String(255), nullable=True)
+    tiktok = Column(String(255), nullable=True)
 
     last_known_lat = Column(Float, nullable=True)
     last_known_lng = Column(Float, nullable=True)
 
-    phone_number = Column(String(20), nullable=True)
-
-    instant_booking = Column(Boolean, nullable=False, default=False)
     active = Column(Boolean, nullable=False, default=True)
-
     email_verified = Column(Boolean, nullable=False, default=False)
     registration_step = Column(Enum(RegistrationStepEnum), nullable=True)
     is_validated = Column(Boolean, nullable=False, default=True)

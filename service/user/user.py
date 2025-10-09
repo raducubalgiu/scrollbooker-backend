@@ -17,7 +17,8 @@ from core.enums.role_enum import RoleEnum
 from models import User, Follow, Appointment, Product, Business, Role, BusinessType, Schedule, UserCounters
 from sqlalchemy import select, func, case, and_, or_, distinct, exists, literal_column
 from schema.user.user import UsernameUpdate, FullNameUpdate, BioUpdate, GenderUpdate, UserProfileResponse, \
-    OpeningHours, UserBaseMinimum, SearchUsername, SearchUsernameResponse, BirthDateUpdate, UserAuthStateResponse, UserUpdateResponse
+    OpeningHours, UserBaseMinimum, SearchUsername, SearchUsernameResponse, BirthDateUpdate, UserAuthStateResponse, \
+    UserUpdateResponse, WebsiteUpdate, PublicEmailUpdate
 
 
 async def search_available_username(db: DBSession, query: SearchUsername = Depends()):
@@ -79,6 +80,11 @@ async def get_user_profile_by_id(db: DBSession, user_id: int, request: Request):
             User.avatar,
             User.gender,
             User.bio,
+            User.website,
+            User.public_email,
+            User.instagram,
+            User.youtube,
+            User.tiktok,
             User.profession,
             User.employee_business_id,
             Business.id.label("business_id"),
@@ -185,6 +191,11 @@ async def get_user_profile_by_id(db: DBSession, user_id: int, request: Request):
         avatar=user.avatar,
         bio=user.bio,
         gender=user.gender,
+        website=user.website,
+        public_email=user.public_email,
+        instagram=user.instagram,
+        youtube=user.youtube,
+        tiktok=user.tiktok,
         business_id=user.business_id,
         business_type_id=user.business_type_id,
         counters=counters,
@@ -213,7 +224,9 @@ async def update_user_fullname(db: DBSession, fullname_update: FullNameUpdate, r
         username=user.username,
         bio=user.bio,
         date_of_birth=user.date_of_birth,
-        gender=user.gender
+        gender=user.gender,
+        website=user.website,
+        public_email=user.public_email,
     )
 
 async def update_user_username(db: DBSession, username_update: UsernameUpdate, request: Request):
@@ -245,7 +258,9 @@ async def update_user_username(db: DBSession, username_update: UsernameUpdate, r
         username=user.username,
         bio=user.bio,
         date_of_birth=user.date_of_birth,
-        gender=user.gender
+        gender=user.gender,
+        website=user.website,
+        public_email=user.public_email,
     )
 
 async def update_user_birthdate(db: DBSession, birthdate_update: BirthDateUpdate, request: Request):
@@ -273,7 +288,9 @@ async def update_user_birthdate(db: DBSession, birthdate_update: BirthDateUpdate
         username=user.username,
         bio=user.bio,
         date_of_birth=user.date_of_birth,
-        gender=user.gender
+        gender=user.gender,
+        website=user.website,
+        public_email=user.public_email,
     )
 
 async def update_user_gender(db: DBSession, gender_update: GenderUpdate, request: Request):
@@ -288,9 +305,6 @@ async def update_user_gender(db: DBSession, gender_update: GenderUpdate, request
 
     user.gender = gender_update.gender
 
-    if user.registration_step is RegistrationStepEnum.COLLECT_CLIENT_GENDER:
-        user.registration_step = RegistrationStepEnum.COLLECT_CLIENT_LOCATION_PERMISSION
-
     db.add(user)
     await db.commit()
     await db.refresh(user)
@@ -301,7 +315,9 @@ async def update_user_gender(db: DBSession, gender_update: GenderUpdate, request
         username=user.username,
         bio=user.bio,
         date_of_birth=user.date_of_birth,
-        gender=user.gender
+        gender=user.gender,
+        website=user.website,
+        public_email=user.public_email,
     )
 
 async def update_user_bio(db: DBSession, bio_update: BioUpdate, request: Request):
@@ -314,7 +330,39 @@ async def update_user_bio(db: DBSession, bio_update: BioUpdate, request: Request
         username=user.username,
         bio=user.bio,
         date_of_birth=user.date_of_birth,
-        gender=user.gender
+        gender=user.gender,
+        website=user.website,
+        public_email=user.public_email,
+    )
+
+async def update_user_website(db: DBSession, website_update: WebsiteUpdate, request: Request):
+    auth_user_id = request.state.user.get("id")
+    user= await db_update(db, model=User, update_data=website_update, filters={"id": auth_user_id})
+
+    return UserUpdateResponse(
+        id=user.id,
+        fullname=user.fullname,
+        username=user.username,
+        bio=user.bio,
+        date_of_birth=user.date_of_birth,
+        gender=user.gender,
+        website=user.website,
+        public_email=user.public_email,
+    )
+
+async def update_user_public_email(db: DBSession, public_email_update: PublicEmailUpdate, request: Request):
+    auth_user_id = request.state.user.get("id")
+    user= await db_update(db, model=User, update_data=public_email_update, filters={"id": auth_user_id})
+
+    return UserUpdateResponse(
+        id=user.id,
+        fullname=user.fullname,
+        username=user.username,
+        bio=user.bio,
+        date_of_birth=user.date_of_birth,
+        gender=user.gender,
+        website=user.website,
+        public_email=user.public_email,
     )
 
 async def get_product_durations_by_user_id(db: DBSession, user_id):
