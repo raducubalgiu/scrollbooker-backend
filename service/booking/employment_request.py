@@ -1,3 +1,5 @@
+from urllib import request
+
 from fastapi import HTTPException, Response, Request, status
 from sqlalchemy.orm import joinedload
 from sqlalchemy import select, and_, delete
@@ -11,6 +13,7 @@ from schema.booking.employment_request import EmploymentRequestCreate, Employmen
 from core.logger import logger
 import calendar
 
+from schema.user.notification import NotificationEmploymentData
 from service.booking.business import get_business_by_user_id
 
 async def get_employment_requests_by_user_id(db: DBSession, user_id: int, request: Request):
@@ -51,27 +54,50 @@ async def get_employment_requests_by_user_id(db: DBSession, user_id: int, reques
 
     return employment_requests
 
+async def get_employment_request_by_id(db: DBSession, employment_request_id: int, request: Request):
+    auth_user_id = request.state.user.get("id")
+
+    employment_request_result = await db.execute(
+        select(EmploymentRequest)
+        .where(EmploymentRequest.id == employment_request_id)
+        .options(
+            joinedload(EmploymentRequest.employer),
+            joinedload(EmploymentRequest.employee),
+            joinedload(EmploymentRequest.profession)
+        )
+    )
+    employment_request = employment_request_result.scalars().first()
+
+    if employment_request.employee_id != auth_user_id and employment_request.employer_id != auth_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to perform this action"
+        )
+
+    return employment_request
+
+
 async def create_employment_request(db: DBSession, employment_create: EmploymentRequestCreate,  request: Request):
     auth_user_id = request.state.user.get("id")
 
-    business = await db_get_one(
-        db=db,
-        model=Business,
-        filters={Business.owner_id: auth_user_id},
-        raise_not_found=False
-    )
-    profession = await db_get_one(
-        db=db,
-        model=Profession,
-        filters={Profession.id: employment_create.profession_id}
-    )
-
-    if not business:
-        logger.error(f"Business with ID: {auth_user_id} doesn't have the Business defined")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail='You do not have permission to perform this action')
-
     try :
+        business = await db_get_one(
+            db=db,
+            model=Business,
+            filters={Business.owner_id: auth_user_id},
+            raise_not_found=False
+        )
+        profession = await db_get_one(
+            db=db,
+            model=Profession,
+            filters={Profession.id: employment_create.profession_id}
+        )
+
+        if not business:
+            logger.error(f"Business with ID: {auth_user_id} doesn't have the Business defined")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail='You do not have permission to perform this action')
+
         employment_request = await db_create(
             db=db,
             model=EmploymentRequest,
@@ -81,15 +107,16 @@ async def create_employment_request(db: DBSession, employment_create: Employment
                 'business_id': business.id
             })
 
+        employment_data = NotificationEmploymentData(
+            employment_request_id=employment_request.id,
+            profession_id=profession.id
+        )
+
         notification = Notification(
-            type="employment_request",
+            type=NotificationTypeEnum.EMPLOYMENT_REQUEST,
             sender_id=auth_user_id,
             receiver_id=employment_create.employee_id,
-            data={
-                "employment_request_id": employment_request.id,
-                "profession_id": profession.id,
-                "profession_name": profession.name
-            },
+            data=employment_data.model_dump(),
             message="Employment Request Sent By Business"
         )
         db.add(notification)
@@ -138,6 +165,18 @@ async def respond_employment_request(
                     detail="You do not have permission to perform this action"
                 )
 
+            profession = await db.scalar(
+                select(Profession)
+                .where(Profession.id == employment_request.profession_id)
+            )
+
+            if not profession:
+                logger.error(f"Profession was not found")
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Profession not found"
+                )
+
             if employment_update.status == EmploymentRequestsStatusEnum.ACCEPTED:
                 role_id = await db.scalar(select(Role.id).where(Role.name == RoleEnum.EMPLOYEE))
 
@@ -148,22 +187,10 @@ async def respond_employment_request(
                         detail="Role not found"
                     )
 
-                profession_name = await db.scalar(
-                    select(Profession.name)
-                    .where(Profession.id == employment_request.profession_id)
-                )
-
-                if not profession_name:
-                    logger.error(f"Profession was not found")
-                    raise HTTPException(
-                        status_code=status.HTTP_404_NOT_FOUND,
-                        detail="Profession not found"
-                    )
-
                 employment_request.status = employment_update.status
 
                 employee.employee_business_id = employment_request.business_id
-                employee.profession = profession_name
+                employee.profession = profession.name
                 employee.role_id = role_id
 
                 # Create Employees Schedules
@@ -180,12 +207,17 @@ async def respond_employment_request(
                         )
                     db.add(schedule)
 
+                employment_data = NotificationEmploymentData(
+                    employment_request_id=employment_request.id,
+                    profession_id=profession.id
+                )
+
                 # Send Business Notification
                 notification = Notification(
                         type=NotificationTypeEnum.EMPLOYMENT_REQUEST_ACCEPT,
                         sender_id=auth_user_id,
                         receiver_id=employment_request.employer_id,
-                        data={"employment_request_id": employment_request.id},
+                        data=employment_data.model_dump(),
                         message=f"Employment Accepted By {auth_user_id}"
                     )
                 db.add(notification)
@@ -196,12 +228,18 @@ async def respond_employment_request(
                     delete(EmploymentRequest)
                     .where(EmploymentRequest.id == employment_request_id)
                 )
+
+                employment_data = NotificationEmploymentData(
+                    employment_request_id=employment_request.id,
+                    profession_id=profession.id
+                )
+
                 # Send Business Notification
                 notification = Notification(
                         type=NotificationTypeEnum.EMPLOYMENT_REQUEST_DENIED,
                         sender_id=auth_user_id,
                         receiver_id=employment_request.employee_id if is_employer else employment_request.employer_id,
-                        data={"employment_request_id": employment_request.id},
+                        data=employment_data.model_dump(),
                         message=f"Employment Denied By {auth_user_id}"
                     )
                 db.add(notification)
