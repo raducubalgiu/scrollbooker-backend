@@ -51,15 +51,17 @@ class AppointmentOwnClientCreate(BaseModel):
     start_date: datetime
     end_date: datetime
     customer_fullname: str = Field(min_length=3, max_length=50)
-    service_name: str
+    service_name: str = Field(min_length=3, max_length=50)
 
-    currency_id: int
-    product_id: Optional[int] = None
     product_name: str = Field(min_length=3, max_length=100)
     product_full_price: Decimal
     product_price_with_discount: Decimal
-    product_duration: int
     product_discount: Decimal
+    product_duration: int
+
+    service_id: Optional[int] = None
+    product_id: Optional[int] = None
+    currency_id: int
     channel: AppointmentStatusEnum = AppointmentChannelEnum.OWN_CLIENT
 
 class AppointmentBlockSlot(BaseModel):
@@ -132,12 +134,18 @@ class CalendarEventsProduct(BaseModel):
     product_price_with_discount: Decimal
     product_discount: Decimal
 
+class CalendarEventsCustomer(BaseModel):
+    id: Optional[int] = None
+    fullname: str
+    username: Optional[str] = None
+    avatar: Optional[str] = None
+
 class CalendarEventsInfo(BaseModel):
     currency: Optional[CurrencyMiniResponse] = None
     channel: str
     service_name: str
     product: CalendarEventsProduct
-    customer: Optional[UserBaseMinimum] = None
+    customer: Optional[CalendarEventsCustomer] = None
     message: Optional[str] = None
 
 class CalendarEventsSlot(BaseModel):

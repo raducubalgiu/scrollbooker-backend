@@ -86,6 +86,7 @@ ClientSession = Depends(allowed_roles([RoleEnum.CLIENT]))
 EmployeeSession = Depends(allowed_roles([RoleEnum.EMPLOYEE]))
 
 ClientAndEmployeeSession = Depends(allowed_roles([RoleEnum.CLIENT, RoleEnum.EMPLOYEE]))
+ClientAndBusinessSession = Depends(allowed_roles([RoleEnum.CLIENT, RoleEnum.BUSINESS]))
 BusinessAndEmployeesSession = Depends(allowed_roles([RoleEnum.BUSINESS, RoleEnum.EMPLOYEE]))
 BusinessAndManagerSession = Depends(allowed_roles([RoleEnum.BUSINESS, RoleEnum.MANAGER]))
 

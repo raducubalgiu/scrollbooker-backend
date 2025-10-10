@@ -64,7 +64,6 @@ async def create_user_schedule(db: DBSession, schedule_create: ScheduleCreate, r
         day_week_index=day_week_index
     )
 
-
     db.add(new_schedule)
     await db.commit()
     await db.refresh(new_schedule)

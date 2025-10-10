@@ -1,12 +1,10 @@
-from fastapi import APIRouter
-from starlette.requests import Request
-from starlette import status
-from core.dependencies import DBSession, BusinessSession, ClientSession, BusinessAndEmployeesSession, \
-    BusinessAndManagerSession
-from service.booking.employment_request import send_employment_request, accept_employment_request, \
-    delete_employment_request_by_id, get_employment_requests_by_user_id
-from schema.booking.employment_request import EmploymentRequestCreate, EmploymentRequestUpdate, EmploymentsRequestsResponse
+from fastapi import APIRouter, Request, status
+from starlette.status import HTTP_204_NO_CONTENT
 
+from core.dependencies import DBSession, BusinessSession, BusinessAndManagerSession, ClientAndBusinessSession
+from service.booking.employment_request import get_employment_requests_by_user_id, \
+    respond_employment_request, create_employment_request
+from schema.booking.employment_request import EmploymentRequestCreate, EmploymentRequestUpdate, EmploymentsRequestsResponse
 router = APIRouter(tags=["Employment Request"])
 
 @router.get(
@@ -22,19 +20,13 @@ async def get_user_employment_requests(db: DBSession, user_id: int, request: Req
     summary="Create New Employment Request",
     status_code=status.HTTP_201_CREATED,
     dependencies=[BusinessAndManagerSession])
-async def create_request(db: DBSession, employment_create: EmploymentRequestCreate, request: Request):
-    return await send_employment_request(db, employment_create, request)
+async def create_employment(db: DBSession, employment_create: EmploymentRequestCreate, request: Request):
+    return await create_employment_request(db, employment_create, request)
 
 @router.put(
     "/employment-requests/{employment_request_id}",
-    summary="Accept Employment Request",
-    dependencies=[ClientSession])
-async def accept_request(db: DBSession, employment_request_id: int, employment_update: EmploymentRequestUpdate,  request: Request):
-    return await accept_employment_request(db, employment_request_id, employment_update, request)
-
-@router.delete(
-    "/employment-requests/{employment_request_id}",
-    summary="Cancel Employment Request",
-    dependencies=[BusinessAndEmployeesSession])
-async def delete_request(db: DBSession, employment_request_id: int, request: Request):
-    return await delete_employment_request_by_id(db, employment_request_id, request)
+    summary="Respond Employment Request",
+    status_code=HTTP_204_NO_CONTENT,
+    dependencies=[ClientAndBusinessSession])
+async def respond_employment(db: DBSession, employment_request_id: int, employment_update: EmploymentRequestUpdate,  request: Request):
+    return await respond_employment_request(db, employment_request_id, employment_update, request)

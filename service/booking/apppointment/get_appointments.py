@@ -10,8 +10,9 @@ from sqlalchemy.orm import aliased, joinedload
 from core.crud_helpers import PaginatedResponse
 from core.enums.appointment_status_enum import AppointmentStatusEnum
 from core.enums.role_enum import RoleEnum
-from schema.booking.appointment import UserAppointmentResponse, AppointmentProduct, AppointmentBusiness, CalendarEventsSlot, CalendarEventsInfo, \
-    CalendarEventsResponse, CalendarEventsDay
+from schema.booking.appointment import UserAppointmentResponse, AppointmentProduct, AppointmentBusiness, \
+    CalendarEventsSlot, CalendarEventsInfo, \
+    CalendarEventsResponse, CalendarEventsDay, CalendarEventsCustomer
 from core.dependencies import DBSession
 from models import Appointment, Schedule, User, Business, Currency, Product
 from schema.user.user import UserBaseMinimum
@@ -474,7 +475,12 @@ async def get_user_calendar_events(db: DBSession, start_date: str, end_date: str
                                     channel=a["channel"],
                                     service_name=a["service_name"],
                                     product=a["product"],
-                                    customer=None if a["is_blocked"] else a["customer"],
+                                    customer=None if a["is_blocked"] else CalendarEventsCustomer(
+                                        id=a["customer"]["id"],
+                                        fullname=a["customer"]["fullname"],
+                                        username=a["customer"]["username"],
+                                        avatar=a["customer"]["avatar"]
+                                    ),
                                     message=a["message"]
                                 )
                             )
