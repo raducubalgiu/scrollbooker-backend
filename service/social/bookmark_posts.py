@@ -5,8 +5,9 @@ from sqlalchemy import select, func, literal, desc, and_, insert, update, delete
 
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession, Pagination
-from models import BookmarkPost, Post, Follow, User, Repost, Product
-from schema.social.post import UserPostResponse, PostCounters, LastMinute, PostUserActions
+from models import BookmarkPost, Post, Follow, User, Repost, Product, Currency, UserCounters, Like
+from schema.social.post import UserPostResponse, PostCounters, LastMinute, PostUserActions, PostProduct, \
+    PostProductCurrency
 from schema.user.user import UserBaseMinimum
 from service.social.post_media import get_post_media
 from core.logger import logger
@@ -36,9 +37,25 @@ async def _update_post_bookmark_counter(db: DBSession, post_id: int, action_type
     )
 
 async def get_bookmarked_posts_by_user(db: DBSession, user_id: int, pagination: Pagination):
-    count_stmt = select(func.count()).select_from(BookmarkPost).where(and_(BookmarkPost.user_id == user_id))
-    count_total = await db.execute(count_stmt)
-    count = count_total.scalar_one()
+
+    # count_stmt = (
+    #     select(func.count())
+    #     .select_from(BookmarkPost)
+    #     .where(and_(BookmarkPost.user_id == auth_user_id))
+    # )
+    # count_total = await db.execute(count_stmt)
+    # count = count_total.scalar_one()
+
+    is_liked = (
+        select(literal(True))
+        .select_from(Like)
+        .where(and_(
+            Like.user_id == user_id,
+            Like.post_id == Post.id)
+        )
+        .correlate(Post)
+        .exists()
+    )
 
     is_reposted = (
         select(literal(True))
@@ -73,7 +90,21 @@ async def get_bookmarked_posts_by_user(db: DBSession, user_id: int, pagination: 
         .exists()
     )
 
-    result = await db.execute(
+    base_count_query = (
+        select(Post.id)
+        .join(User, User.id == Post.user_id)
+        .join(BookmarkPost, BookmarkPost.post_id == Post.id)
+        .where(and_(
+            BookmarkPost.user_id == user_id,
+            BookmarkPost.post_id == Post.id
+        ))
+    )
+
+    count_query = select(func.count()).select_from(base_count_query.subquery())
+    count_total = await db.execute(count_query)
+    count = count_total.scalar_one()
+
+    query = (
         select(
             Post,
             User.id,
@@ -81,27 +112,38 @@ async def get_bookmarked_posts_by_user(db: DBSession, user_id: int, pagination: 
             User.username,
             User.avatar,
             User.profession,
+            UserCounters.ratings_average,
             Product,
+            Currency,
+            is_liked,
             is_follow,
-            is_bookmarked,
             is_reposted,
+            is_bookmarked
         )
         .join(User, User.id == Post.user_id)
-        .join(BookmarkPost, BookmarkPost.user_id == user_id)
-        .join(Product, Product.user_id == Post.user_id)
-        .where(BookmarkPost.post_id == Post.id)
+        .join(BookmarkPost, BookmarkPost.post_id == Post.id)
+        .outerjoin(Product, Product.id == Post.product_id)
+        .outerjoin(Currency, Currency.id == Product.currency_id)
+        .join(UserCounters, UserCounters.user_id == User.id)
+
+        .where(and_(
+            BookmarkPost.user_id == user_id,
+            BookmarkPost.post_id == Post.id
+        ))
         .order_by(desc(Post.created_at))
         .offset((pagination.page - 1) * pagination.limit)
         .limit(pagination.limit)
     )
-    posts = result.all()
+
+    posts_result = await db.execute(query)
+    posts = posts_result.all()
 
     post_ids = [p.id for p, *_ in posts]
     media_map = await get_post_media(db, post_ids)
 
     results = []
 
-    for post, u_id, u_fullname, u_username, u_avatar, u_profession, product, is_follow, is_reposted, is_bookmarked in posts:
+    for post, u_id, u_fullname, u_username, u_avatar, u_profession, u_ratings_average, product, currency, is_liked, is_follow, is_reposted, is_bookmarked in posts:
         media_files = media_map.get(post.id, [])
 
         results.append(UserPostResponse(
@@ -113,9 +155,23 @@ async def get_bookmarked_posts_by_user(db: DBSession, user_id: int, pagination: 
                 username=u_username,
                 avatar=u_avatar,
                 profession=u_profession,
-                is_follow=is_follow
+                is_follow=is_follow,
+                ratings_average=u_ratings_average,
             ),
-            product=product,
+            business_id=post.business_id,
+            product=PostProduct(
+                id=product.id,
+                name=product.name,
+                description=product.description,
+                duration=product.duration,
+                price=product.price,
+                price_with_discount=product.price_with_discount,
+                discount=product.discount,
+                currency=PostProductCurrency(
+                    id=currency.id,
+                    name=currency.name
+                )
+            ) if product is not None else None,
             counters=PostCounters(
                 comment_count=post.comment_count,
                 like_count=post.like_count,
@@ -125,7 +181,7 @@ async def get_bookmarked_posts_by_user(db: DBSession, user_id: int, pagination: 
             ),
             media_files=media_files,
             user_actions=PostUserActions(
-                is_liked=False,
+                is_liked=is_liked,
                 is_bookmarked=is_bookmarked,
                 is_reposted=is_reposted,
             ),
