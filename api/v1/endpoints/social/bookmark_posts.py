@@ -11,8 +11,8 @@ router = APIRouter(tags=["Bookmark Posts"])
 @router.get("/users/{user_id}/bookmark-posts",
             summary='List All Bookmarked Posts By User',
             response_model=PaginatedResponse[UserPostResponse])
-async def get_bookmarked_posts(db: DBSession, user_id: int, pagination: Pagination):
-    return await get_bookmarked_posts_by_user(db, user_id, pagination)
+async def get_bookmarked_posts(db: DBSession, user_id: int, pagination: Pagination, request: Request):
+    return await get_bookmarked_posts_by_user(db, user_id, pagination, request)
 
 @router.post("/posts/{post_id}/bookmark-posts",
              summary='Bookmark Post By Post Id',

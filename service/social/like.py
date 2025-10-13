@@ -2,9 +2,14 @@ from enum import Enum
 
 from fastapi import HTTPException, Request, Response, status
 from sqlalchemy import select, and_, insert, update, func, delete
-from core.dependencies import DBSession
+
+from core.crud_helpers import PaginatedResponse
+from core.dependencies import DBSession, Pagination
 from models import Post, Like
 from core.logger import logger
+from schema.social.post import UserPostResponse
+from service.social.fetch_paginated_posts import fetch_paginated_posts
+
 
 class LikeTypeEnum(str, Enum):
     LIKE = "LIKE"
@@ -28,6 +33,27 @@ async def _update_post_like_counter(db: DBSession, post_id: int, action_type: Li
         update(Post)
         .where(Post.id == post_id)
         .values(like_count=func.greatest(Post.like_count + delta, 0))
+    )
+
+async def get_posts_liked_by_user_id(
+        db: DBSession,
+        user_id: int,
+        pagination: Pagination,
+        request: Request
+) -> PaginatedResponse[UserPostResponse]:
+    auth_user_id = request.state.user.get("id")
+
+    base_ids = (
+        select(Post.id)
+        .join(Like, Post.id == Like.post_id)
+        .where(Like.user_id == user_id)
+    )
+
+    return await fetch_paginated_posts(
+        db=db,
+        auth_user_id=auth_user_id,
+        pagination=pagination,
+        base_post_ids_query=base_ids
     )
 
 async def like_post_by_id(db: DBSession, post_id: int, request: Request) -> Response:

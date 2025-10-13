@@ -13,8 +13,8 @@ router = APIRouter(tags=["Reposts"])
 @router.get("/users/{user_id}/reposts",
             summary='List All Reposts By User Id',
             response_model=PaginatedResponse[UserPostResponse])
-async def get_reposts(db: DBSession, user_id: int, pagination: Pagination):
-    return await get_reposts_by_user(db, user_id, pagination)
+async def get_reposts(db: DBSession, user_id: int, pagination: Pagination, request: Request):
+    return await get_reposts_by_user(db, user_id, pagination, request)
 
 @router.post("/posts/{post_id}/reposts",
              summary='Repost Post By Post Id',
