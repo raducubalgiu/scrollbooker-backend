@@ -7,14 +7,18 @@ from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession, Pagination
 from models import BookmarkPost, Post
 from schema.social.post import UserPostResponse
-from service.social.fetch_paginated_posts import fetch_paginated_posts
+from service.social.util.fetch_paginated_posts import fetch_paginated_posts
 from core.logger import logger
 
 class BookmarkTypeEnum(str, Enum):
     BOOKMARK = "BOOKMARK"
     UNBOOKMARK = "UNBOOKMARK"
 
-async def _is_post_bookmarked(db: DBSession, post_id: int, auth_user_id: int) -> bool:
+async def _is_post_bookmarked(
+        db: DBSession,
+        post_id: int,
+        auth_user_id: int
+) -> bool:
     existing = await db.execute(
         select(BookmarkPost).where(
             and_(
@@ -25,7 +29,11 @@ async def _is_post_bookmarked(db: DBSession, post_id: int, auth_user_id: int) ->
     )
     return True if existing.scalar() else False
 
-async def _update_post_bookmark_counter(db: DBSession, post_id: int, action_type: BookmarkTypeEnum) -> None:
+async def _update_post_bookmark_counter(
+        db: DBSession,
+        post_id: int,
+        action_type: BookmarkTypeEnum
+) -> None:
     delta = 1 if action_type == BookmarkTypeEnum.BOOKMARK else -1
 
     await db.execute(

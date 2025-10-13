@@ -12,7 +12,7 @@ from schema.social.post import PostCreate, UserPostResponse, PostCounters, LastM
 from models.social.post import Post
 from core.logger import logger
 from schema.user.user import UserBaseMinimum
-from service.social.fetch_paginated_posts import fetch_paginated_posts
+from service.social.util.fetch_paginated_posts import fetch_paginated_posts
 from service.social.post_media import get_post_media
 
 async def get_explore_feed_posts(

@@ -8,7 +8,7 @@ from core.dependencies import DBSession, Pagination
 from models import Post, Like
 from core.logger import logger
 from schema.social.post import UserPostResponse
-from service.social.fetch_paginated_posts import fetch_paginated_posts
+from service.social.util.fetch_paginated_posts import fetch_paginated_posts
 
 
 class LikeTypeEnum(str, Enum):

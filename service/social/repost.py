@@ -9,23 +9,14 @@ from models import Repost
 from models.social.post import Post
 from schema.social.post import UserPostResponse
 from schema.social.repost import RepostCreate
-from service.social.fetch_paginated_posts import fetch_paginated_posts
+from service.social.util.fetch_paginated_posts import fetch_paginated_posts
 from core.logger import logger
+from service.social.util.is_post_actioned import is_post_actioned
+
 
 class RepostTypeEnum(str, Enum):
     REPOST = "REPOST"
     UN_REPOST = "UN_REPOST"
-
-async def _is_post_reposted(db: DBSession, post_id: int, auth_user_id: int) -> bool:
-    existing = await db.execute(
-        select(Repost).where(
-            and_(
-                Repost.user_id == auth_user_id,
-                Repost.post_id == post_id
-            )
-        )
-    )
-    return True if existing.scalar() else False
 
 async def _update_post_repost_counter(db: DBSession, post_id: int, action_type: RepostTypeEnum) -> None:
     delta = 1 if action_type == RepostTypeEnum.REPOST else -1
@@ -75,7 +66,7 @@ async def repost_post_by_id(
                     detail="Post not found"
                 )
 
-            if await _is_post_reposted(db, post_id, auth_user_id):
+            if await is_post_actioned(db, Repost, post_id, auth_user_id):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Post already reposted"
@@ -109,7 +100,7 @@ async def un_repost_post_by_id(db: DBSession, post_id: int, request: Request) ->
 
     try:
         async with db.begin():
-            if not await _is_post_reposted(db, post_id, auth_user_id):
+            if not await is_post_actioned(db, Repost, post_id, auth_user_id):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Repost not found"
