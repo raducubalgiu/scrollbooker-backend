@@ -9,25 +9,12 @@ from models import BookmarkPost, Post
 from schema.social.post import UserPostResponse
 from service.social.util.fetch_paginated_posts import fetch_paginated_posts
 from core.logger import logger
+from service.social.util.is_post_actioned import is_post_actioned
+
 
 class BookmarkTypeEnum(str, Enum):
     BOOKMARK = "BOOKMARK"
     UNBOOKMARK = "UNBOOKMARK"
-
-async def _is_post_bookmarked(
-        db: DBSession,
-        post_id: int,
-        auth_user_id: int
-) -> bool:
-    existing = await db.execute(
-        select(BookmarkPost).where(
-            and_(
-                BookmarkPost.user_id == auth_user_id,
-                BookmarkPost.post_id == post_id
-            )
-        )
-    )
-    return True if existing.scalar() else False
 
 async def _update_post_bookmark_counter(
         db: DBSession,
@@ -72,7 +59,9 @@ async def bookmark_post_by_id(
 
     try:
         async with db.begin():
-            if await _is_post_bookmarked(db, post_id, auth_user_id):
+            is_post_bookmarked = await is_post_actioned(db, BookmarkPost, post_id, auth_user_id)
+
+            if is_post_bookmarked:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Post already bookmarked"
@@ -100,7 +89,9 @@ async def unbookmark_post_by_id(db: DBSession, post_id: int, request: Request) -
 
     try:
         async with db.begin():
-            if not await _is_post_bookmarked(db, post_id, auth_user_id):
+            is_post_bookmarked = await is_post_actioned(db, BookmarkPost, post_id, auth_user_id)
+
+            if not is_post_bookmarked:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Bookmark not found"

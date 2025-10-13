@@ -66,7 +66,9 @@ async def repost_post_by_id(
                     detail="Post not found"
                 )
 
-            if await is_post_actioned(db, Repost, post_id, auth_user_id):
+            is_post_reposted = await is_post_actioned(db, Repost, post_id, auth_user_id)
+
+            if is_post_reposted:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Post already reposted"
@@ -100,7 +102,9 @@ async def un_repost_post_by_id(db: DBSession, post_id: int, request: Request) ->
 
     try:
         async with db.begin():
-            if not await is_post_actioned(db, Repost, post_id, auth_user_id):
+            is_post_reposted = await is_post_actioned(db, Repost, post_id, auth_user_id)
+
+            if not is_post_reposted:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Repost not found"
