@@ -24,7 +24,7 @@ class Post(Base):
     mentions = Column(ARRAY(BigInteger), nullable=True)
 
     like_count = Column(Integer, nullable=False, default=0)
-    share_count = Column(Integer, nullable=False, default=0)
+    repost_count = Column(Integer, nullable=False, default=0)
     comment_count = Column(Integer, nullable=False, default=0)
     bookmark_count = Column(Integer, nullable=False, default=0)
     bookings_count = Column(Integer, nullable=False, default=0)

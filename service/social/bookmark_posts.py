@@ -37,15 +37,6 @@ async def _update_post_bookmark_counter(db: DBSession, post_id: int, action_type
     )
 
 async def get_bookmarked_posts_by_user(db: DBSession, user_id: int, pagination: Pagination):
-
-    # count_stmt = (
-    #     select(func.count())
-    #     .select_from(BookmarkPost)
-    #     .where(and_(BookmarkPost.user_id == auth_user_id))
-    # )
-    # count_total = await db.execute(count_stmt)
-    # count = count_total.scalar_one()
-
     is_liked = (
         select(literal(True))
         .select_from(Like)
@@ -176,7 +167,7 @@ async def get_bookmarked_posts_by_user(db: DBSession, user_id: int, pagination: 
                 comment_count=post.comment_count,
                 like_count=post.like_count,
                 bookmark_count=post.bookmark_count,
-                share_count=post.share_count,
+                repost_count=post.repost_count,
                 bookings_count=post.bookings_count
             ),
             media_files=media_files,

@@ -7,21 +7,25 @@ from starlette.requests import Request
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession, Pagination
 from schema.social.post import PostCreate, UserPostResponse
-from service.social.post import create_new_post, get_posts_by_user_id, get_book_now_posts, get_following_posts
+from service.social.post import create_new_post, get_posts_by_user_id, get_following_posts, \
+    get_explore_feed_posts
 
 router = APIRouter(tags=["Posts"])
 
-@router.get("/posts/book-now",
-            summary='Get User Book Now Feed')
-async def get_book_now(
+@router.get("/posts/explore",
+            summary='Get User Book Now Feed',
+            response_model=PaginatedResponse[UserPostResponse])
+async def get_explore_feed(
         db: DBSession,
         pagination: Pagination,
         request: Request,
         business_types: Optional[List[int]] = Query(default=None)
 ):
-    return await get_book_now_posts(db, pagination, request, business_types)
+    return await get_explore_feed_posts(db, pagination, request, business_types)
 
-@router.get("/posts/following")
+@router.get("/posts/following",
+            summary='Get User Following Posts',
+            response_model=PaginatedResponse[UserPostResponse])
 async def get_following(db: DBSession, pagination: Pagination, request: Request):
     return await get_following_posts(db, pagination, request)
 

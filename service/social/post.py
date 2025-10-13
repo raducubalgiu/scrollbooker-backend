@@ -14,7 +14,7 @@ from core.logger import logger
 from schema.user.user import UserBaseMinimum
 from service.social.post_media import get_post_media
 
-async def get_book_now_posts(
+async def get_explore_feed_posts(
         db: DBSession,
         pagination: Pagination,
         request: Request,
@@ -150,7 +150,7 @@ async def get_book_now_posts(
                 comment_count=post.comment_count,
                 like_count=post.like_count,
                 bookmark_count=post.bookmark_count,
-                share_count=post.share_count,
+                repost_count=post.repost_count,
                 bookings_count=post.bookings_count
             ),
             media_files=media_files,
@@ -180,6 +180,17 @@ async def get_book_now_posts(
 async def get_following_posts(db: DBSession, pagination: Pagination, request: Request):
     auth_user_id = request.state.user.get("id")
 
+    is_liked = (
+        select(literal(True))
+        .select_from(Like)
+        .where(and_(
+            Like.user_id == auth_user_id,
+            Like.post_id == Post.id)
+        )
+        .correlate(Post)
+        .exists()
+    )
+
     is_reposted = (
         select(literal(True))
         .select_from(Repost)
@@ -202,16 +213,16 @@ async def get_following_posts(db: DBSession, pagination: Pagination, request: Re
         .exists()
     )
 
-    is_follow = (
-        select(literal(True))
-        .select_from(Follow)
-        .where(and_(
-            Follow.follower_id == auth_user_id,
-            Follow.followee_id == User.id)
-        )
-        .correlate(User)
-        .exists()
+    base_count_query = (
+        select(Post.id)
+        .join(User, User.id == Post.user_id)
+        .join(Follow, Follow.followee_id == User.id)
+        .where(Follow.follower_id == auth_user_id)
     )
+
+    count_query = select(func.count()).select_from(base_count_query.subquery())
+    count_total = await db.execute(count_query)
+    count = count_total.scalar_one()
 
     query = (
         select(
@@ -223,26 +234,23 @@ async def get_following_posts(db: DBSession, pagination: Pagination, request: Re
             User.profession,
             UserCounters.ratings_average,
             Product,
-            is_follow,
+            Currency,
+            is_liked,
             is_reposted,
             is_bookmarked
         )
         .join(User, User.id == Post.user_id)
+        .join(Follow, Follow.followee_id == User.id)
+        .outerjoin(Product, Product.id == Post.product_id)
+        .outerjoin(Currency, Currency.id == Product.currency_id)
         .join(UserCounters, UserCounters.user_id == User.id)
-        .join(Follow, Follow.follower_id == auth_user_id)
-        .join(Product, Product.user_id == Post.user_id)
-        .where(and_(
-            Follow.follower_id == auth_user_id,
-            Follow.followee_id == User.id
-        ))
+        .where(Follow.follower_id == auth_user_id)
+        .order_by(desc(Post.created_at))
+        .offset((pagination.page - 1) * pagination.limit)
+        .limit(pagination.limit)
     )
 
-    count_total = await db.execute(query)
-    count = len(count_total.mappings().all())
-
-    result = query.order_by(desc(Post.created_at)).offset((pagination.page - 1) * pagination.limit).limit(pagination.limit)
-
-    posts_result = await db.execute(result)
+    posts_result = await db.execute(query)
     posts = posts_result.all()
 
     post_ids = [p.id for p, *_ in posts]
@@ -250,7 +258,7 @@ async def get_following_posts(db: DBSession, pagination: Pagination, request: Re
 
     results = []
 
-    for post, u_id, u_fullname, u_username, u_avatar, u_profession, u_ratings_average, product, is_follow, is_reposted, is_bookmarked in posts:
+    for post, u_id, u_fullname, u_username, u_avatar, u_profession, u_ratings_average, product, currency, is_liked, is_reposted, is_bookmarked in posts:
         media_files = media_map.get(post.id, [])
 
         results.append(UserPostResponse(
@@ -262,20 +270,33 @@ async def get_following_posts(db: DBSession, pagination: Pagination, request: Re
                 username=u_username,
                 avatar=u_avatar,
                 profession=u_profession,
-                is_follow=is_follow,
-                ratings_average=u_ratings_average
+                is_follow=True,
+                ratings_average=u_ratings_average,
             ),
-            product=product,
+            business_id=post.business_id,
+            product=PostProduct(
+                id=product.id,
+                name=product.name,
+                description=product.description,
+                duration=product.duration,
+                price=product.price,
+                price_with_discount=product.price_with_discount,
+                discount=product.discount,
+                currency=PostProductCurrency(
+                    id=currency.id,
+                    name=currency.name
+                )
+            ) if product is not None else None,
             counters=PostCounters(
                 comment_count=post.comment_count,
                 like_count=post.like_count,
                 bookmark_count=post.bookmark_count,
-                share_count=post.share_count,
+                repost_count=post.repost_count,
                 bookings_count=post.bookings_count
             ),
             media_files=media_files,
             user_actions=PostUserActions(
-                is_liked=False,
+                is_liked=is_liked,
                 is_bookmarked=is_bookmarked,
                 is_reposted=is_reposted,
             ),

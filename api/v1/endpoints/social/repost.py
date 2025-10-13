@@ -6,7 +6,7 @@ from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession, Pagination
 from schema.social.post import UserPostResponse
 from schema.social.repost import RepostCreate
-from service.social.repost import repost_post_by_id, unrepost_post_by_id, get_reposts_by_user
+from service.social.repost import repost_post_by_id, un_repost_post_by_id, get_reposts_by_user
 
 router = APIRouter(tags=["Reposts"])
 
@@ -23,7 +23,7 @@ async def repost_post(db: DBSession, post_id: int, repost_create: RepostCreate, 
     return await repost_post_by_id(db, post_id, repost_create, request)
 
 @router.delete("/posts/{post_id}/reposts",
-               summary='Unrepost post By Post Id',
+               summary='UnRepost Post By Post Id',
                status_code=status.HTTP_204_NO_CONTENT)
-async def unrepost_post(db: DBSession, post_id: int, request: Request):
-    return await unrepost_post_by_id(db, post_id, request)
+async def un_repost_post(db: DBSession, post_id: int, request: Request):
+    return await un_repost_post_by_id(db, post_id, request)

@@ -44,7 +44,7 @@ class PostResponse(PostBase):
     user_id: int
 
     like_count: int
-    share_count: int
+    repost_count: int
     comment_count: int
     bookmark_count: int
     bookings_count: int
@@ -79,7 +79,7 @@ class PostCounters(BaseModel):
     comment_count: int
     like_count: int
     bookmark_count: int
-    share_count: int
+    repost_count: int
     bookings_count: int
 
     class Config:
