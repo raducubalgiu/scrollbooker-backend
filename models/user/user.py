@@ -12,13 +12,13 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     password = Column(String(255), nullable=False)
-    email = Column(String, unique=True, nullable=False, index=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
 
     fullname = Column(String(35), nullable=True)
     username = Column(String(35), unique=True, nullable=False, index=True)
     avatar = Column(String)
     profession = Column(String(100), nullable=False, default='Creator')
-    bio = Column(String(100), nullable=True)
+    bio = Column(String(160), nullable=True)
 
     gender = Column(Enum(GenderTypeEnum), default=GenderTypeEnum.OTHER)
     date_of_birth = Column(Date, nullable=True)

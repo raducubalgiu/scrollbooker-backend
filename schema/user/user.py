@@ -58,13 +58,13 @@ class GenderUpdate(BaseModel):
     gender: GenderTypeEnum
 
 class BioUpdate(BaseModel):
-    bio: str = Field(None, min_length=3, max_length=100)
+    bio: str = Field(None, min_length=3, max_length=160)
 
 class WebsiteUpdate(BaseModel):
-    website: str = Field(None, min_length=3, max_length=255)
+    website: str = Field(None, max_length=255)
 
 class PublicEmailUpdate(BaseModel):
-    public_email: str = Field(None, min_length=3, max_length=100)
+    public_email: str = Field(None, max_length=255)
 
 class UserUpdateResponse(BaseModel):
     id: int

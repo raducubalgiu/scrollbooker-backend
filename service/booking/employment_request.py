@@ -1,8 +1,7 @@
-from urllib import request
-
 from fastapi import HTTPException, Response, Request, status
 from sqlalchemy.orm import joinedload
 from sqlalchemy import select, and_, delete
+
 from core.crud_helpers import db_create, db_get_one
 from core.dependencies import DBSession
 from core.enums.employment_requests_status_enum import EmploymentRequestsStatusEnum
@@ -34,7 +33,7 @@ async def get_employment_requests_by_user_id(db: DBSession, user_id: int, reques
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='You do not have permission to perform this action')
 
-    stmt = (
+    result = await db.execute(
         select(EmploymentRequest)
         .where(
             and_(
@@ -48,8 +47,6 @@ async def get_employment_requests_by_user_id(db: DBSession, user_id: int, reques
             joinedload(EmploymentRequest.profession)
         )
     )
-
-    result = await db.execute(stmt)
     employment_requests = result.scalars().all()
 
     return employment_requests
@@ -57,7 +54,7 @@ async def get_employment_requests_by_user_id(db: DBSession, user_id: int, reques
 async def get_employment_request_by_id(db: DBSession, employment_request_id: int, request: Request):
     auth_user_id = request.state.user.get("id")
 
-    employment_request_result = await db.execute(
+    result = await db.execute(
         select(EmploymentRequest)
         .where(EmploymentRequest.id == employment_request_id)
         .options(
@@ -66,7 +63,7 @@ async def get_employment_request_by_id(db: DBSession, employment_request_id: int
             joinedload(EmploymentRequest.profession)
         )
     )
-    employment_request = employment_request_result.scalars().first()
+    employment_request = result.scalars().first()
 
     if employment_request.employee_id != auth_user_id and employment_request.employer_id != auth_user_id:
         raise HTTPException(
@@ -75,7 +72,6 @@ async def get_employment_request_by_id(db: DBSession, employment_request_id: int
         )
 
     return employment_request
-
 
 async def create_employment_request(db: DBSession, employment_create: EmploymentRequestCreate,  request: Request):
     auth_user_id = request.state.user.get("id")
