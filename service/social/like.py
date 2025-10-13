@@ -1,7 +1,5 @@
-from enum import Enum
-
 from fastapi import HTTPException, Request, Response, status
-from sqlalchemy import select, and_, insert, update, func, delete
+from sqlalchemy import select, and_, insert, delete
 
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession, Pagination
@@ -10,19 +8,7 @@ from core.logger import logger
 from schema.social.post import UserPostResponse
 from service.social.util.fetch_paginated_posts import fetch_paginated_posts
 from service.social.util.is_post_actioned import is_post_actioned
-
-class LikeTypeEnum(str, Enum):
-    LIKE = "LIKE"
-    UNLIKE = "UNLIKE"
-
-async def _update_post_like_counter(db: DBSession, post_id: int, action_type: LikeTypeEnum,) -> None:
-    delta = 1 if action_type == LikeTypeEnum.LIKE else -1
-
-    await db.execute(
-        update(Post)
-        .where(Post.id == post_id)
-        .values(like_count=func.greatest(Post.like_count + delta, 0))
-    )
+from service.social.util.update_post_counter import update_post_counter, PostActionEnum
 
 async def get_posts_liked_by_user_id(
         db: DBSession,
@@ -45,7 +31,11 @@ async def get_posts_liked_by_user_id(
         base_post_ids_query=base_ids
     )
 
-async def like_post_by_id(db: DBSession, post_id: int, request: Request) -> Response:
+async def like_post_by_id(
+        db: DBSession,
+        post_id: int,
+        request: Request
+) -> Response:
     auth_user_id = request.state.user.get("id")
 
     try:
@@ -62,11 +52,8 @@ async def like_post_by_id(db: DBSession, post_id: int, request: Request) -> Resp
                 insert(Like)
                 .values(user_id=auth_user_id, post_id=post_id))
 
-            await _update_post_like_counter(
-                db=db,
-                post_id=post_id,
-                action_type=LikeTypeEnum.LIKE
-            )
+            await update_post_counter(db, Like, post_id, PostActionEnum.ADD)
+
         return Response(status_code=status.HTTP_201_CREATED)
     except Exception as e:
         logger.error(f"Post could not be liked: {e}")
@@ -75,7 +62,11 @@ async def like_post_by_id(db: DBSession, post_id: int, request: Request) -> Resp
             detail='Something went wrong'
         )
 
-async def unlike_post_by_id(db: DBSession, post_id: int, request: Request) -> Response:
+async def unlike_post_by_id(
+        db: DBSession,
+        post_id: int,
+        request: Request
+) -> Response:
     auth_user_id = request.state.user.get("id")
 
     try:
@@ -96,11 +87,8 @@ async def unlike_post_by_id(db: DBSession, post_id: int, request: Request) -> Re
                 ))
             )
 
-            await _update_post_like_counter(
-                db=db,
-                post_id=post_id,
-                action_type=LikeTypeEnum.UNLIKE
-            )
+            await update_post_counter(db, Like, post_id, PostActionEnum.REMOVE)
+
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except Exception as e:
         logger.error(f"Post could not be liked: {e}")

@@ -1,7 +1,5 @@
-from enum import Enum
-
 from fastapi import HTTPException, Request, status, Response
-from sqlalchemy import select, func, and_, update, insert, delete
+from sqlalchemy import select, and_, insert, delete
 
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession, Pagination
@@ -12,20 +10,7 @@ from schema.social.repost import RepostCreate
 from service.social.util.fetch_paginated_posts import fetch_paginated_posts
 from core.logger import logger
 from service.social.util.is_post_actioned import is_post_actioned
-
-
-class RepostTypeEnum(str, Enum):
-    REPOST = "REPOST"
-    UN_REPOST = "UN_REPOST"
-
-async def _update_post_repost_counter(db: DBSession, post_id: int, action_type: RepostTypeEnum) -> None:
-    delta = 1 if action_type == RepostTypeEnum.REPOST else -1
-
-    await db.execute(
-        update(Post)
-        .where(Post.id == post_id)
-        .values(repost_count=func.greatest(Post.repost_count + delta, 0))
-    )
+from service.social.util.update_post_counter import update_post_counter, PostActionEnum
 
 async def get_reposts_by_user(
         db: DBSession,
@@ -83,11 +68,8 @@ async def repost_post_by_id(
                     comment=repost_create.comment,
                 ))
 
-            await _update_post_repost_counter(
-                db=db,
-                post_id=post_id,
-                action_type=RepostTypeEnum.REPOST
-            )
+            await update_post_counter(db, Repost, post_id, PostActionEnum.ADD)
+
         return Response(status_code=status.HTTP_201_CREATED)
 
     except Exception as e:
@@ -97,7 +79,11 @@ async def repost_post_by_id(
             detail='Something went wrong'
         )
 
-async def un_repost_post_by_id(db: DBSession, post_id: int, request: Request) -> Response:
+async def un_repost_post_by_id(
+        db: DBSession,
+        post_id: int,
+        request: Request
+) -> Response:
     auth_user_id = request.state.user.get("id")
 
     try:
@@ -118,11 +104,8 @@ async def un_repost_post_by_id(db: DBSession, post_id: int, request: Request) ->
                 ))
             )
 
-            await _update_post_repost_counter(
-                db=db,
-                post_id=post_id,
-                action_type=RepostTypeEnum.UN_REPOST
-            )
+            await update_post_counter(db, Repost, post_id, PostActionEnum.REMOVE)
+
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     except Exception as e:
