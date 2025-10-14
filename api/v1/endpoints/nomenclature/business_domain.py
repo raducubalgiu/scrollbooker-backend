@@ -6,7 +6,8 @@ from starlette import status
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession, SuperAdminSession, Pagination
 from schema.nomenclature.business_domain import BusinessDomainResponse, BusinessDomainCreate, BusinessDomainUpdate
-from service.nomenclature.business_domain import create_new_business_domain, get_all_business_domain, update_business_domain_by_id, delete_business_domain_by_id
+from service.nomenclature.business_domain import create_new_business_domain, get_all_business_domain, \
+    update_business_domain_by_id, delete_business_domain_by_id, get_all_business_domains_with_business_types
 
 router = APIRouter(prefix="/business-domains", tags=["Businesses Domain"])
 
@@ -15,6 +16,11 @@ router = APIRouter(prefix="/business-domains", tags=["Businesses Domain"])
     response_model=Union[PaginatedResponse[BusinessDomainResponse], list[BusinessDomainResponse]])
 async def get_business_domain(db: DBSession, pagination: Pagination):
     return await get_all_business_domain(db, pagination)
+
+@router.get("/with-business-types",
+            summary='List All Business Domains with Business Types')
+async def get_business_domains_with_business_types(db: DBSession):
+    return await get_all_business_domains_with_business_types(db)
 
 @router.post("/",
     summary='Create New Business Domain',

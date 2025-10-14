@@ -1,8 +1,11 @@
+from sqlalchemy.orm import joinedload
+
 from core.crud_helpers import db_create, db_get_all, db_delete, db_update
 from core.dependencies import DBSession, Pagination
 from models import BusinessDomain
 from schema.nomenclature.business_domain import BusinessDomainCreate, BusinessDomainUpdate, \
-    BusinessDomainResponse
+    BusinessDomainResponse, BusinessDomainsWithBusinessTypes
+
 
 async def get_all_business_domain(db: DBSession, pagination: Pagination):
     return await db_get_all(db,
@@ -10,6 +13,15 @@ async def get_all_business_domain(db: DBSession, pagination: Pagination):
                             schema=BusinessDomainResponse,
                             page=pagination.page,
                             limit=pagination.limit,
+                            order_by="created_at",
+                            descending=True)
+
+async def get_all_business_domains_with_business_types(db: DBSession):
+    return await db_get_all(db,
+                            model=BusinessDomain,
+                            schema=BusinessDomainsWithBusinessTypes,
+                            joins=[joinedload(BusinessDomain.business_types)],
+                            unique=True,
                             order_by="created_at",
                             descending=True)
 
