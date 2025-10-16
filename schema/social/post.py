@@ -3,7 +3,6 @@ from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel
 
-from schema.booking.product import ProductResponse
 from schema.social.hashtag import HashtagResponse
 from schema.social.post_media import PostMediaBase, PostMediaResponse
 from schema.user.user import UserBaseMinimum
@@ -18,6 +17,8 @@ class PostFixedSlots(BaseModel):
 
 class PostBase(BaseModel):
     business_type_id: int
+    business_id: int
+    employee_id: Optional[int] = None
 
     hashtags: Optional[List[str]] = []
     mentions: Optional[List[int]] = []
@@ -25,7 +26,8 @@ class PostBase(BaseModel):
     description: Optional[str] = None
     product_id: Optional[int] = None
 
-    instant_booking: bool = True
+    is_video_review: Optional[bool] = False
+    rating: Optional[int] = None
     bookable: Optional[bool] = True
 
     is_last_minute: Optional[bool] = False
@@ -99,10 +101,22 @@ class PostUserActions(BaseModel):
     is_reposted: bool
     is_bookmarked: bool
 
+class PostBusinessOwner(BaseModel):
+    id: int
+    fullname: str
+    avatar: Optional[str] = None
+
+class PostEmployee(BaseModel):
+    id: int
+    fullname: str
+    avatar: Optional[str] = None
+
 class UserPostResponse(BaseModel):
     id: int
     description: Optional[str] = None
     user: UserBaseMinimum
+    business_owner: PostBusinessOwner
+    employee: Optional[PostEmployee] = None
     product: Optional[PostProduct] = None
     counters: PostCounters
     media_files: List[PostMediaResponse]
@@ -110,8 +124,9 @@ class UserPostResponse(BaseModel):
     mentions: Optional[List[UserBaseMinimum]] = []
     hashtags: Optional[List[HashtagResponse]] = []
     business_id: Optional[int] = None
+    is_video_review: bool
+    rating: Optional[int] = None
     bookable: bool
-    instant_booking: bool
     last_minute: LastMinute
     created_at: datetime
 

@@ -1,5 +1,4 @@
 from fastapi import HTTPException
-from sqlalchemy.orm import joinedload
 from starlette.requests import Request
 from starlette import status
 
@@ -10,7 +9,6 @@ from sqlalchemy import select, update, insert, func
 from models import Comment, CommentLike, CommentPostLike, Post, User, Review, UserCounters
 from core.logger import logger
 from schema.user.user import UserBaseMinimum
-
 
 async def create_new_comment(db: DBSession, post_id: int, comment_data: CommentCreate, request: Request):
     auth_user_id = request.state.user.get("id")

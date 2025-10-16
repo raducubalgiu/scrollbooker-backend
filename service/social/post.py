@@ -1,14 +1,15 @@
 from typing import Optional, List
 
 from fastapi import HTTPException, Query
+from sqlalchemy.orm import aliased
 from starlette.requests import Request
 from starlette import status
 from sqlalchemy import select, desc, func, literal, and_
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession, Pagination
-from models import User, Follow, PostMedia, Repost, BookmarkPost, UserCounters, Like, Product, Currency
+from models import User, Follow, PostMedia, Repost, BookmarkPost, UserCounters, Like, Product, Currency, Business
 from schema.social.post import PostCreate, UserPostResponse, PostCounters, LastMinute, PostUserActions, PostProduct, \
-    PostProductCurrency
+    PostProductCurrency, PostBusinessOwner, PostEmployee
 from models.social.post import Post
 from core.logger import logger
 from schema.user.user import UserBaseMinimum
@@ -22,6 +23,9 @@ async def get_explore_feed_posts(
         business_types: Optional[List[int]] = Query(default=None)
 ):
     auth_user_id = request.state.user.get("id")
+
+    BusinessOwner = aliased(User)
+    Employee = aliased(User)
 
     is_liked = (
         select(literal(True))
@@ -82,12 +86,10 @@ async def get_explore_feed_posts(
     query = (
         select(
             Post,
-            User.id,
-            User.fullname,
-            User.username,
-            User.avatar,
-            User.profession,
+            User.id, User.fullname, User.username, User.avatar, User.profession,
             UserCounters.ratings_average,
+            BusinessOwner.id, BusinessOwner.fullname, BusinessOwner.avatar,
+            Employee.id, Employee.fullname, Employee.avatar,
             Product,
             Currency,
             is_liked,
@@ -96,9 +98,12 @@ async def get_explore_feed_posts(
             is_follow,
         )
         .join(User, User.id == Post.user_id)
+        .join(UserCounters, UserCounters.user_id == User.id)
+        .join(Business, Business.id == Post.business_id)
+        .join(BusinessOwner, BusinessOwner.id == Business.owner_id)
+        .outerjoin(Employee, Employee.id == Post.employee_id)
         .outerjoin(Product, Product.id == Post.product_id)
-        .outerjoin(Currency, Currency.id == Product.currency_id)
-        .join(UserCounters, UserCounters.user_id == User.id))
+        .outerjoin(Currency, Currency.id == Product.currency_id))
 
     if business_types:
         query = query.where(Post.business_type_id.in_(business_types))
@@ -118,8 +123,9 @@ async def get_explore_feed_posts(
 
     results = []
 
-    for post, u_id, u_fullname, u_username, u_avatar, u_profession, u_ratings_average, product, currency, is_liked, is_reposted, is_bookmarked, is_follow in posts:
+    for post, u_id, u_fullname, u_username, u_avatar, u_profession, u_ratings_average, bo_id, bo_fullname, bo_avatar, e_id, e_fullname, e_avatar, product, currency, is_liked, is_reposted, is_bookmarked, is_follow in posts:
         media_files = media_map.get(post.id, [])
+        employee = PostEmployee(id=e_id, fullname=e_fullname, avatar=e_avatar) if e_id and e_fullname else None
 
         results.append(UserPostResponse(
             id=post.id,
@@ -133,6 +139,8 @@ async def get_explore_feed_posts(
                 is_follow=is_follow,
                 ratings_average=u_ratings_average,
             ),
+            business_owner=PostBusinessOwner(id=bo_id, fullname=bo_fullname, avatar=bo_avatar),
+            employee=employee,
             business_id=post.business_id,
             product=PostProduct(
                 id=product.id,
@@ -163,7 +171,8 @@ async def get_explore_feed_posts(
             mentions=post.mentions,
             hashtags=post.hashtags,
             bookable=post.bookable,
-            instant_booking=post.instant_booking,
+            rating=post.rating,
+            is_video_review=post.is_video_review,
             last_minute=LastMinute(
                 is_last_minute=post.is_last_minute,
                 last_minute_end=post.last_minute_end,

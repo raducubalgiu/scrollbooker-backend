@@ -1,12 +1,13 @@
 from typing import Tuple
 
-from sqlalchemy import select, literal, and_, func, desc
+from sqlalchemy import select, literal, and_, func, desc, or_
+from sqlalchemy.orm import aliased
 from sqlalchemy.sql import Select
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import Pagination, DBSession
-from models import Like, Post, Repost, BookmarkPost, Follow, User, UserCounters, Product, Currency
+from models import Like, Post, Repost, BookmarkPost, Follow, User, UserCounters, Product, Currency, Business
 from schema.social.post import UserPostResponse, PostProduct, PostProductCurrency, PostCounters, PostUserActions, \
-    LastMinute
+    LastMinute, PostBusinessOwner, PostEmployee
 from schema.user.user import UserBaseMinimum
 from service.social.post_media import get_post_media
 
@@ -16,6 +17,9 @@ def build_posts_list_query(
         base_post_ids_query: Select
 ) -> Tuple[Select, Select]:
     ids_sq = base_post_ids_query.subquery()
+
+    BusinessOwner = aliased(User)
+    Employee = aliased(User)
 
     is_liked = (
         select(literal(True))
@@ -68,6 +72,12 @@ def build_posts_list_query(
             Post,
             User.id, User.fullname, User.username, User.avatar, User.profession,
             UserCounters.ratings_average,
+            BusinessOwner.id.label('bo_id'),
+            BusinessOwner.fullname.label('bo_fullname'),
+            BusinessOwner.avatar.label("bo_avatar"),
+            Employee.id.label('e_id'),
+            Employee.fullname.label('e_fullname'),
+            Employee.avatar.label("e_avatar"),
             Product,
             Currency,
             is_liked.label('is_liked'),
@@ -77,9 +87,20 @@ def build_posts_list_query(
         )
         .join(ids_sq, ids_sq.c.id == Post.id)
         .join(User, User.id == Post.user_id)
+        .join(UserCounters, UserCounters.user_id == User.id)
+
+        # Business
+        .join(Business, Business.id == Post.business_id)
+
+        # Business Owner
+        .join(BusinessOwner, BusinessOwner.id == Business.owner_id)
+
+        # Employee
+        .outerjoin(Employee, Employee.id == Post.employee_id)
+
         .outerjoin(Product, Product.id == Post.product_id)
         .outerjoin(Currency, Currency.id == Product.currency_id)
-        .join(UserCounters, UserCounters.user_id == User.id)
+
         .order_by(desc(Post.created_at))
         .offset((pagination.page - 1) * pagination.limit)
         .limit(pagination.limit)
@@ -90,6 +111,8 @@ def row_to_response(row, media_map) -> UserPostResponse:
     (
          post,
          u_id, u_fullname, u_username, u_avatar, u_profession, u_ratings_avg,
+         bo_id, bo_fullname, bo_avatar,
+         e_id, e_fullname, e_avatar,
          product,
          currency,
          is_liked,
@@ -97,8 +120,9 @@ def row_to_response(row, media_map) -> UserPostResponse:
          is_bookmarked,
          is_follow
     ) = row
-
     media_files = media_map.get(post.id, [])
+
+    employee = PostEmployee(id=e_id, fullname=e_fullname, avatar=e_avatar) if e_id and e_fullname else None
 
     return UserPostResponse(
         id=post.id,
@@ -112,6 +136,8 @@ def row_to_response(row, media_map) -> UserPostResponse:
             is_follow=is_follow,
             ratings_average=u_ratings_avg,
         ),
+        business_owner=PostBusinessOwner(id=bo_id, fullname=bo_fullname, avatar=bo_avatar),
+        employee=employee,
         business_id=post.business_id,
         product=PostProduct(
             id=product.id,
@@ -141,8 +167,9 @@ def row_to_response(row, media_map) -> UserPostResponse:
         ),
         mentions=post.mentions,
         hashtags=post.hashtags,
+        is_video_review=post.is_video_review,
+        rating=post.rating,
         bookable=post.bookable,
-        instant_booking=post.instant_booking,
         last_minute=LastMinute(
             is_last_minute=post.is_last_minute,
             last_minute_end=post.last_minute_end,

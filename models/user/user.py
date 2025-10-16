@@ -50,11 +50,22 @@ class User(Base):
     likes = relationship("Like", back_populates="user")
     bookmark_posts = relationship("BookmarkPost", back_populates="user")
     comments = relationship("Comment", back_populates="user")
-    posts = relationship("Post", back_populates="user")
     schedules = relationship("Schedule", back_populates="user")
     products = relationship("Product", back_populates="user")
     currencies_assoc = relationship("UserCurrency", back_populates="user")
     currencies = association_proxy("currencies_assoc", "currency")
+
+    user_posts = relationship(
+        "Post",
+        foreign_keys="Post.user_id",
+        back_populates="user"
+    )
+
+    employee_posts = relationship(
+        "Post",
+        foreign_keys="Post.employee_id",
+        back_populates="employee"
+    )
 
     owner_business = relationship(
         "Business",
