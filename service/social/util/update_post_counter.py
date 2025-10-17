@@ -5,9 +5,9 @@ from sqlalchemy import update, func
 from sqlalchemy.orm import InstrumentedAttribute
 
 from core.dependencies import DBSession
-from models import Like, BookmarkPost, Repost, Post
+from models import Like, BookmarkPost, Repost, Post, Comment
 
-ActionTable = Union[Type[Like], Type[BookmarkPost], Type[Repost]]
+ActionTable = Union[Type[Like], Type[BookmarkPost], Type[Repost], Type[Comment]]
 
 class PostActionEnum(Enum):
     ADD = 1
@@ -16,7 +16,8 @@ class PostActionEnum(Enum):
 COUNTER_COLUMN_MAP: Final[dict[type, InstrumentedAttribute]] = {
     Like: Post.like_count,
     Repost: Post.repost_count,
-    BookmarkPost: Post.bookmark_count
+    BookmarkPost: Post.bookmark_count,
+    Comment: Post.comment_count
 }
 
 async def update_post_counter(
