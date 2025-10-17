@@ -4,7 +4,6 @@ from sqlalchemy import select, and_, insert, delete
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession, Pagination
 from models import Post, Like
-from core.logger import logger
 from schema.social.post import UserPostResponse
 from service.social.util.fetch_paginated_posts import fetch_paginated_posts
 from service.social.util.is_post_actioned import is_post_actioned
@@ -38,29 +37,22 @@ async def like_post_by_id(
 ) -> Response:
     auth_user_id = request.state.user.get("id")
 
-    try:
-        async with db.begin():
-            is_post_liked = await is_post_actioned(db, Like, post_id, auth_user_id)
+    async with db.begin():
+        is_post_liked = await is_post_actioned(db, Like, post_id, auth_user_id)
 
-            if is_post_liked:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Post already liked"
-                )
+        if is_post_liked:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Post already liked"
+            )
 
-            await db.execute(
-                insert(Like)
-                .values(user_id=auth_user_id, post_id=post_id))
+        await db.execute(
+            insert(Like)
+            .values(user_id=auth_user_id, post_id=post_id))
 
-            await update_post_counter(db, Like, post_id, PostActionEnum.ADD)
+        await update_post_counter(db, Like, post_id, PostActionEnum.ADD)
 
         return Response(status_code=status.HTTP_201_CREATED)
-    except Exception as e:
-        logger.error(f"Post could not be liked: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='Something went wrong'
-        )
 
 async def unlike_post_by_id(
         db: DBSession,
@@ -69,30 +61,23 @@ async def unlike_post_by_id(
 ) -> Response:
     auth_user_id = request.state.user.get("id")
 
-    try:
-        async with db.begin():
-            is_post_liked = await is_post_actioned(db, Like, post_id, auth_user_id)
+    async with db.begin():
+        is_post_liked = await is_post_actioned(db, Like, post_id, auth_user_id)
 
-            if not is_post_liked:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Like not found"
-                )
-
-            await db.execute(
-                delete(Like)
-                .where(and_(
-                    Like.user_id == auth_user_id,
-                    Like.post_id == post_id
-                ))
+        if not is_post_liked:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Like not found"
             )
 
-            await update_post_counter(db, Like, post_id, PostActionEnum.REMOVE)
+        await db.execute(
+            delete(Like)
+            .where(and_(
+                Like.user_id == auth_user_id,
+                Like.post_id == post_id
+            ))
+        )
+
+        await update_post_counter(db, Like, post_id, PostActionEnum.REMOVE)
 
         return Response(status_code=status.HTTP_204_NO_CONTENT)
-    except Exception as e:
-        logger.error(f"Post could not be liked: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='Something went wrong'
-        )

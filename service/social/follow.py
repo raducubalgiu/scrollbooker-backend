@@ -7,7 +7,6 @@ from core.dependencies import DBSession
 from core.enums.follow_type import FollowTypeEnum
 from core.enums.notification_type import NotificationTypeEnum
 from models import Follow, User, UserCounters, Notification
-from core.logger import logger
 from schema.social.follow import FollowResponse
 
 async def _update_counters(
@@ -63,40 +62,35 @@ async def follow_user(
 ) -> Response:
     follower_id = request.state.user.get("id")
 
-    try:
-        async with db.begin():
-            # Check Follow
-            if await is_user_follow(db, followee_id, request):
-                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Already followed!')
+    async with db.begin():
+        # Check Follow
+        if await is_user_follow(db, followee_id, request):
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Already followed!')
 
-            # Follow
-            await db.execute(
-                insert(Follow)
-                .values(follower_id=follower_id, followee_id=followee_id))
+        # Follow
+        await db.execute(
+            insert(Follow)
+            .values(follower_id=follower_id, followee_id=followee_id))
 
-            # Update Counters
-            await _update_counters(
-                db=db,
-                followee_id=followee_id,
-                follower_id=follower_id,
-                action_type=FollowTypeEnum.FOLLOW
-            )
+        # Update Counters
+        await _update_counters(
+            db=db,
+            followee_id=followee_id,
+            follower_id=follower_id,
+            action_type=FollowTypeEnum.FOLLOW
+        )
 
-            # Send Followee follow notification
-            notification = Notification(
-                type=NotificationTypeEnum.FOLLOW,
-                sender_id=follower_id,
-                receiver_id=followee_id,
-                data={},
-                message=None
-            )
-            db.add(notification)
+        # Send Followee follow notification
+        notification = Notification(
+            type=NotificationTypeEnum.FOLLOW,
+            sender_id=follower_id,
+            receiver_id=followee_id,
+            data={},
+            message=None
+        )
+        db.add(notification)
 
         return Response(status_code=status.HTTP_201_CREATED)
-    except Exception as e:
-        logger.error(f"User: {followee_id} could not be followed by User: {follower_id}. Error: {e}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail='Something went wrong')
 
 async def unfollow_user(
         db :DBSession,
@@ -105,29 +99,25 @@ async def unfollow_user(
 ) -> Response:
     follower_id = request.state.user.get("id")
 
-    try:
-        async with db.begin():
-            # Check Follow
-            if await is_user_follow(db, followee_id, request):
-                raise HTTPException(status_code=400, detail='Not follow this user!')
+    async with db.begin():
+        # Check Follow
+        if await is_user_follow(db, followee_id, request):
+            raise HTTPException(status_code=400, detail='Not follow this user!')
 
-            # Unfollow
-            await db.execute(
-                delete(Follow).where(and_(
-                    Follow.follower_id == follower_id,
-                    Follow.followee_id == followee_id
-                ))
-            )
+        # Unfollow
+        await db.execute(
+            delete(Follow).where(and_(
+                Follow.follower_id == follower_id,
+                Follow.followee_id == followee_id
+            ))
+        )
 
-            # Update Counters
-            await _update_counters(
-                db=db,
-                followee_id=followee_id,
-                follower_id=follower_id,
-                action_type=FollowTypeEnum.UNFOLLOW
-            )
+        # Update Counters
+        await _update_counters(
+            db=db,
+            followee_id=followee_id,
+            follower_id=follower_id,
+            action_type=FollowTypeEnum.UNFOLLOW
+        )
+
         return Response(status_code=status.HTTP_204_NO_CONTENT)
-    except Exception as e:
-        logger.error(f"User: {followee_id} could not be unfollowed by the User: {follower_id}. Error: {e}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail='Something went wrong')

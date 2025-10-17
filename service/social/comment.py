@@ -319,7 +319,7 @@ async def like_post_comment(
                 )
             )
 
-    return Response(status_code=status.HTTP_201_CREATED)
+        return Response(status_code=status.HTTP_201_CREATED)
 
 async def unlike_post_comment(
         db: DBSession,

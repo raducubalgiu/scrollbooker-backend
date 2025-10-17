@@ -6,7 +6,6 @@ from core.dependencies import DBSession, Pagination
 from models import BookmarkPost, Post
 from schema.social.post import UserPostResponse
 from service.social.util.fetch_paginated_posts import fetch_paginated_posts
-from core.logger import logger
 from service.social.util.is_post_actioned import is_post_actioned
 from service.social.util.update_post_counter import update_post_counter, PostActionEnum
 
@@ -38,29 +37,22 @@ async def bookmark_post_by_id(
 ) -> Response:
     auth_user_id = request.state.user.get("id")
 
-    try:
-        async with db.begin():
-            is_post_bookmarked = await is_post_actioned(db, BookmarkPost, post_id, auth_user_id)
+    async with db.begin():
+        is_post_bookmarked = await is_post_actioned(db, BookmarkPost, post_id, auth_user_id)
 
-            if is_post_bookmarked:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Post already bookmarked"
-                )
+        if is_post_bookmarked:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Post already bookmarked"
+            )
 
-            await db.execute(
-                insert(BookmarkPost)
-                .values(user_id=auth_user_id, post_id=post_id))
+        await db.execute(
+            insert(BookmarkPost)
+            .values(user_id=auth_user_id, post_id=post_id))
 
-            await update_post_counter(db, BookmarkPost, post_id, PostActionEnum.ADD)
+        await update_post_counter(db, BookmarkPost, post_id, PostActionEnum.ADD)
 
         return Response(status_code=status.HTTP_201_CREATED)
-    except Exception as e:
-        logger.error(f"Post could not be bookmarked: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='Something went wrong'
-        )
 
 async def unbookmark_post_by_id(
         db: DBSession,
@@ -69,30 +61,23 @@ async def unbookmark_post_by_id(
 ) -> Response:
     auth_user_id = request.state.user.get("id")
 
-    try:
-        async with db.begin():
-            is_post_bookmarked = await is_post_actioned(db, BookmarkPost, post_id, auth_user_id)
+    async with db.begin():
+        is_post_bookmarked = await is_post_actioned(db, BookmarkPost, post_id, auth_user_id)
 
-            if not is_post_bookmarked:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Bookmark not found"
-                )
-
-            await db.execute(
-                delete(BookmarkPost)
-                .where(and_(
-                    BookmarkPost.user_id == auth_user_id,
-                    BookmarkPost.post_id == post_id
-                ))
+        if not is_post_bookmarked:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Bookmark not found"
             )
 
-            await update_post_counter(db, BookmarkPost, post_id, PostActionEnum.REMOVE)
+        await db.execute(
+            delete(BookmarkPost)
+            .where(and_(
+                BookmarkPost.user_id == auth_user_id,
+                BookmarkPost.post_id == post_id
+            ))
+        )
+
+        await update_post_counter(db, BookmarkPost, post_id, PostActionEnum.REMOVE)
 
         return Response(status_code=status.HTTP_204_NO_CONTENT)
-    except Exception as e:
-        logger.error(f"Post could not be unbookmarked: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='Something went wrong'
-        )

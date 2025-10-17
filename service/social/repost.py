@@ -8,7 +8,6 @@ from models.social.post import Post
 from schema.social.post import UserPostResponse
 from schema.social.repost import RepostCreate
 from service.social.util.fetch_paginated_posts import fetch_paginated_posts
-from core.logger import logger
 from service.social.util.is_post_actioned import is_post_actioned
 from service.social.util.update_post_counter import update_post_counter, PostActionEnum
 
@@ -41,43 +40,35 @@ async def repost_post_by_id(
 ) -> Response:
     auth_user_id = request.state.user.get("id")
 
-    try:
-        async with db.begin():
-            post = await db.get(Post, post_id)
+    async with db.begin():
+        post = await db.get(Post, post_id)
 
-            if not post:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Post not found"
-                )
+        if not post:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Post not found"
+            )
 
-            is_post_reposted = await is_post_actioned(db, Repost, post_id, auth_user_id)
+        is_post_reposted = await is_post_actioned(db, Repost, post_id, auth_user_id)
 
-            if is_post_reposted:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Post already reposted"
-                )
+        if is_post_reposted:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Post already reposted"
+            )
 
-            await db.execute(
-                insert(Repost)
-                .values(
-                    user_id=auth_user_id,
-                    post_id=post_id,
-                    original_poster_id=post.user_id,
-                    comment=repost_create.comment,
-                ))
+        await db.execute(
+            insert(Repost)
+            .values(
+                user_id=auth_user_id,
+                post_id=post_id,
+                original_poster_id=post.user_id,
+                comment=repost_create.comment,
+            ))
 
-            await update_post_counter(db, Repost, post_id, PostActionEnum.ADD)
+        await update_post_counter(db, Repost, post_id, PostActionEnum.ADD)
 
         return Response(status_code=status.HTTP_201_CREATED)
-
-    except Exception as e:
-        logger.error(f"Post could not be reposted: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='Something went wrong'
-        )
 
 async def un_repost_post_by_id(
         db: DBSession,
@@ -86,31 +77,23 @@ async def un_repost_post_by_id(
 ) -> Response:
     auth_user_id = request.state.user.get("id")
 
-    try:
-        async with db.begin():
-            is_post_reposted = await is_post_actioned(db, Repost, post_id, auth_user_id)
+    async with db.begin():
+        is_post_reposted = await is_post_actioned(db, Repost, post_id, auth_user_id)
 
-            if not is_post_reposted:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Repost not found"
-                )
-
-            await db.execute(
-                delete(Repost)
-                .where(and_(
-                    Repost.user_id == auth_user_id,
-                    Repost.post_id == post_id
-                ))
+        if not is_post_reposted:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Repost not found"
             )
 
-            await update_post_counter(db, Repost, post_id, PostActionEnum.REMOVE)
+        await db.execute(
+            delete(Repost)
+            .where(and_(
+                Repost.user_id == auth_user_id,
+                Repost.post_id == post_id
+            ))
+        )
+
+        await update_post_counter(db, Repost, post_id, PostActionEnum.REMOVE)
 
         return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-    except Exception as e:
-        logger.error(f"Post could not be un_reposted: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='Something went wrong'
-        )
