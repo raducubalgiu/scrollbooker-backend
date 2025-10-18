@@ -22,6 +22,7 @@ class CommentResponse(CommentBase):
     like_count: int
     is_liked: bool
     liked_by_post_author: bool
+    replies_count: int
     created_at: datetime
     updated_at: Optional[datetime] = None
 
