@@ -67,6 +67,12 @@ class User(Base):
         back_populates="employee"
     )
 
+    business_owner_posts = relationship(
+        "Post",
+        foreign_keys="Post.business_owner_id",
+        back_populates="business_owner"
+    )
+
     owner_business = relationship(
         "Business",
         back_populates="business_owner",

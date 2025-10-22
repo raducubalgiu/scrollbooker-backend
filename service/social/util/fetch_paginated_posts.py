@@ -7,8 +7,7 @@ from core.crud_helpers import PaginatedResponse
 from core.dependencies import Pagination, DBSession
 from models import Like, Post, Repost, BookmarkPost, Follow, User, UserCounters, Product, Currency, Business
 from schema.social.post import UserPostResponse, PostProduct, PostProductCurrency, PostCounters, PostUserActions, \
-    LastMinute, PostBusinessOwner, PostEmployee
-from schema.user.user import UserBaseMinimum
+    LastMinute, PostBusinessOwner, PostEmployee, PostUser
 from service.social.post_media import get_post_media
 
 def build_posts_list_query(
@@ -19,6 +18,7 @@ def build_posts_list_query(
     ids_sq = base_post_ids_query.subquery()
 
     BusinessOwner = aliased(User)
+    OwnerCounters = aliased(UserCounters)
     Employee = aliased(User)
 
     is_liked = (
@@ -72,9 +72,11 @@ def build_posts_list_query(
             Post,
             User.id, User.fullname, User.username, User.avatar, User.profession,
             UserCounters.ratings_average,
+            UserCounters.ratings_count,
             BusinessOwner.id.label('bo_id'),
             BusinessOwner.fullname.label('bo_fullname'),
             BusinessOwner.avatar.label("bo_avatar"),
+            OwnerCounters.ratings_average.label("bo_ratings_average"),
             Employee.id.label('e_id'),
             Employee.fullname.label('e_fullname'),
             Employee.avatar.label("e_avatar"),
@@ -93,7 +95,8 @@ def build_posts_list_query(
         .join(Business, Business.id == Post.business_id)
 
         # Business Owner
-        .join(BusinessOwner, BusinessOwner.id == Business.owner_id)
+        .join(BusinessOwner, BusinessOwner.id == Post.business_owner_id)
+        .join(OwnerCounters, OwnerCounters.user_id == BusinessOwner.id)
 
         # Employee
         .outerjoin(Employee, Employee.id == Post.employee_id)
@@ -110,8 +113,8 @@ def build_posts_list_query(
 def row_to_response(row, media_map) -> UserPostResponse:
     (
          post,
-         u_id, u_fullname, u_username, u_avatar, u_profession, u_ratings_avg,
-         bo_id, bo_fullname, bo_avatar,
+         u_id, u_fullname, u_username, u_avatar, u_profession, u_ratings_avg, u_ratings_count,
+         bo_id, bo_fullname, bo_avatar, bo_ratings_average,
          e_id, e_fullname, e_avatar,
          product,
          currency,
@@ -127,7 +130,7 @@ def row_to_response(row, media_map) -> UserPostResponse:
     return UserPostResponse(
         id=post.id,
         description=post.description,
-        user=UserBaseMinimum(
+        user=PostUser(
             id=u_id,
             fullname=u_fullname,
             username=u_username,
@@ -135,8 +138,14 @@ def row_to_response(row, media_map) -> UserPostResponse:
             profession=u_profession,
             is_follow=is_follow,
             ratings_average=u_ratings_avg,
+            ratings_count=u_ratings_count
         ),
-        business_owner=PostBusinessOwner(id=bo_id, fullname=bo_fullname, avatar=bo_avatar),
+        business_owner=PostBusinessOwner(
+            id=bo_id,
+            fullname=bo_fullname,
+            avatar=bo_avatar,
+            ratings_average=bo_ratings_average
+        ),
         employee=employee,
         business_id=post.business_id,
         product=PostProduct(
@@ -157,7 +166,7 @@ def row_to_response(row, media_map) -> UserPostResponse:
             like_count=post.like_count,
             bookmark_count=post.bookmark_count,
             repost_count=post.repost_count,
-            bookings_count=post.bookings_count
+            bookings_count=post.bookings_count,
         ),
         media_files=media_files,
         user_actions=PostUserActions(

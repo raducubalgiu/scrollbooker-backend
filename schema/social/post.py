@@ -96,6 +96,16 @@ class LastMinute(BaseModel):
     class Config:
         from_attributes = True
 
+class PostUser(BaseModel):
+    id: int
+    fullname: str
+    username: str
+    profession: str
+    avatar: Optional[str] = None
+    is_follow: bool
+    ratings_average: float
+    ratings_count: int
+
 class PostUserActions(BaseModel):
     is_liked: bool
     is_reposted: bool
@@ -105,6 +115,7 @@ class PostBusinessOwner(BaseModel):
     id: int
     fullname: str
     avatar: Optional[str] = None
+    ratings_average: float
 
 class PostEmployee(BaseModel):
     id: int
@@ -114,7 +125,7 @@ class PostEmployee(BaseModel):
 class UserPostResponse(BaseModel):
     id: int
     description: Optional[str] = None
-    user: UserBaseMinimum
+    user: PostUser
     business_owner: PostBusinessOwner
     employee: Optional[PostEmployee] = None
     product: Optional[PostProduct] = None

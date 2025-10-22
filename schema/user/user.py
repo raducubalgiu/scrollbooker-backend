@@ -11,8 +11,8 @@ from schema.user.user_counters import UserCountersBase
 
 class UserBaseMinimum(BaseModel):
     id: int
-    fullname: Optional[str] = None
-    username: str = None
+    fullname: str
+    username: str
     profession: Optional[str] = None
     avatar: Optional[str] = None
     is_follow: Optional[bool] = None

@@ -14,9 +14,13 @@ class Post(Base):
 
     business_type_id = Column(Integer, ForeignKey("business_types.id", ondelete="CASCADE"), nullable=False, index=True)
     business_id = Column(Integer, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=False, index=True)
+    business_owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Just for Video Review Posts
     employee_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
 
     is_video_review = Column(Boolean, nullable=False, default=False)
+    video_review_message = Column(String(255), nullable=True)
     rating = Column(Integer, nullable=True)
 
     bookable = Column(Boolean, nullable=False, default=True)
@@ -53,6 +57,11 @@ class Post(Base):
         foreign_keys=[employee_id],
         back_populates="employee_posts"
     )
+    business_owner = relationship(
+        "User",
+        foreign_keys=[business_owner_id],
+        back_populates="business_owner_posts"
+    )
     product = relationship("Product", back_populates="posts")
     comments = relationship("Comment", back_populates="post", cascade="all, delete")
     media_files = relationship(
@@ -63,13 +72,32 @@ class Post(Base):
     )
 
     __table_args__ = (
-        Index("idx_post_user", "user_id"),
-        Index("idx_post_business_id", "business_id"),
-        Index("idx_post_employee_id", "employee_id"),
-        Index("idx_post_product_id", "product_id"),
-        Index("idx_post_created_at", "created_at"),
+        Index("idx_posts_user_id", "user_id"),
+        Index("idx_posts_business_id", "business_id"),
+        Index("idx_posts_business_owner_id", "business_owner_id"),
+        Index("idx_posts_business_type_id", "business_type_id"),
+        Index("idx_posts_employee_id", "employee_id"),
+        Index("idx_posts_product_id", "product_id"),
+        Index("idx_posts_created_at", "created_at"),
 
-        Index("idx_post_is_last_minute", "is_last_minute"),
-        Index("idx_post_last_minute_created", "is_last_minute", "created_at"),
-        Index("idx_business_type_id_created", "business_type_id", "created_at")
+
+        Index("idx_posts_query_compound",
+          "user_id",
+                      "business_id",
+                      "business_owner_id",
+                      "business_type_id",
+                      "employee_id",
+                      "product_id",
+                      "created_at"
+              )
+
+        # -- Index for video reviews employees
+        # CREATE INDEX IF NOT EXISTS idx_posts_vr_employee_created_desc
+        # ON POSTS (employee_id, created_at DESC)
+        # WHERE is_video_review = TRUE;
+
+        # -- Index for video reviews business_owner
+        # CREATE INDEX IF NOT EXISTS idx_posts_vr_owner_created_desc
+        # ON POSTS (business_owner_id, created_at DESC)
+        # WHERE is_video_review = TRUE;
     )
