@@ -12,14 +12,12 @@ from starlette.requests import Request
 from core.crud_helpers import db_get_all, db_get_one, db_update
 from core.dependencies import DBSession
 from core.enums.appointment_status_enum import AppointmentStatusEnum
-from core.enums.registration_step_enum import RegistrationStepEnum
 from core.enums.role_enum import RoleEnum
 from models import User, Follow, Appointment, Product, Business, Role, BusinessType, Schedule, UserCounters
 from sqlalchemy import select, func, case, and_, or_, distinct, exists, literal_column
 from schema.user.user import UsernameUpdate, FullNameUpdate, BioUpdate, GenderUpdate, UserProfileResponse, \
-    OpeningHours, UserBaseMinimum, SearchUsername, SearchUsernameResponse, BirthDateUpdate, UserAuthStateResponse, \
-    UserUpdateResponse, WebsiteUpdate, PublicEmailUpdate
-
+    OpeningHours, SearchUsername, SearchUsernameResponse, BirthDateUpdate, UserAuthStateResponse, \
+    UserUpdateResponse, WebsiteUpdate, PublicEmailUpdate, UserProfileBusinessOwner
 
 async def search_available_username(db: DBSession, query: SearchUsername = Depends()):
     result = await db.execute(select(User.id).where(and_(User.username == query.username)))
@@ -61,8 +59,6 @@ async def generate_username_suggestions(db: DBSession, base: str, max_suggestion
 
 async def get_user_profile_by_id(db: DBSession, user_id: int, request: Request):
     auth_user_id = request.state.user.get("id")
-
-    # 44.450653, 25.992614
 
     lat = 44.450653
     lng = 25.992614
@@ -122,17 +118,18 @@ async def get_user_profile_by_id(db: DBSession, user_id: int, request: Request):
     business_ower = None
 
     if user.business_id is not None:
-        business = await db_get_one(db,
-                                    model=Business,
-                                    filters={Business.id: user.business_id},
-                                    joins=[joinedload(Business.business_owner)])
+        business = await db_get_one(
+            db=db,
+            model=Business,
+            filters={Business.id: user.business_id},
+            joins=[joinedload(Business.business_owner)]
+        )
 
-        business_ower = UserBaseMinimum(
+        business_ower = UserProfileBusinessOwner(
             id = business.business_owner.id,
             fullname=business.business_owner.fullname,
             username=business.business_owner.username,
             avatar=business.business_owner.avatar,
-            is_follow=False
         )
 
     is_business_or_employee = user.employee_business_id is not None or business_ower is not None
@@ -457,7 +454,7 @@ async def get_user_dashboard_summary_by_id(db: DBSession, user_id: int, start_da
 async def get_user_followers_by_user_id(db: DBSession, user_id: int, page: int, limit: int, request: Request):
    auth_user_id = request.state.user.get("id")
 
-   subquery = (
+   is_follow = (
        select(Follow)
        .where(and_(
            Follow.follower_id == auth_user_id,
@@ -467,16 +464,38 @@ async def get_user_followers_by_user_id(db: DBSession, user_id: int, page: int, 
        .exists()
    )
 
+   is_business_or_employee = (
+       select(Role)
+       .where(and_(
+           Role.id == User.role_id,
+           or_(
+               Role.name == RoleEnum.BUSINESS,
+               Role.name == RoleEnum.EMPLOYEE
+           )
+       ))
+       .correlate(User)
+       .exists()
+   )
+
    followers_query = (
-       select(User.id, User.username, User.fullname, User.avatar, subquery.label("is_follow"))
+       select(
+           User.id,
+           User.fullname,
+           User.username,
+           User.profession,
+           User.avatar,
+           UserCounters.ratings_average,
+           is_follow.label("is_follow"),
+           is_business_or_employee.label("is_business_or_employee")
+       )
             .join(Follow, Follow.follower_id == User.id)
+            .join(UserCounters, UserCounters.user_id == User.id)
             .where(Follow.followee_id == user_id)
         )
 
    total_count = await db.execute(followers_query)
 
    followers_query = followers_query.offset((page - 1) * limit).limit(limit)
-
    followers_result = await db.execute(followers_query)
 
    count = len(total_count.scalars().all())
@@ -490,7 +509,7 @@ async def get_user_followers_by_user_id(db: DBSession, user_id: int, page: int, 
 async def get_user_followings_by_user_id(db: DBSession, user_id: int, page: int, limit: int, request: Request):
    auth_user_id = request.state.user.get("id")
 
-   subquery = (
+   is_follow = (
        select(Follow)
        .where(and_(
            Follow.follower_id == auth_user_id,
@@ -500,14 +519,36 @@ async def get_user_followings_by_user_id(db: DBSession, user_id: int, page: int,
        .exists()
    )
 
+   is_business_or_employee = (
+       select(Role)
+       .where(and_(
+           Role.id == User.role_id,
+           or_(
+               Role.name == RoleEnum.BUSINESS,
+               Role.name == RoleEnum.EMPLOYEE
+           )
+       ))
+       .correlate(User)
+       .exists()
+   )
+
    followings_query = (
-       select(User.id, User.username, User.fullname, User.avatar, subquery.label("is_follow"))
+       select(
+           User.id,
+           User.fullname,
+           User.username,
+           User.profession,
+           User.avatar,
+           UserCounters.ratings_average,
+           is_follow.label("is_follow"),
+           is_business_or_employee.label("is_business_or_employee")
+       )
            .join(Follow, Follow.followee_id == User.id)
+           .join(UserCounters, UserCounters.user_id == User.id)
            .where(Follow.follower_id == user_id)
    )
 
    total_count = await db.execute(followings_query)
-
    followings_query = followings_query.offset((page - 1) * limit).limit(limit)
 
    followings_result = await db.execute(followings_query)

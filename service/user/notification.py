@@ -1,14 +1,21 @@
 from fastapi import Request, HTTPException
-from sqlalchemy import select, desc, and_, literal, func
+from sqlalchemy import select, desc, and_, literal, func, or_
 from sqlalchemy.orm import joinedload
 from starlette import status
 
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession
-from models import Notification, Follow, User
+from core.enums.role_enum import RoleEnum
+from models import Notification, Follow, User, Role, UserCounters
 from schema.user.notification import NotificationResponse
+from schema.user.user import UserBaseMinimum
 
-async def get_notifications_by_user_id(db: DBSession, page: int, limit: int, request: Request):
+async def get_notifications_by_user_id(
+        db: DBSession,
+        page: int,
+        limit: int,
+        request: Request
+) -> PaginatedResponse[NotificationResponse]:
     auth_user_id = request.state.user.get("id")
 
     count_stmt = select(func.count()).select_from(Notification).where(
@@ -31,9 +38,28 @@ async def get_notifications_by_user_id(db: DBSession, page: int, limit: int, req
         .exists()
     )
 
+    is_business_or_employee = (
+        select(Role)
+        .where(and_(
+            Role.id == User.role_id,
+            or_(
+                Role.name == RoleEnum.BUSINESS,
+                Role.name == RoleEnum.EMPLOYEE
+            )
+        ))
+        .correlate(User)
+        .exists()
+    )
+
     notifications_result = await db.execute(
-        select(Notification, is_follow)
+        select(
+            Notification,
+            UserCounters.ratings_average.label("ratings_average"),
+            is_follow.label("is_follow"),
+            is_business_or_employee.label("is_business_or_employee")
+        )
         .join(User, User.id == Notification.sender_id)
+        .join(UserCounters, UserCounters.user_id == Notification.sender_id)
         .where(
             and_(
                 Notification.is_deleted == False,
@@ -48,7 +74,7 @@ async def get_notifications_by_user_id(db: DBSession, page: int, limit: int, req
 
     notifications = []
 
-    for notification, is_follow in notifications_result:
+    for notification, ratings_average, is_follow, is_business_or_employee in notifications_result:
         notifications.append(
             NotificationResponse(
                 id=notification.id,
@@ -59,7 +85,16 @@ async def get_notifications_by_user_id(db: DBSession, page: int, limit: int, req
                 message=notification.message,
                 is_read=notification.is_read,
                 is_deleted=notification.is_deleted,
-                sender=notification.sender,
+                sender=UserBaseMinimum(
+                    id=notification.sender.id,
+                    fullname=notification.sender.fullname,
+                    username=notification.sender.username,
+                    avatar=notification.sender.avatar,
+                    profession=notification.sender.profession,
+                    is_follow=is_follow,
+                    is_business_or_employee=is_business_or_employee,
+                    ratings_average=ratings_average
+                ),
                 is_follow = is_follow
             )
         )

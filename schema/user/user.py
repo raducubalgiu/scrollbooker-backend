@@ -1,6 +1,4 @@
-from decimal import Decimal
-
-from pydantic import BaseModel, Field, EmailStr, field_serializer
+from pydantic import BaseModel, Field, EmailStr
 from typing import Optional, List
 from datetime import datetime, date
 from core.enums.gender_type_enum import GenderTypeEnum
@@ -13,10 +11,11 @@ class UserBaseMinimum(BaseModel):
     id: int
     fullname: str
     username: str
-    profession: Optional[str] = None
+    profession: str
     avatar: Optional[str] = None
-    is_follow: Optional[bool] = None
-    ratings_average: Optional[Decimal] = None
+    ratings_average: float
+    is_follow: bool
+    is_business_or_employee: bool
 
     class Config:
         from_attributes = True
@@ -86,6 +85,12 @@ class OpeningHours(BaseModel):
     next_open_day: Optional[str] = None
     next_open_time: Optional[str] = None
 
+class UserProfileBusinessOwner(BaseModel):
+    id: int
+    fullname: str
+    username: str
+    avatar: str
+
 class UserProfileResponse(BaseModel):
     id: int
     username: str
@@ -107,7 +112,7 @@ class UserProfileResponse(BaseModel):
 
     opening_hours: OpeningHours
     is_follow: bool
-    business_owner: Optional[UserBaseMinimum] = None
+    business_owner: Optional[UserProfileBusinessOwner] = None
     is_own_profile: bool
     is_business_or_employee: bool
     distance_km: Optional[float] = None

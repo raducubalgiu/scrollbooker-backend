@@ -20,9 +20,9 @@ from timezonefinder import TimezoneFinder
 
 from models.booking.product_sub_filters import product_sub_filters
 from schema.booking.business import BusinessCreate, BusinessResponse, BusinessHasEmployeesUpdate, \
-    BusinessCreateResponse, BusinessCoordinates, RecommendedBusinessesResponse
+    BusinessCreateResponse, BusinessCoordinates, RecommendedBusinessesResponse, RecommendedBusinessUser
 from datetime import timedelta,datetime
-from schema.user.user import UserAuthStateResponse, UserBaseMinimum
+from schema.user.user import UserAuthStateResponse
 from service.integration.google_places import get_place_details
 
 async def get_business_by_id(db: DBSession, business_id: int) -> BusinessResponse:
@@ -175,12 +175,12 @@ async def get_user_recommended_businesses(
 
     businesses = [
         RecommendedBusinessesResponse(
-            user=UserBaseMinimum(
+            user=RecommendedBusinessUser(
                 id=u_id,
                 fullname=u_fullname,
                 username=u_username,
-                profession=u_profession,
                 avatar=u_avatar,
+                profession=u_profession,
                 ratings_average=u_ratings_average
             ),
             distance=round(distance, 2) if distance is not None else None,

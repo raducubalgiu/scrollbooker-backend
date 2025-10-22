@@ -5,16 +5,15 @@ from starlette.exceptions import HTTPException
 from starlette.requests import Request
 
 from core.dependencies import DBSession, Pagination
-from core.enums.registration_step_enum import RegistrationStepEnum
 from core.enums.role_enum import RoleEnum
 from models import Service, BusinessType, Business, User, business_services, Product
 from schema.nomenclature.service import ServiceCreate, ServiceUpdate, ServiceResponse, ServiceIdsUpdate, \
-    ServiceWithEmployeesResponse
+    ServiceWithEmployeesResponse, ServiceEmployee
 from core.crud_helpers import db_create, db_delete, db_update, db_get_all, db_insert_many_to_many, \
     db_remove_many_to_many, db_get_one
 from models.nomenclature.service_business_types import service_business_types
 from core.logger import logger
-from schema.user.user import UserAuthStateResponse, UserBaseMinimum
+from schema.user.user import UserBaseMinimum
 from collections import defaultdict
 
 async def get_all_services(db: DBSession, pagination: Pagination):
@@ -99,7 +98,10 @@ async def get_services_by_user_id(db: DBSession, user_id: int):
         service_employees_map[service_id].add(user_id)
 
     stmt = (
-        select(Service, func.count(Product.id).label("products_count"))
+        select(
+            Service,
+            func.count(Product.id).label("products_count")
+        )
         .join(business_services, business_services.c.service_id == Service.id)
         .join(Business, Business.id == business_services.c.business_id)
         .join(User, or_(
@@ -120,13 +122,12 @@ async def get_services_by_user_id(db: DBSession, user_id: int):
         employee_ids = service_employees_map.get(service.id, set())
 
         service_employees = [
-            UserBaseMinimum(
+            ServiceEmployee(
                 id=emp.id,
                 fullname=emp.fullname,
                 username=emp.username,
                 profession=emp.profession,
                 avatar=emp.avatar,
-                is_follow=None,
                 ratings_average=emp.counters.ratings_average
             )
             for emp in employees

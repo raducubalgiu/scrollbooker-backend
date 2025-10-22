@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 
 from schema.nomenclature.service import ServiceResponse
-from schema.user.user import UserAuthStateResponse, UserBaseMinimum
+from schema.user.user import UserAuthStateResponse
 
 class BusinessCoordinates(BaseModel):
     lat: float
@@ -54,8 +54,16 @@ class BusinessCreateResponse(BaseModel):
     authState: UserAuthStateResponse
     business_id: int
 
+class RecommendedBusinessUser(BaseModel):
+    id: int
+    fullname: str
+    username: str
+    avatar: Optional[str] = None
+    profession: str
+    ratings_average: float
+
 class RecommendedBusinessesResponse(BaseModel):
-    user: UserBaseMinimum
+    user: RecommendedBusinessUser
     distance: Optional[float] = None
     is_open: bool
 

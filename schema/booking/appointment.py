@@ -7,7 +7,6 @@ from core.enums.appointment_channel_enum import AppointmentChannelEnum
 from core.enums.appointment_status_enum import AppointmentStatusEnum
 from schema.booking.business import BusinessCoordinates
 from schema.nomenclature.currency import CurrencyMiniResponse
-from schema.user.user import UserBaseMinimum
 
 class AppointmentResponse(BaseModel):
     id: int
@@ -116,6 +115,13 @@ class AppointmentBusiness(BaseModel):
     address: str
     coordinates: BusinessCoordinates
 
+class AppointmentUser(BaseModel):
+    id: Optional[int] = None
+    fullname: str
+    username: Optional[str] = None
+    avatar: Optional[str] = None
+    profession: Optional[str] = None
+
 class UserAppointmentResponse(BaseModel):
     id: int
     start_date: datetime
@@ -125,7 +131,7 @@ class UserAppointmentResponse(BaseModel):
     message: Optional[str] = None
     is_customer: bool
     product: AppointmentProduct
-    user: UserBaseMinimum
+    user: AppointmentUser
     business: AppointmentBusiness
 
 class CalendarEventsProduct(BaseModel):

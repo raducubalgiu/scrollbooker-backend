@@ -12,13 +12,18 @@ from core.enums.appointment_status_enum import AppointmentStatusEnum
 from core.enums.role_enum import RoleEnum
 from schema.booking.appointment import UserAppointmentResponse, AppointmentProduct, AppointmentBusiness, \
     CalendarEventsSlot, CalendarEventsInfo, \
-    CalendarEventsResponse, CalendarEventsDay, CalendarEventsCustomer
+    CalendarEventsResponse, CalendarEventsDay, CalendarEventsCustomer, AppointmentUser
 from core.dependencies import DBSession
 from models import Appointment, Schedule, User, Business, Currency, Product
-from schema.user.user import UserBaseMinimum
 from service.booking.business import get_business_by_user_id
 
-async def get_appointments_by_user_id(db: DBSession, page: int, limit: int, request: Request, as_customer: Optional[bool] = None):
+async def get_appointments_by_user_id(
+        db: DBSession,
+        page: int,
+        limit: int,
+        request: Request,
+        as_customer: Optional[bool] = None
+):
     auth_user_id = request.state.user.get("id")
 
     user_stmt = await db.execute(
@@ -99,7 +104,7 @@ async def get_appointments_by_user_id(db: DBSession, page: int, limit: int, requ
                     currency=curr_name,
                     exchange_rate=appointment.exchange_rate
                 ),
-                user=UserBaseMinimum(
+                user=AppointmentUser(
                     id= p_id if is_customer else c_id,
                     fullname= p_fullname if is_customer else c_fullname,
                     username= p_username if is_customer else c_username,

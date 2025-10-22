@@ -5,7 +5,6 @@ from pydantic import BaseModel
 
 from schema.social.hashtag import HashtagResponse
 from schema.social.post_media import PostMediaBase, PostMediaResponse
-from schema.user.user import UserBaseMinimum
 
 class PostFixedSlots(BaseModel):
     start_time: datetime
@@ -132,7 +131,6 @@ class UserPostResponse(BaseModel):
     counters: PostCounters
     media_files: List[PostMediaResponse]
     user_actions: PostUserActions
-    mentions: Optional[List[UserBaseMinimum]] = []
     hashtags: Optional[List[HashtagResponse]] = []
     business_id: Optional[int] = None
     is_video_review: bool
