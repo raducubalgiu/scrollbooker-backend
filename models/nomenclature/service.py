@@ -24,7 +24,6 @@ class Service(Base):
     # Relations
     businesses = relationship("Business", secondary=business_services, back_populates="services")
     products = relationship("Product", back_populates="service", cascade="all, delete")
-    appointments = relationship("Appointment", back_populates="service")
     reviews = relationship("Review", back_populates="service")
     service_domain = relationship("ServiceDomain", back_populates="services")
     business_types = relationship("BusinessType", secondary=service_business_types, back_populates="services")

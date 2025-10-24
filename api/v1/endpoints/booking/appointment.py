@@ -6,8 +6,8 @@ from starlette.requests import Request
 
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession, BusinessAndEmployeesSession, ClientAndEmployeeSession
-from schema.booking.appointment import AppointmentResponse, AppointmentBlock, \
-    AppointmentCancel, AppointmentTimeslotsResponse, AppointmentScrollBookerCreate, UserAppointmentResponse, \
+from schema.booking.appointment import AppointmentBlock, \
+    AppointmentCancel, AppointmentTimeslotsResponse, AppointmentScrollBookerCreate, AppointmentResponse, \
     CalendarEventsResponse, AppointmentOwnClientCreate
 from service.booking.apppointment.create_update_appointments import create_new_scroll_booker_appointment, create_new_blocked_appointment, cancel_user_appointment, create_new_own_client_appointment
 from service.booking.apppointment.get_appointments import get_appointments_by_user_id, \
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/appointments", tags=["Appointments"])
 
 @router.post("/create-scrollbooker-appointment",
             summary='Create New Appointment - Client & Employee',
-            response_model=AppointmentResponse,
+            #response_model=AppointmentResponse,
             dependencies=[ClientAndEmployeeSession])
 async def create_scroll_booker_appointment(
         db: DBSession,
@@ -53,7 +53,7 @@ async def cancel_appointment(db: DBSession, appointment_cancel: AppointmentCance
 
 @router.get("/",
             summary='List All Appointments Filtered By User',
-            response_model=PaginatedResponse[UserAppointmentResponse])
+            response_model=PaginatedResponse[AppointmentResponse])
 async def get_appointments_by_user(db: DBSession, page: int, limit: int, request: Request, as_customer: Optional[bool] = None):
     return await get_appointments_by_user_id(db, page, limit, request, as_customer)
 

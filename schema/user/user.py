@@ -89,7 +89,7 @@ class UserProfileBusinessOwner(BaseModel):
     id: int
     fullname: str
     username: str
-    avatar: str
+    avatar: Optional[str] = None
 
 class UserProfileResponse(BaseModel):
     id: int

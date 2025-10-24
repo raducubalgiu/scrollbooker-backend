@@ -18,6 +18,7 @@ from models.booking.product_sub_filters import product_sub_filters
 from models.booking.business import Business
 from models.booking.business_media import BusinessMedia
 from models.booking.appointment import Appointment
+from models.booking.appointment_products import AppointmentProduct
 from models.booking.schedule import Schedule
 from models.booking.business_services import business_services
 from models.booking.review.review import Review

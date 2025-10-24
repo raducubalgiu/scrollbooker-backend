@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Optional
+from typing import Optional, Dict, List
 
 from fastapi import HTTPException, Request, status
 from datetime import datetime, timedelta, time, timezone
@@ -10,11 +10,13 @@ from sqlalchemy.orm import aliased, joinedload
 from core.crud_helpers import PaginatedResponse
 from core.enums.appointment_status_enum import AppointmentStatusEnum
 from core.enums.role_enum import RoleEnum
-from schema.booking.appointment import UserAppointmentResponse, AppointmentProduct, AppointmentBusiness, \
+from schema.booking.appointment import AppointmentBusiness, \
     CalendarEventsSlot, CalendarEventsInfo, \
-    CalendarEventsResponse, CalendarEventsDay, CalendarEventsCustomer, AppointmentUser
+    CalendarEventsResponse, CalendarEventsDay, CalendarEventsCustomer, AppointmentUser, AppointmentProductResponse, \
+    AppointmentResponse
 from core.dependencies import DBSession
-from models import Appointment, Schedule, User, Business, Currency, Product
+from models import Appointment, Schedule, User, Business, Currency, AppointmentProduct, Product
+from schema.nomenclature.currency import CurrencyMiniResponse
 from service.booking.business import get_business_by_user_id
 
 async def get_appointments_by_user_id(
@@ -38,20 +40,19 @@ async def get_appointments_by_user_id(
     customer_user = aliased(User)
     provider_user = aliased(User)
 
-    query = (
+    base_query = (
         select(
             Appointment,
+            Currency,
             customer_user.id, customer_user.fullname, customer_user.username, customer_user.avatar, customer_user.profession,
             provider_user.id, provider_user.fullname, provider_user.username, provider_user.avatar, provider_user.profession,
-            Currency.name
         )
         .join(customer_user, Appointment.customer_id == customer_user.id)
         .join(provider_user, Appointment.user_id == provider_user.id)
-        .outerjoin(Product, Product.id == Appointment.product_id)
-        .join(Currency, Currency.id == Appointment.currency_id)
+        .join(Currency, Currency.id == Appointment.payment_currency_id)
     )
 
-    conditions = [Appointment.is_blocked == False]
+    conditions = [Appointment.is_blocked.is_(False)]
 
     if is_filter_allowed and as_customer is not None:
         if as_customer:
@@ -66,27 +67,28 @@ async def get_appointments_by_user_id(
             )
         )
 
-    query = query.where(and_(*conditions))
-    query = query.order_by(desc(Appointment.created_at)).offset((page - 1) * limit).limit(limit)
+    base_query = base_query.where(and_(*conditions))
+    base_query = base_query.order_by(desc(Appointment.created_at)).offset((page - 1) * limit).limit(limit)
 
-    total_count = await db.execute(select(func.count()).select_from(query.subquery()))
+    total_count = await db.execute(select(func.count()).select_from(base_query.subquery()))
     count = total_count.scalars().first()
 
-    result = await db.execute(query)
+    result = await db.execute(base_query)
     rows = result.all()
 
-    appointments = []
+    appointments: List[AppointmentResponse] = []
+    apt_id_to_index: Dict[int, int] = {}
 
-    for (appointment,
+    for idx, (
+         appointment,
+         currency,
          c_id, c_fullname, c_username, c_avatar, c_prof,
-         p_id, p_fullname, p_username, p_avatar, p_prof,
-         curr_name
-    ) in rows:
+         p_id, p_fullname, p_username, p_avatar, p_prof
+    ) in enumerate(rows):
         is_customer = appointment.customer_id == auth_user_id
         business = await get_business_by_user_id(db, p_id)
 
-        appointments.append(
-            UserAppointmentResponse(
+        dto = AppointmentResponse(
                 id=appointment.id,
                 start_date=appointment.start_date,
                 end_date=appointment.end_date,
@@ -94,29 +96,68 @@ async def get_appointments_by_user_id(
                 status=appointment.status,
                 is_customer=is_customer,
                 message=appointment.message,
-                product=AppointmentProduct(
-                    id=appointment.product_id,
-                    name=appointment.product_name,
-                    price=appointment.product_full_price,
-                    price_with_discount=appointment.product_price_with_discount,
-                    duration=appointment.product_duration,
-                    discount=appointment.product_discount,
-                    currency=curr_name,
-                    exchange_rate=appointment.exchange_rate
-                ),
+                products=[],
                 user=AppointmentUser(
-                    id= p_id if is_customer else c_id,
-                    fullname= p_fullname if is_customer else c_fullname,
-                    username= p_username if is_customer else c_username,
-                    avatar= p_avatar if is_customer else c_avatar,
-                    profession= p_prof if is_customer else c_prof
+                    id= p_id,
+                    fullname= p_fullname,
+                    username= p_username,
+                    avatar= p_avatar,
+                    profession= p_prof
+                ),
+                customer=AppointmentUser(
+                    id=c_id,
+                    fullname=c_fullname,
+                    username=c_username,
+                    avatar=c_avatar,
+                    profession=c_prof
                 ),
                 business=AppointmentBusiness(
                     address=business.address,
                     coordinates=business.coordinates
+                ),
+                total_price=appointment.total_price,
+                total_duration=appointment.total_duration,
+                payment_currency=CurrencyMiniResponse(
+                    id=currency.id,
+                    name=currency.name
                 )
             )
+
+        appointments.append(dto)
+        apt_id_to_index[appointment.id] = idx
+
+    if not appointments:
+        return PaginatedResponse(count=0, results=[])
+
+    # Fetch products
+    apt_ids = list(apt_id_to_index.keys())
+
+    prod_stmt = (
+        select(AppointmentProduct, Product.id, Currency)
+        .select_from(AppointmentProduct)
+        .join(Product, Product.id == AppointmentProduct.product_id)
+        .join(Currency, Currency.id == Product.currency_id)
+        .where(AppointmentProduct.appointment_id.in_(apt_ids))
+        .order_by(AppointmentProduct.appointment_id)
+    )
+    prod_rows = (await db.execute(prod_stmt)).all()
+
+    for (appointment_product, product_id, product_currency) in prod_rows:
+        item = AppointmentProductResponse(
+            id=product_id,
+            name=appointment_product.name,
+            price=appointment_product.price,
+            price_with_discount=appointment_product.price_with_discount,
+            discount=appointment_product.discount,
+            duration=appointment_product.duration,
+            currency=CurrencyMiniResponse(
+                id=product_currency.id,
+                name=product_currency.name
+            ),
+            converted_price_with_discount=appointment_product.converted_price_with_discount,
+            exchange_rate=appointment_product.exchange_rate
         )
+        appointments[apt_id_to_index[appointment_product.appointment_id]].products.append(item)
 
     return PaginatedResponse(
         count=count,

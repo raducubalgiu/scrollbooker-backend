@@ -1,6 +1,6 @@
 from decimal import Decimal
 from typing import Optional, List
-from pydantic import BaseModel, Field, field_serializer
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 
 from core.enums.appointment_channel_enum import AppointmentChannelEnum
@@ -8,43 +8,58 @@ from core.enums.appointment_status_enum import AppointmentStatusEnum
 from schema.booking.business import BusinessCoordinates
 from schema.nomenclature.currency import CurrencyMiniResponse
 
+class AppointmentBusiness(BaseModel):
+    address: str
+    coordinates: BusinessCoordinates
+
+class AppointmentUser(BaseModel):
+    id: Optional[int] = None
+    fullname: str
+    username: Optional[str] = None
+    avatar: Optional[str] = None
+    profession: Optional[str] = None
+
+class AppointmentProductResponse(BaseModel):
+    id: Optional[int] = None
+    name: str
+    price: Decimal
+    price_with_discount: Decimal
+    discount: Decimal
+    duration: int
+    currency: CurrencyMiniResponse
+    converted_price_with_discount: Decimal
+    exchange_rate: Optional[Decimal] = None
+
 class AppointmentResponse(BaseModel):
     id: int
     start_date: datetime
     end_date: datetime
-    status: str
-    instant_booking: bool
     channel: str
-    exchange_rate: int
-    is_blocked: bool
-    user_id: int
-    business_id: int
-    service_id: int
-    currency_id: int
-
-    customer_id: Optional[int] = None
+    status: str
     message: Optional[str] = None
-    customer_fullname: str = Field(min_length=3, max_length=50)
-    service_name: str
-
-    product_id: Optional[int] = None
-    product_name: str = Field(min_length=3, max_length=100)
-    product_full_price: Decimal
-    product_price_with_discount: Decimal
-    product_discount: Decimal
-    created_at: datetime
-    updated_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
+    is_customer: bool
+    products: List[AppointmentProductResponse]
+    user: AppointmentUser
+    customer: AppointmentUser
+    business: AppointmentBusiness
+    total_price: Decimal
+    total_duration: int
+    payment_currency: CurrencyMiniResponse
 
 class AppointmentScrollBookerCreate(BaseModel):
     start_date: datetime
     end_date: datetime
     user_id: int
-    service_id: int
-    product_id: int
-    currency_id: int
+    product_ids: List[int]
+    payment_currency_id: int
+
+    @field_validator("product_ids")
+    @classmethod
+    def unique_product_ids(cls, v: List[int]):
+        if len(v) != len(set(v)):
+            same_ids = sorted({x for x in v if v.count(x) > 1})
+            raise ValueError(f"product_ids has same ids: {sorted(set(same_ids))}")
+        return v
 
 class AppointmentOwnClientCreate(BaseModel):
     start_date: datetime
@@ -78,7 +93,6 @@ class AppointmentBlockSlot(BaseModel):
     status: AppointmentStatusEnum = AppointmentStatusEnum.FINISHED
     channel: AppointmentStatusEnum = AppointmentChannelEnum.OWN_CLIENT
 
-
 class AppointmentBlock(BaseModel):
     message: str = Field(min_length=3, max_length=50)
     slots: List[AppointmentBlockSlot]
@@ -96,43 +110,6 @@ class AppointmentTimeslot(BaseModel):
 class AppointmentTimeslotsResponse(BaseModel):
     is_closed: bool
     available_slots: list[AppointmentTimeslot]
-
-class AppointmentProduct(BaseModel):
-    id: Optional[int] = None
-    name: str
-    price: Decimal
-    price_with_discount: Decimal
-    duration: int
-    discount: Decimal
-    currency: str
-    exchange_rate: Decimal
-
-    @field_serializer("price", "price_with_discount", "discount", return_type=str)
-    def serialize_price(self, value: Decimal, _info) -> str:
-        return '{0:.2f}'.format(value).rstrip('0').rstrip('.') if value is not None else None
-
-class AppointmentBusiness(BaseModel):
-    address: str
-    coordinates: BusinessCoordinates
-
-class AppointmentUser(BaseModel):
-    id: Optional[int] = None
-    fullname: str
-    username: Optional[str] = None
-    avatar: Optional[str] = None
-    profession: Optional[str] = None
-
-class UserAppointmentResponse(BaseModel):
-    id: int
-    start_date: datetime
-    end_date: datetime
-    channel: str
-    status: str
-    message: Optional[str] = None
-    is_customer: bool
-    product: AppointmentProduct
-    user: AppointmentUser
-    business: AppointmentBusiness
 
 class CalendarEventsProduct(BaseModel):
     product_name: str

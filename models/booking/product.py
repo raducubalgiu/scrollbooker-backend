@@ -28,7 +28,6 @@ class Product(Base):
     service = relationship("Service", back_populates="products")
     business = relationship("Business", back_populates="products")
     user = relationship("User", back_populates="products")
-    appointments = relationship("Appointment", back_populates="product")
     reviews = relationship("Review", back_populates="product")
     currency = relationship('Currency', back_populates="products")
     posts = relationship("Post", back_populates="product")
