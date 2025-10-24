@@ -43,10 +43,6 @@ class BusinessEmployeesResponse(BaseModel):
     class Config:
         from_attributes = True
 
-class BusinessPlaceAddressResponse(BaseModel):
-    description: str
-    place_id: str
-
 class BusinessHasEmployeesUpdate(BaseModel):
     has_employees: bool
 

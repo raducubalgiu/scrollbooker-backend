@@ -1,4 +1,6 @@
 import os
+
+import httpx
 from fastapi import HTTPException, Depends, Query, status, Request
 from typing import Annotated, List, Type, Optional
 try:
@@ -13,6 +15,7 @@ from .database import get_db
 from models import Base
 from core.security import decode_token, oauth2_bearer
 from core.logger import logger
+from core.http_client import get_http_client
 from .enums.role_enum import RoleEnum
 
 class PaginationParams:
@@ -25,6 +28,7 @@ class PaginationParams:
         self.limit = limit
 
 DBSession: TypeAlias = Annotated[AsyncSession, Depends(get_db)]
+HTTPClient: TypeAlias = Annotated[httpx.AsyncClient, Depends(get_http_client)]
 Pagination: TypeAlias = Annotated[PaginationParams, Depends()]
 
 async def get_user_by_token(token: str = Depends(oauth2_bearer)):

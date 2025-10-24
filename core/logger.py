@@ -8,7 +8,7 @@ from pathlib import Path
 log_dir = Path(__file__).resolve().parent.parent
 
 if not log_dir.exists():
-    os.makedirs(log_dir)
+    os.makedirs(log_dir, exist_ok=True)
 
 logger.remove()
 
@@ -16,15 +16,17 @@ logger.add(
     sys.stdout,
     format="{time:YYYY-MM-DD at HH:mm:ss} | {level} | {message}",
     level="INFO",
-    colorize=True
+    colorize=True,
+    enqueue=True
 )
 
 logger.add(
     log_dir / f"logs/app_{datetime.now().strftime('%Y-%m-%d')}.log",
+    level="INFO",
     rotation="10 MB",
     retention="7 days",
-    level="INFO",
-    encoding="utf-8"
+    encoding="utf-8",
+    enqueue=True
 )
 
 # Configure Structlog for structured logs

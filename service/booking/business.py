@@ -9,7 +9,7 @@ from core.enums.day_of_week_enum import DayOfWeekEnum
 from core.enums.registration_step_enum import RegistrationStepEnum
 from core.logger import logger
 from core.data_utils import local_to_utc_fulldate
-from core.dependencies import DBSession
+from core.dependencies import DBSession, HTTPClient
 from starlette import status
 from models import Business, Service, Product, Appointment, User, UserCounters, Schedule, Follow, \
     SubFilter, EmploymentRequest, BusinessType
@@ -23,7 +23,7 @@ from schema.booking.business import BusinessCreate, BusinessResponse, BusinessHa
     BusinessCreateResponse, BusinessCoordinates, RecommendedBusinessesResponse, RecommendedBusinessUser
 from datetime import timedelta,datetime
 from schema.user.user import UserAuthStateResponse
-from service.integration.google_places import get_place_details
+from service.integration.google import get_place_details
 
 async def get_business_by_id(db: DBSession, business_id: int) -> BusinessResponse:
     business_query = await db.execute(
@@ -331,16 +331,21 @@ async def get_businesses_by_distance(
         "available_businesses": available_businesses
     }
 
-async def create_new_business(db: DBSession, business_data: BusinessCreate, request: Request):
+async def create_new_business(
+        db: DBSession,
+        client: HTTPClient,
+        business_data: BusinessCreate,
+        request: Request
+):
     auth_user_id = request.state.user.get("id")
 
     try:
-        place = await get_place_details(business_data.place_id)
+        place = await get_place_details(client, business_data.place_id)
         owner = await db.get(User, auth_user_id)
         business_type = await db.get(BusinessType, business_data.business_type_id)
 
         tf = TimezoneFinder()
-        business_timezone = tf.timezone_at_land(lng=place["lng"], lat=place["lat"])
+        business_timezone = tf.timezone_at_land(lng=place.lng, lat=place.lat)
 
         stmt_owner_has_business = await db.execute(
             select(Business).
@@ -360,9 +365,9 @@ async def create_new_business(db: DBSession, business_data: BusinessCreate, requ
 
         params = {
             "description": business_data.description,
-            "address": place["address"],
-            "longitude": place["lng"],
-            "latitude": place["lat"],
+            "address": place.address,
+            "longitude": place.lng,
+            "latitude": place.lat,
             "timezone": business_timezone,
             "owner_id": auth_user_id,
             "business_type_id": business_data.business_type_id,
