@@ -63,6 +63,11 @@ class RecommendedBusinessesResponse(BaseModel):
     distance: Optional[float] = None
     is_open: bool
 
+class BusinessLocationResponse(BaseModel):
+    distance: Optional[float] = None
+    address: str
+    map_url: str
+
 
 
 

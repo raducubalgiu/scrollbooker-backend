@@ -1,3 +1,5 @@
+import os
+
 from typing import List, Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -5,6 +7,7 @@ from sqlalchemy.orm import joinedload
 from starlette.requests import Request
 from fastapi import HTTPException, Query
 
+from core.dependencies import RedisClient
 from core.enums.day_of_week_enum import DayOfWeekEnum
 from core.enums.registration_step_enum import RegistrationStepEnum
 from core.logger import logger
@@ -20,10 +23,15 @@ from timezonefinder import TimezoneFinder
 
 from models.booking.product_sub_filters import product_sub_filters
 from schema.booking.business import BusinessCreate, BusinessResponse, BusinessHasEmployeesUpdate, \
-    BusinessCreateResponse, BusinessCoordinates, RecommendedBusinessesResponse, RecommendedBusinessUser
+    BusinessCreateResponse, BusinessCoordinates, RecommendedBusinessesResponse, RecommendedBusinessUser, \
+    BusinessLocationResponse
 from datetime import timedelta,datetime
+
+from schema.integration.google import StaticMapQuery
 from schema.user.user import UserAuthStateResponse
-from service.integration.google import get_place_details
+from service.integration.google import get_place_details, fetch_static_map
+
+STATIC_MAP_ROUTE = os.getenv("STATIC_MAP_ROUTE")
 
 async def get_business_by_id(db: DBSession, business_id: int) -> BusinessResponse:
     business_query = await db.execute(
@@ -52,6 +60,61 @@ async def get_business_by_id(db: DBSession, business_id: int) -> BusinessRespons
         services=business.services,
         coordinates=BusinessCoordinates(lat=latitude, lng=longitude),
         has_employees=business.has_employees
+    )
+
+async def get_business_location(
+    db: DBSession,
+    http_client: HTTPClient,
+    redis_client: RedisClient,
+    business_id: int,
+    user_lat: Optional[float] = None,
+    user_lng: Optional[float] = None,
+) -> BusinessLocationResponse:
+    user_point = func.ST_SetSRID(func.ST_Point(user_lat, user_lng), 4326)
+    distance_expr = func.ST_Distance(Business.coordinates.cast(Geography), user_point.cast(Geography)) / 1000
+
+    business_query = await db.execute(
+        select(Business.coordinates, Business.address, distance_expr.label("distance"))
+        .where(and_(Business.id == business_id))
+    )
+    business = business_query.mappings().first()
+
+    if business is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Business not found"
+        )
+
+    point = to_shape(business.coordinates)
+    business_lat = point.y
+    business_lng = point.x
+
+    map_url = (
+        f"{STATIC_MAP_ROUTE}"
+        f"?center_lat={business_lat}&center_lng={business_lng}"
+        f"&zoom=15&width=640&height=360&scale=2"
+        f"&language=ro&maptype=roadmap"
+        f"&markers=color:red|{business_lat},{business_lng}"
+        f"&style=feature:poi|visibility:off"
+    )
+
+    try:
+        await fetch_static_map(
+            http_client=http_client,
+            redis_client=redis_client,
+            query=StaticMapQuery(center_lat=business_lat, center_lng=business_lng)
+        )
+    except Exception as e:
+        logger.error(f"The map could not be loaded. Error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Map could not be initialized"
+        )
+
+    return BusinessLocationResponse(
+        distance = round(business.distance, 1) if business.distance else None,
+        address=business.address,
+        map_url=map_url
     )
 
 async def get_business_by_user_id(db: DBSession, user_id: int) -> BusinessResponse:

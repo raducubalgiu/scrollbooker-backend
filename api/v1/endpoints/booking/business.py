@@ -2,12 +2,13 @@ from fastapi import APIRouter, Query
 from starlette import status
 from starlette.requests import Request
 from typing import List, Optional
-from core.dependencies import DBSession
+from core.dependencies import DBSession, HTTPClient, RedisClient
 from core.dependencies import BusinessSession
-from schema.booking.business import BusinessCreate, BusinessResponse, BusinessHasEmployeesUpdate, BusinessCreateResponse
+from schema.booking.business import BusinessCreate, BusinessResponse, BusinessHasEmployeesUpdate, \
+    BusinessCreateResponse, BusinessLocationResponse
 from service.booking.business import get_businesses_by_distance, create_new_business, \
     delete_business_by_id, get_business_employees_by_id, get_business_by_user_id, update_business_has_employees, \
-    get_business_by_id, get_user_recommended_businesses
+    get_business_by_id, get_user_recommended_businesses, get_business_location
 
 router = APIRouter(tags=["Businesses"])
 
@@ -16,8 +17,20 @@ router = APIRouter(tags=["Businesses"])
     summary='Create New Business',
     response_model=BusinessCreateResponse,
     dependencies=[BusinessSession])
-async def create_business(db: DBSession, business_data: BusinessCreate, request: Request):
-    return await create_new_business(db, business_data, request)
+async def create_business(db: DBSession, client: HTTPClient, business_data: BusinessCreate, request: Request):
+    return await create_new_business(db, client, business_data, request)
+
+@router.get("/businesses/{business_id}/location",
+            response_model=BusinessLocationResponse)
+async def business_location(
+        db: DBSession,
+        http_client: HTTPClient,
+        redis_client: RedisClient,
+        business_id: int,
+        user_lat: Optional[float] = None,
+        user_lng: Optional[float] = None,
+):
+    return await get_business_location(db, http_client, redis_client, business_id, user_lat, user_lng)
 
 @router.get("/businesses/recommended",
             summary='List Recommended Businesses')
