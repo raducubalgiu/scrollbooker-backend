@@ -3,6 +3,9 @@ import os
 import httpx
 from fastapi import HTTPException, Depends, Query, status, Request
 from typing import Annotated, List, Type, Optional
+
+from redis.asyncio import Redis
+
 try:
     from typing import TypeAlias
 except ImportError:
@@ -15,6 +18,7 @@ from .database import get_db
 from models import Base
 from core.security import decode_token, oauth2_bearer
 from core.logger import logger
+from core.redis_client import init_redis
 from core.http_client import get_http_client
 from .enums.role_enum import RoleEnum
 
@@ -29,6 +33,7 @@ class PaginationParams:
 
 DBSession: TypeAlias = Annotated[AsyncSession, Depends(get_db)]
 HTTPClient: TypeAlias = Annotated[httpx.AsyncClient, Depends(get_http_client)]
+RedisClient: TypeAlias = Annotated[Redis, Depends(init_redis)]
 Pagination: TypeAlias = Annotated[PaginationParams, Depends()]
 
 async def get_user_by_token(token: str = Depends(oauth2_bearer)):

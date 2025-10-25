@@ -1,6 +1,7 @@
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, conint, Field, field_validator
+
 
 class PlacePredictionResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -47,5 +48,23 @@ class BusinessPlaceDetailsResponse(BaseModel):
     street_number: Optional[str] = None
     postal_code: Optional[str] = None
 
+class StaticMapQuery(BaseModel):
+    center_lat: Optional[float] = None
+    center_lng: Optional[float] = None
+    address: Optional[str] = None
 
+    zoom: conint(ge=0, le=21) = 15
+    width: conint(ge=1, le=640) = 640
+    height: conint(ge=1, le=640) = 360
+    scale: conint(ge=1, le=2) = 2
+    maptype: str = Field(default="roadmap")
+    language: str = Field(default="ro")
+    region: Optional[str] = None
+
+    #repeatable
+    markers: List[str] = Field(default_factory=list)
+    path: List[str] = Field(default_factory=list)
+    style: List[str] = Field(default_factory=list)
+
+    refresh: bool = False
 

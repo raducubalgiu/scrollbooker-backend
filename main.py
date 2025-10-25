@@ -4,6 +4,8 @@ from contextlib import asynccontextmanager
 from core.database import async_engine
 from core.dependencies import UserSession
 from core.middlewares.cors_middleware import CORSCustomMiddleware
+from core.redis_client import init_redis, close_redis
+from core.logger import logger
 from models import Base
 from api.v1.endpoints.search import search
 from api.v1.endpoints.user import user, role, permission, consent, notification
@@ -20,25 +22,36 @@ from core import http_client
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # DB
+    # DB Session
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
     # Scheduler
     start_scheduler()
 
-    # HTTPX Client
+    # Redis
+    await init_redis()
+    logger.info("[REDIS] Connected Successfully")
+
+    # HTTP Client
     http_client.async_client = httpx.AsyncClient(
         timeout=httpx.Timeout(5.0, read=5.0, connect=3.0),
         limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
         headers={"Accept": "application/json"}
     )
+    logger.info("[HTTP_CLIENT] Connected Successfully")
+
     try:
         yield
     finally:
         if http_client.async_client is not None:
             await http_client.async_client.aclose()
             http_client.async_client = None
+        logger.info("[HTTP_CLIENT] Connection closed")
+
+        await close_redis()
+        logger.info("[REDIS] Connection closed")
+
         scheduler.shutdown(wait=False)
 
 app = FastAPI(lifespan=lifespan, root_path="/api/v1")
