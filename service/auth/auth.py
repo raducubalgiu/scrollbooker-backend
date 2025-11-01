@@ -18,7 +18,8 @@ from models import User, UserCounters, Role, Business, Permission
 from schema.auth.auth import UserRegister, UserInfoResponse, UserInfoUpdate
 from jose import JWTError
 
-from schema.auth.token import RefreshToken
+from schema.auth.token import RefreshToken, AuthResponse
+
 load_dotenv()
 
 async def register_user(db: DBSession, user_register: UserRegister):
@@ -132,21 +133,19 @@ async def verify_user_email(db: DBSession, request: Request):
 #         )
 
 async def login_user(db: DBSession, username: str, password: str):
-    user = await db_get_one(db,
-                            model=User,
-                            filters={User.username: username},
-                            joins=[joinedload(User.role)],
-                            raise_not_found=False)
+    user = await db_get_one(
+        db = db,
+        model=User,
+        filters={User.username: username},
+        joins=[joinedload(User.role)],
+        raise_not_found=False
+    )
 
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail='This user is not registered yet')
 
-    password = await verify_password(password, user.password)
-
-    if not password:
-        raise HTTPException(status_code=400, detail="Password doesn't match")
-
+    await verify_password(password, user.password)
     return await generate_tokens(user.id, username, user.fullname, user.email, user.role.name)
 
 # Generate access and refresh tokens

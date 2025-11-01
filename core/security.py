@@ -1,11 +1,18 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+
+from argon2.exceptions import InvalidHash
 from dotenv import load_dotenv
 import os
+
+from fastapi import HTTPException
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 from fastapi.concurrency import run_in_threadpool
 from fastapi.security import OAuth2PasswordBearer
+from passlib.exc import UnknownHashError
+from starlette import status
+
 from core.logger import logger
 
 load_dotenv()
@@ -20,17 +27,27 @@ oauth2_bearer = OAuth2PasswordBearer(tokenUrl="auth/login")
 async def hash_password(password: str) -> str:
     return await run_in_threadpool(pwd_context.hash, password)
 
-# Verify password
-async def verify_password(plain_password: str, hashed_password: str) -> bool:
-    if not isinstance(plain_password, (str, bytes)):
-        print('plain_password type: ', type(plain_password), "repr:", repr(plain_password)[:120])
-    b = plain_password.encode("utf-8") if isinstance(plain_password, str) else plain_password
-    print("plain_password bytes:", len(b), "preview", repr(plain_password)[:120])
+async def verify_password(plain_password: str, hashed_password: str) -> None:
+    try:
+        ok = await run_in_threadpool(pwd_context.verify, plain_password, hashed_password)
+    except (UnknownHashError, InvalidHash, ValueError, TypeError) as e:
+        logger.error(f"Password verify failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid username or password",
+        )
+    except Exception as e:
+        logger.exception(f"Password verification error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not verify credentials",
+        )
 
-    # sanity check pe hash
-    print("hashed startswith:", str(hashed_password)[:4], "len:", len(str(hashed_password)))
-
-    return await run_in_threadpool(pwd_context.verify, plain_password, hashed_password)
+    if not ok:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid username or password",
+        )
 
 # Create JWT Token
 async def create_token(data:dict, expires_at: timedelta, secret_key: str) -> str:
