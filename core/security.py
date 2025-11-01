@@ -2,15 +2,18 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 from dotenv import load_dotenv
 import os
-from jose import jwt, JWTError # type: ignore
-from passlib.context import CryptContext # type: ignore
+from jose import jwt, JWTError
+from passlib.context import CryptContext
 from fastapi.concurrency import run_in_threadpool
 from fastapi.security import OAuth2PasswordBearer
 from core.logger import logger
 
 load_dotenv()
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(
+    schemes=["argon2"],
+    deprecated="auto"
+)
 oauth2_bearer = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 # Hash Password

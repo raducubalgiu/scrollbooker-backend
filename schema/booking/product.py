@@ -25,9 +25,14 @@ class ProductCreateWithSubFilters(BaseModel):
     product: ProductCreate
     sub_filters: List[int]
 
+class ProductSubFilter(BaseModel):
+    id: int
+    name: str
+
 class ProductResponse(ProductBase):
     id: int
     user_id: int
+    sub_filters: List[SubFilterWithFilterResponse]
     created_at: datetime
     updated_at: Optional[datetime] = None
 

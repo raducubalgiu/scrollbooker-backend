@@ -21,8 +21,7 @@ async def get_products_by_user(db: DBSession, user_id: int, pagination: Paginati
 
 @router.get(
     "/users/{user_id}/services/{service_id}/products",
-    summary="List All Products Filtered By User Id and Service Id",
-    response_model=Union[PaginatedResponse[ProductResponse], list[ProductResponse]])
+    summary="List All Products Filtered By User Id and Service Id")
 async def get_products_by_user_and_service(
         db: DBSession,
         user_id: int,

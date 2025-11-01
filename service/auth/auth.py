@@ -142,7 +142,7 @@ async def login_user(db: DBSession, username: str, password: str):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail='This user is not registered yet')
 
-    #password = await verify_password(password, user.password)
+    password = await verify_password(password, user.password)
 
     if not password:
         raise HTTPException(status_code=400, detail="Password doesn't match")

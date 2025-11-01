@@ -1,6 +1,7 @@
 import os
 from fastapi import HTTPException, status
 from typing import Union
+from core.logger import logger
 
 from redis.asyncio import Redis
 
@@ -12,6 +13,7 @@ async def init_redis() -> Redis:
     if redis_client is None:
         redis_url = os.getenv("REDIS_URL")
         if not redis_url:
+            logger.error(f"[REDIS] Missing Redis URL")
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail=f"Missing REDIS_URL"
@@ -24,13 +26,3 @@ async def close_redis():
     if redis_client:
         await redis_client.close()
         redis_client = None
-
-    # try:
-    #     await redis.ping()
-    # except Exception as e:
-    #     from fastapi import HTTPException, status
-    #     raise HTTPException(
-    #         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-    #         detail=f"Redis connection failed: {e}"
-    #     )
-    # return redis

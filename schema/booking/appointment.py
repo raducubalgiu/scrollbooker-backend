@@ -11,6 +11,7 @@ from schema.nomenclature.currency import CurrencyMiniResponse
 class AppointmentBusiness(BaseModel):
     address: str
     coordinates: BusinessCoordinates
+    map_url: Optional[str] = None
 
 class AppointmentUser(BaseModel):
     id: Optional[int] = None

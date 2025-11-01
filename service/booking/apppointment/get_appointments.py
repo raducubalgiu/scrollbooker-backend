@@ -1,9 +1,13 @@
+import os
+
 from collections import defaultdict
 from typing import Optional, Dict, List
 
 from fastapi import HTTPException, Request, status
 from datetime import datetime, timedelta, time, timezone
 from zoneinfo import ZoneInfo
+
+from geoalchemy2.shape import to_shape
 from sqlalchemy import select, and_, or_, desc, func
 from sqlalchemy.orm import aliased, joinedload
 
@@ -19,12 +23,114 @@ from models import Appointment, Schedule, User, Business, Currency, AppointmentP
 from schema.nomenclature.currency import CurrencyMiniResponse
 from service.booking.business import get_business_by_user_id
 
+STATIC_MAP_ROUTE = os.getenv("STATIC_MAP_ROUTE")
+
+async def get_appointment_by_id(
+    db: DBSession,
+    appointment_id: int,
+    request: Request
+):
+    auth_user_id = request.state.user.get("id")
+
+    customer_user = aliased(User)
+    provider_user = aliased(User)
+
+    result = await db.execute(
+        select(
+            Appointment,
+            Currency,
+            customer_user,
+            provider_user,
+        )
+        .join(Currency, Currency.id == Appointment.payment_currency_id)
+        .join(customer_user, Appointment.customer_id == customer_user.id)
+        .join(provider_user, Appointment.user_id == provider_user.id)
+        .where(Appointment.id == appointment_id)
+    )
+    row = result.first()
+
+    appointment, currency, customer, provider = row
+    business = await get_business_by_user_id(db, provider.id)
+
+    business_lat = business.coordinates.lat
+    business_lng = business.coordinates.lng
+
+    map_url = (
+        f"{STATIC_MAP_ROUTE}"
+        f"?center_lat={business_lat}&center_lng={business_lng}"
+        f"&zoom=15&width=640&height=360&scale=2"
+        f"&language=ro&maptype=roadmap"
+        f"&markers=color:red|{business_lat},{business_lng}"
+        f"&style=feature:poi|visibility:off"
+    )
+
+    products_stmt = await db.execute(
+        select(AppointmentProduct, Product.id, Currency)
+        .select_from(AppointmentProduct)
+        .join(Product, Product.id == AppointmentProduct.product_id)
+        .join(Currency, Currency.id == Product.currency_id)
+        .where(AppointmentProduct.appointment_id == appointment_id)
+        .order_by(AppointmentProduct.appointment_id)
+    )
+    products = products_stmt.all()
+
+    return AppointmentResponse(
+            id=appointment.id,
+            start_date=appointment.start_date,
+            end_date=appointment.end_date,
+            channel=appointment.channel,
+            status=appointment.status,
+            is_customer=auth_user_id == appointment.customer_id,
+            message=appointment.message,
+            products=[
+                AppointmentProductResponse(
+                    id=product_id,
+                    name=appointment_product.name,
+                    price=appointment_product.price,
+                    price_with_discount=appointment_product.price_with_discount,
+                    discount=appointment_product.discount,
+                    duration=appointment_product.duration,
+                    currency=CurrencyMiniResponse(
+                        id=product_currency.id,
+                        name=product_currency.name
+                    ),
+                    converted_price_with_discount=appointment_product.converted_price_with_discount,
+                    exchange_rate=appointment_product.exchange_rate
+                ) for appointment_product, product_id, product_currency in products
+            ],
+            user=AppointmentUser(
+                id=provider.id,
+                fullname=provider.fullname,
+                username=provider.username,
+                avatar=provider.avatar,
+                profession=provider.profession
+            ),
+            customer=AppointmentUser(
+                id=customer.id,
+                fullname=customer.fullname,
+                username=customer.username,
+                avatar=customer.avatar,
+                profession=customer.profession
+            ),
+            business=AppointmentBusiness(
+                address=business.address,
+                coordinates=business.coordinates,
+                map_url=map_url
+            ),
+            total_price=appointment.total_price,
+            total_duration=appointment.total_duration,
+            payment_currency=CurrencyMiniResponse(
+                id=currency.id,
+                name=currency.name
+            )
+        )
+
 async def get_appointments_by_user_id(
-        db: DBSession,
-        page: int,
-        limit: int,
-        request: Request,
-        as_customer: Optional[bool] = None
+    db: DBSession,
+    page: int,
+    limit: int,
+    request: Request,
+    as_customer: Optional[bool] = None
 ):
     auth_user_id = request.state.user.get("id")
 

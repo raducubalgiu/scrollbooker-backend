@@ -6,11 +6,12 @@ from starlette.requests import Request
 from core.dependencies import DBSession, BusinessSession
 from schema.booking.business import BusinessHasEmployeesUpdate
 from schema.booking.schedule import ScheduleUpdate
+from schema.nomenclature.currency import UserCurrenciesUpdate
 from schema.nomenclature.service import ServiceIdsUpdate
 from schema.onboarding.onboarding import OnBoardingResponse
 from schema.user.user import UsernameUpdate, BirthDateUpdate, GenderUpdate
 from service.onboarding.collect_business import collect_business_services, collect_business_schedules, \
-    collect_business_has_employees
+    collect_business_has_employees, collect_business_currencies
 from service.onboarding.collect_client import collect_client_birthdate, collect_client_gender
 from service.onboarding.collect_shared import collect_user_username, collect_user_location_permission
 
@@ -69,5 +70,12 @@ async def collect_schedules(db: DBSession, schedule_update: List[ScheduleUpdate]
               dependencies=[BusinessSession])
 async def collect_has_employees(db: DBSession, business_update: BusinessHasEmployeesUpdate, request: Request):
     return await collect_business_has_employees(db, business_update, request)
+
+# Collect Business Has Employees
+@router.patch("/collect-business-currencies",
+            summary='CollectBusinessCurrencies',
+            response_model=OnBoardingResponse)
+async def collect_currencies(db: DBSession, currency_update: UserCurrenciesUpdate, request: Request):
+    return await collect_business_currencies(db, currency_update, request)
 
 # Collect Business Validation

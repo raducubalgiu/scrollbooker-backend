@@ -1,6 +1,6 @@
-from starlette.requests import Request
-from fastapi import HTTPException
-from starlette import status
+from typing import List
+
+from fastapi import HTTPException, Request, Response, status
 from sqlalchemy import select, and_, delete, insert
 from sqlalchemy.orm import selectinload
 
@@ -11,7 +11,6 @@ from models import Currency, User, UserCurrency, Product
 from schema.nomenclature.currency import CurrencyCreate, CurrencyResponse, CurrencyUpdate, UserCurrenciesUpdate
 from core.logger import logger
 from schema.user.user import UserAuthStateResponse
-
 
 async def get_all_currencies(db: DBSession, pagination: Pagination):
     return await db_get_all(db, model=Currency, schema=CurrencyResponse, page=pagination.page, limit=pagination.limit, order_by="created_at", descending=True)
@@ -37,10 +36,14 @@ async def get_currencies_by_user_id(db: DBSession, user_id: int):
     currencies = [assoc.currency for assoc in user.currencies_assoc if assoc.active]
     return currencies
 
-async def update_currencies_by_user(db: DBSession, currency_update: UserCurrenciesUpdate, request: Request):
+async def update_currencies_by_user(
+        db: DBSession,
+        currency_update: UserCurrenciesUpdate,
+        request: Request
+) -> List[CurrencyResponse]:
     auth_user_id = request.state.user.get("id")
 
-    try:
+    async with db.begin():
         result = await db.execute(
             select(UserCurrency.currency_id)
             .where(and_(UserCurrency.user_id == auth_user_id))
@@ -81,28 +84,8 @@ async def update_currencies_by_user(db: DBSession, currency_update: UserCurrenci
         if to_add:
             await db.execute(
                 insert(UserCurrency),
-                [ { "user_id": auth_user_id, "currency_id": currency_id } for currency_id in to_add ]
+                [{"user_id": auth_user_id, "currency_id": currency_id} for currency_id in to_add]
             )
 
-        user = await db.get(User, auth_user_id)
-
-        if user.registration_step is RegistrationStepEnum.COLLECT_BUSINESS_CURRENCIES:
-            user.registration_step = RegistrationStepEnum.COLLECT_BUSINESS_VALIDATION
-
-        db.add(user)
-
-        await db.commit()
-        await db.refresh(user)
-
-        return UserAuthStateResponse(
-            is_validated=user.is_validated,
-            registration_step=user.registration_step
-        )
-    except Exception as e:
-        logger.error(f"Currencies could not be updated {e}")
-
-        await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Something went wrong"
-        )
+        new_currencies = await get_currencies_by_user_id(db, auth_user_id)
+        return new_currencies

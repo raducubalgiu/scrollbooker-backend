@@ -126,7 +126,7 @@ async def db_get_one(
 
     for field, value in filters.items():
         column = getattr(model, field) if isinstance(field, str) else field
-        query_one = query_one.where(column == value)  # type: ignore
+        query_one = query_one.where(column == value)
 
     result = await db.execute(query_one)
     instance = result.scalars().first()

@@ -12,7 +12,7 @@ from schema.booking.appointment import AppointmentBlock, \
 from service.booking.apppointment.create_update_appointments import create_new_scroll_booker_appointment, create_new_blocked_appointment, cancel_user_appointment, create_new_own_client_appointment
 from service.booking.apppointment.get_appointments import get_appointments_by_user_id, \
     get_appointments_number_by_user_id, get_daily_available_slots, get_user_calendar_availability, \
-    get_user_calendar_events
+    get_user_calendar_events, get_appointment_by_id
 
 router = APIRouter(prefix="/appointments", tags=["Appointments"])
 
@@ -81,3 +81,8 @@ async def get_calendar_available_days(db: DBSession, start_date: str, end_date: 
             dependencies=[BusinessAndEmployeesSession])
 async def get_calendar_events(db: DBSession, start_date: str, end_date: str, user_id: int, slot_duration: int):
     return await get_user_calendar_events(db, start_date, end_date, user_id, slot_duration)
+
+@router.get("/{appointment_id}",
+            summary='Get Appointment By Id')
+async def get_appointment(db: DBSession, appointment_id: int, request: Request):
+    return await get_appointment_by_id(db, appointment_id, request)

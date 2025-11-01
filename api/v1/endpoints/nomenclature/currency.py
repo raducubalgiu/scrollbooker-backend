@@ -1,6 +1,5 @@
-from typing import Union
-from starlette.requests import Request
-from fastapi import APIRouter
+from typing import Union, List
+from fastapi import APIRouter, Request
 
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession, SuperAdminSession, Pagination
@@ -13,7 +12,7 @@ router = APIRouter(tags=["Currencies"])
 @router.get(
     "/currencies",
     summary="List All Currencies",
-    response_model=Union[PaginatedResponse[CurrencyResponse], list[CurrencyResponse]])
+    response_model=Union[PaginatedResponse[CurrencyResponse], List[CurrencyResponse]])
 async def get_currencies(db: DBSession, pagination: Pagination):
     return await get_all_currencies(db, pagination)
 
@@ -25,7 +24,8 @@ async def get_currencies_by_user(db: DBSession, user_id: int):
     return await get_currencies_by_user_id(db, user_id)
 
 @router.put("/users/update-currencies",
-            summary='Update User Currencies')
+            summary='Update User Currencies',
+            response_model=List[CurrencyResponse])
 async def update_user_currencies(db: DBSession, currency_update: UserCurrenciesUpdate, request: Request):
     return await update_currencies_by_user(db, currency_update, request)
 
