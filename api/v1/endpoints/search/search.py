@@ -5,8 +5,7 @@ from starlette.requests import Request
 from starlette import status
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession
-from schema.search.search import SearchResponse, SearchCreate, UserSearchHistoryResponse
-from schema.user.user import UserBaseMinimum
+from schema.search.search import SearchResponse, SearchCreate, UserSearchHistoryResponse, SearchUserResponse
 from service.search.search import search_keyword, search_all_users, create_user_search, get_user_search_history, \
     delete_user_search
 
@@ -25,7 +24,7 @@ async def search(
 
 @router.get("/users",
             summary='Search Users',
-            response_model=Union[PaginatedResponse[UserBaseMinimum], list[UserBaseMinimum]])
+            response_model=Union[PaginatedResponse[SearchUserResponse], list[SearchUserResponse]])
 async def search_users(
         db: DBSession,
         query: str,

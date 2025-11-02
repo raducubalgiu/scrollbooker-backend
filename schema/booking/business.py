@@ -30,15 +30,17 @@ class BusinessResponse(BusinessBase):
     class Config:
         from_attributes = True
 
-class BusinessEmployeesResponse(BaseModel):
-    id: str
+class BusinessEmployeeResponse(BaseModel):
+    id: int
+    fullname: str
     username: str
+    avatar: Optional[str] = None
     job: str
     followers_count: int
     ratings_count: int
     ratings_average: float
+    products_count: int
     hire_date: str
-    has_employees: bool
 
     class Config:
         from_attributes = True

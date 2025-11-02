@@ -15,7 +15,7 @@ class SearchUserResponse(BaseModel):
     avatar: Optional[str] = None
     ratings_average: Optional[Decimal] = None
     distance: Optional[float] = None
-    is_business_or_employee: bool
+    is_business_or_employee: Optional[bool] = False
 
 class SearchResponse(BaseModel):
     type: Literal["keyword", "user", "service", "business_type"]

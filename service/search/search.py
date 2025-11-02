@@ -170,12 +170,12 @@ async def search_all_users(
         )
     ]
 
-
     if role_client:
         filters.append(Role.name == RoleEnum.CLIENT)
 
     stmt = (
-        select(User.id, User.username, User.fullname, User.profession, User.avatar,
+        select(
+            User.id, User.username, User.fullname, User.profession, User.avatar,
             is_follow.label("is_follow"),
             UserCounters.ratings_average.label("ratings_average")
         )

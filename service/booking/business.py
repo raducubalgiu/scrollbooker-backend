@@ -4,10 +4,10 @@ from typing import List, Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy.orm import joinedload
-from starlette.requests import Request
-from fastapi import HTTPException, Query
+from fastapi import HTTPException, Query, Request, Response
 
-from core.dependencies import RedisClient
+from core.crud_helpers import PaginatedResponse
+from core.dependencies import RedisClient, Pagination
 from core.enums.day_of_week_enum import DayOfWeekEnum
 from core.enums.registration_step_enum import RegistrationStepEnum
 from core.logger import logger
@@ -24,7 +24,7 @@ from timezonefinder import TimezoneFinder
 from models.booking.product_sub_filters import product_sub_filters
 from schema.booking.business import BusinessCreate, BusinessResponse, BusinessHasEmployeesUpdate, \
     BusinessCreateResponse, BusinessCoordinates, RecommendedBusinessesResponse, RecommendedBusinessUser, \
-    BusinessLocationResponse
+    BusinessLocationResponse, BusinessEmployeeResponse
 from datetime import timedelta,datetime
 
 from schema.integration.google import StaticMapQuery
@@ -150,37 +150,64 @@ async def get_business_by_user_id(db: DBSession, user_id: int) -> BusinessRespon
         has_employees=business.has_employees
     )
 
-async def get_business_employees_by_id(db: DBSession, business_id: int, page: int, limit: int):
+async def get_business_employees_by_id(db: DBSession, business_id: int, pagination: Pagination):
+   base_q = (
+       select(User.id)
+       .join(EmploymentRequest, and_(
+           EmploymentRequest.business_id == business_id,
+           EmploymentRequest.employee_id == User.id)
+       )
+       .join(UserCounters, UserCounters.user_id == User.id)
+       .where(User.employee_business_id == business_id)
+   )
+
+   count = await db.scalar(
+       select(func.count()).select_from(base_q.subquery())
+   )
+
    stmt = (
-       select(User, UserCounters, EmploymentRequest.created_at.label("hire_date"))
+       select(
+           User.id, User.username, User.fullname, User.avatar, User.profession,
+           UserCounters.followers_count, UserCounters.ratings_count, UserCounters.ratings_average,
+           EmploymentRequest.created_at.label("hire_date"),
+           func.coalesce(func.count(Product.id), 0).label("products_count")
+       )
        .join(EmploymentRequest, and_(
               EmploymentRequest.business_id == business_id,
               EmploymentRequest.employee_id == User.id)
-        )
-        .join(UserCounters, UserCounters.user_id == User.id)
-        .where(User.employee_business_id == business_id)
-        ).order_by("hire_date")
+       )
+       .join(UserCounters, UserCounters.user_id == User.id)
+       .outerjoin(Product, Product.user_id == User.id)
+       .where(User.employee_business_id == business_id)
+       .group_by(
+           User.id, User.username, User.profession,
+           UserCounters.followers_count, UserCounters.ratings_count, UserCounters.ratings_average,
+           EmploymentRequest.created_at
+       )
+       .order_by(EmploymentRequest.created_at.asc())
+       .offset((pagination.page - 1) * pagination.limit)
+       .limit(pagination.limit)
+   )
 
-   count_employees = await db.execute(stmt)
-   count = len(count_employees.all())
+   employees = (await db.execute(stmt)).all()
 
-   stmt_employees = await db.execute(stmt.offset((page - 1) * limit).limit(limit))
-   employees = stmt_employees.all()
-
-   return {
-       "count": count,
-       "results": [
-           {
-               "id": employee.id,
-               "username": employee.username,
-               "job": employee.profession,
-               "followers_count": counters.followers_count,
-               "ratings_count": counters.ratings_count,
-               "ratings_average": counters.ratings_average,
-               "hire_date": datetime.strftime(hire_date, '%Y-%d-%m')
-           } for employee, counters, hire_date in employees
+   return PaginatedResponse(
+       count=count,
+       results=[
+           BusinessEmployeeResponse(
+               id=e_id,
+               username=e_username,
+               fullname=e_fullname,
+               avatar=e_avatar,
+               job=e_profession,
+               followers_count=followers_count,
+               ratings_count=ratings_count,
+               ratings_average=ratings_average,
+               products_count=prod_count,
+               hire_date= datetime.strftime(hire_date, '%Y-%d-%m')
+           ) for e_id, e_username, e_fullname, e_avatar, e_profession, followers_count, ratings_count, ratings_average, hire_date, prod_count in employees
        ]
-   }
+   )
 
 async def get_user_recommended_businesses(
     db: DBSession,
@@ -253,7 +280,6 @@ async def get_user_recommended_businesses(
     ]
 
     return businesses
-
 
 async def get_businesses_by_distance(
         db: DBSession,
@@ -334,7 +360,7 @@ async def get_businesses_by_distance(
                    is_follow_subquery.label("is_follow")
             )
             .join(User, or_( Business.owner_id == User.id, Business.id == User.employee_business_id))
-            .join(Schedule, Schedule.user_id == User.id) #type: ignore
+            .join(Schedule, Schedule.user_id == User.id)
             .join(UserCounters, UserCounters.user_id == User.id)
             .join(Product, Product.user_id == User.id)
             .join(Service, Service.id == Product.service_id)
@@ -518,16 +544,74 @@ async def update_business_has_employees(db: DBSession, business_update: Business
             detail="Something went wrong"
         )
 
-async def delete_business_by_id(db: DBSession, business_id: int, request: Request):
-    auth_user_id = request.state.user.get("id")
-    business = await db.get(Business, business_id)
+async def get_all_unapproved_businesses(db: DBSession, pagination: Pagination):
+    base_count_q = (
+        select(Business.id)
+        .join(User, Business.owner_id == User.id)
+        .where(and_(
+            User.registration_step == RegistrationStepEnum.COLLECT_BUSINESS_VALIDATION,
+            User.is_validated == False
+        ))
+    )
+    count = await db.scalar(
+        select(func.count()).select_from(base_count_q.subquery())
+    )
 
-    if not business:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail='This Business was not found')
-    if auth_user_id != business.owner_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                            detail='You do not have permission to perform this action')
+    result = await db.execute(
+        select(User, Business, BusinessType)
+        .join(Business, Business.owner_id == User.id)
+        .join(BusinessType, BusinessType.id == Business.business_type_id)
+        .where(and_(
+            User.registration_step == RegistrationStepEnum.COLLECT_BUSINESS_VALIDATION,
+            User.is_validated == False
+        ))
+        .offset((pagination.page - 1) * pagination.limit)
+        .limit(pagination.limit)
+    )
+    unapproved_owners = result.all()
 
-    await db.delete(business)
+    results = []
+
+    for user, business, business_type in unapproved_owners:
+        point = to_shape(business.coordinates)
+        latitude = point.y
+        longitude = point.x
+
+        results.append({
+            "id": user.id,
+            "username": user.username,
+            "fullname": user.fullname,
+            "avatar": user.avatar,
+            "business": {
+                "id": business.id,
+                "has_employees": business.has_employees,
+                "location": {
+                    "coordinates": {
+                        "lat": latitude,
+                        "lng": longitude
+                    },
+                    "address": business.address
+                },
+                "business_type": {
+                    "id": business_type.id,
+                    "name": business_type.name
+                }
+            },
+        })
+
+    return {
+        "count": count,
+        "results": results
+    }
+
+async def approve_business_by_owner_id(
+        db: DBSession,
+        user_id: int
+) -> Response:
+    business_owner = await db.get(User, user_id)
+
+    business_owner.registration_step = None
+    business_owner.is_validated = True
+
     await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
