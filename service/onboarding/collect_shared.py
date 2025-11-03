@@ -13,7 +13,11 @@ from schema.user.user import UsernameUpdate
 from service.onboarding.verify_registration_step import verify_registration_step
 from service.user.user import update_user_username
 
-async def collect_user_username(db: DBSession, username_update: UsernameUpdate, request: Request):
+async def collect_user_username(
+    db: DBSession,
+    username_update: UsernameUpdate,
+    request: Request
+) -> OnBoardingResponse:
     try:
         await verify_registration_step(
             db=db,
@@ -62,7 +66,10 @@ async def collect_user_username(db: DBSession, username_update: UsernameUpdate, 
             detail='User not found'
         )
 
-async def collect_user_location_permission(db: DBSession, request: Request):
+async def collect_user_location_permission(
+    db: DBSession,
+    request: Request
+) -> OnBoardingResponse:
     auth_user_id = request.state.user.get("id")
 
     user = await db.get(User, auth_user_id)

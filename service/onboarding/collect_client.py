@@ -10,7 +10,11 @@ from service.onboarding.verify_registration_step import verify_registration_step
 from service.user.user import update_user_birthdate, update_user_gender
 from core.logger import logger
 
-async def collect_client_birthdate(db: DBSession, birthdate_update: BirthDateUpdate, request: Request):
+async def collect_client_birthdate(
+    db: DBSession,
+    birthdate_update: BirthDateUpdate,
+    request: Request
+) -> OnBoardingResponse:
     try:
         await verify_registration_step(
             db=db,
@@ -36,6 +40,7 @@ async def collect_client_birthdate(db: DBSession, birthdate_update: BirthDateUpd
             is_validated=user.is_validated,
             registration_step=user.registration_step
         )
+
     except Exception as e:
         logger.error(f"Error on collecting client birthdate: {e}")
         raise HTTPException(
@@ -43,7 +48,11 @@ async def collect_client_birthdate(db: DBSession, birthdate_update: BirthDateUpd
             detail="Something went wrong"
         )
 
-async def collect_client_gender(db: DBSession, gender_update: GenderUpdate, request: Request):
+async def collect_client_gender(
+    db: DBSession,
+    gender_update: GenderUpdate,
+    request: Request
+) -> OnBoardingResponse:
     try:
         await verify_registration_step(
             db=db,
@@ -69,6 +78,7 @@ async def collect_client_gender(db: DBSession, gender_update: GenderUpdate, requ
             is_validated=user.is_validated,
             registration_step=user.registration_step
         )
+
     except Exception as e:
         logger.error(f"Error on collecting client gender: {e}")
         raise HTTPException(

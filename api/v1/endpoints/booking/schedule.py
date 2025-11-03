@@ -1,10 +1,8 @@
 from typing import List
 
-from fastapi import APIRouter
-from starlette.requests import Request
+from fastapi import APIRouter, Request
 from schema.booking.schedule import ScheduleCreate, ScheduleUpdate, ScheduleResponse
-from service.booking.schedule import create_user_schedule, update_user_schedule, update_user_schedules, \
-    get_schedules_by_user_id
+from service.booking.schedule import create_user_schedule, update_user_schedules, get_schedules_by_user_id
 from core.dependencies import DBSession, BusinessAndEmployeesSession
 
 router = APIRouter(tags=["Schedules"])
@@ -12,7 +10,7 @@ router = APIRouter(tags=["Schedules"])
 @router.get(
     "/users/{user_id}/schedules",
     summary='List All Schedules Filtered By User Id',
-    response_model=list[ScheduleResponse])
+    response_model=List[ScheduleResponse])
 async def get_user_schedules(db: DBSession, user_id: int):
     return await get_schedules_by_user_id(db, user_id)
 
@@ -25,16 +23,9 @@ async def create_schedule(db: DBSession, schedule_update: ScheduleCreate, reques
     return await create_user_schedule(db, schedule_update, request)
 
 @router.put(
-    "/schedules/{schedule_id}",
-    summary='Update One Schedule',
-    dependencies=[BusinessAndEmployeesSession])
-async def update_schedule(db: DBSession, schedule_id: int, schedule_update: ScheduleUpdate, request: Request):
-    return await update_user_schedule(db, schedule_id, schedule_update, request)
-
-@router.put(
     "/schedules",
     summary='Update Many Schedules',
-    response_model=list[ScheduleResponse],
+    response_model=List[ScheduleResponse],
     dependencies=[BusinessAndEmployeesSession])
 async def update_many_schedules(db: DBSession, schedule_update: List[ScheduleUpdate], request: Request):
     return await update_user_schedules(db, schedule_update, request)

@@ -6,7 +6,6 @@ from starlette import status
 
 from api.v1.endpoints.nomenclature.currency import update_user_currencies
 from core.dependencies import DBSession
-from core.logger import logger
 from core.enums.registration_step_enum import RegistrationStepEnum
 from models import User
 from schema.booking.business import BusinessHasEmployeesUpdate
@@ -14,7 +13,6 @@ from schema.booking.schedule import ScheduleUpdate
 from schema.nomenclature.currency import UserCurrenciesUpdate
 from schema.nomenclature.service import ServiceIdsUpdate
 from schema.onboarding.onboarding import OnBoardingResponse
-from schema.user.user import UserAuthStateResponse
 from service.booking.business import update_business_has_employees
 from service.booking.schedule import update_user_schedules
 from service.nomenclature.service import update_services_by_business_id
@@ -22,7 +20,11 @@ from service.nomenclature.service import update_services_by_business_id
 # Collect Business (create Business)
 
 # Collect Business Services
-async def collect_business_services(db: DBSession, services_update: ServiceIdsUpdate, request: Request):
+async def collect_business_services(
+        db: DBSession,
+        services_update: ServiceIdsUpdate,
+        request: Request
+) -> OnBoardingResponse:
     auth_user_id = request.state.user.get("id")
     services = await update_services_by_business_id(db, services_update, request)
 
@@ -42,13 +44,17 @@ async def collect_business_services(db: DBSession, services_update: ServiceIdsUp
     await db.commit()
     await db.refresh(user)
 
-    return UserAuthStateResponse(
+    return OnBoardingResponse(
         is_validated=user.is_validated,
         registration_step=user.registration_step
     )
 
 # Collect Business Schedules
-async def collect_business_schedules(db: DBSession, schedule_update: List[ScheduleUpdate], request: Request):
+async def collect_business_schedules(
+    db: DBSession,
+    schedule_update: List[ScheduleUpdate],
+    request: Request
+) -> OnBoardingResponse:
     auth_user_id = request.state.user.get("id")
     schedules = await update_user_schedules(db, schedule_update, request)
 
@@ -67,7 +73,7 @@ async def collect_business_schedules(db: DBSession, schedule_update: List[Schedu
     await db.commit()
     await db.refresh(user)
 
-    return UserAuthStateResponse(
+    return OnBoardingResponse(
         is_validated=user.is_validated,
         registration_step=user.registration_step
     )

@@ -6,7 +6,7 @@ from starlette import status
 from sqlalchemy import select, or_
 from core.crud_helpers import db_get_one, db_get_all
 from core.dependencies import DBSession, check_resource_ownership
-from schema.booking.schedule import ScheduleCreate, ScheduleUpdate
+from schema.booking.schedule import ScheduleCreate, ScheduleUpdate, ScheduleResponse
 from models import Schedule, Business, User
 import calendar
 from core.logger import logger
@@ -16,7 +16,7 @@ from service.booking.business import get_business_by_user_id
 async def get_business(db: DBSession, auth_user_id: int):
     business_stmt = await db.execute(
         select(Business)
-        .join(User, User.id == auth_user_id) #type: ignore
+        .join(User, User.id == auth_user_id)
         .where(or_(
             Business.owner_id == auth_user_id,
             User.employee_business_id == Business.id
@@ -31,13 +31,23 @@ async def get_business(db: DBSession, auth_user_id: int):
 
     return business
 
-async def get_schedules_by_user_id(db: DBSession, user_id: int):
+async def get_schedules_by_user_id(db: DBSession, user_id: int) -> List[ScheduleResponse]:
     await get_business_by_user_id(db, user_id)
-    schedules = await db_get_all(db, model=Schedule, filters={Schedule.user_id: user_id}, order_by="day_week_index")
+
+    schedules = await db_get_all(
+        db=db,
+        model=Schedule,
+        filters={Schedule.user_id: user_id},
+        order_by="day_week_index"
+    )
 
     return schedules
 
-async def create_user_schedule(db: DBSession, schedule_create: ScheduleCreate, request: Request):
+async def create_user_schedule(
+        db: DBSession,
+        schedule_create: ScheduleCreate,
+        request: Request
+) -> ScheduleResponse:
     auth_user_id = request.state.user.get("id")
     business = await get_business(db, auth_user_id)
 
@@ -69,7 +79,12 @@ async def create_user_schedule(db: DBSession, schedule_create: ScheduleCreate, r
     await db.refresh(new_schedule)
     return new_schedule
 
-async def update_user_schedule(db: DBSession, schedule_id: int, schedule_update: ScheduleUpdate, request: Request):
+async def update_user_schedule(
+        db: DBSession,
+        schedule_id: int,
+        schedule_update: ScheduleUpdate,
+        request: Request
+) -> ScheduleResponse:
     auth_user_id = request.state.user.get("id")
     schedule = await check_resource_ownership(db, Schedule, schedule_id, request)
     await get_business(db, auth_user_id)
@@ -82,7 +97,11 @@ async def update_user_schedule(db: DBSession, schedule_id: int, schedule_update:
 
     return schedule
 
-async def update_user_schedules(db: DBSession, schedule_update: List[ScheduleUpdate], request: Request):
+async def update_user_schedules(
+        db: DBSession,
+        schedule_update: List[ScheduleUpdate],
+        request: Request
+) -> List[ScheduleResponse]:
     try:
         updated_schedules = []
 
