@@ -1,3 +1,5 @@
+from typing import List
+
 from fastapi import HTTPException, Response, Request, status
 from sqlalchemy.orm import joinedload
 from sqlalchemy import select, and_, delete
@@ -8,14 +10,19 @@ from core.enums.employment_requests_status_enum import EmploymentRequestsStatusE
 from core.enums.notification_type import NotificationTypeEnum
 from core.enums.role_enum import RoleEnum
 from models import EmploymentRequest, Business, User, Role, Notification, Profession, Schedule
-from schema.booking.employment_request import EmploymentRequestCreate, EmploymentRequestUpdate
+from schema.booking.employment_request import EmploymentRequestCreate, EmploymentRequestUpdate, \
+    EmploymentsRequestsResponse
 from core.logger import logger
 import calendar
 
 from schema.user.notification import NotificationEmploymentData
 from service.booking.business import get_business_by_user_id
 
-async def get_employment_requests_by_user_id(db: DBSession, user_id: int, request: Request):
+async def get_employment_requests_by_user_id(
+        db: DBSession,
+        user_id: int,
+        request: Request
+) -> List[EmploymentsRequestsResponse]:
     auth_user_id = request.state.user.get("id")
 
     business = await get_business_by_user_id(db, auth_user_id)
@@ -51,7 +58,11 @@ async def get_employment_requests_by_user_id(db: DBSession, user_id: int, reques
 
     return employment_requests
 
-async def get_employment_request_by_id(db: DBSession, employment_request_id: int, request: Request):
+async def get_employment_request_by_id(
+        db: DBSession,
+        employment_request_id: int,
+        request: Request
+) -> EmploymentsRequestsResponse:
     auth_user_id = request.state.user.get("id")
 
     result = await db.execute(
@@ -73,7 +84,11 @@ async def get_employment_request_by_id(db: DBSession, employment_request_id: int
 
     return employment_request
 
-async def create_employment_request(db: DBSession, employment_create: EmploymentRequestCreate,  request: Request):
+async def create_employment_request(
+    db: DBSession,
+    employment_create: EmploymentRequestCreate,
+    request: Request
+) -> Response:
     auth_user_id = request.state.user.get("id")
 
     try :
@@ -118,7 +133,10 @@ async def create_employment_request(db: DBSession, employment_create: Employment
         db.add(notification)
         await db.commit()
 
+        return Response(status_code=status.HTTP_201_CREATED)
+
     except Exception as e:
+        await db.rollback()
         logger.error(f"The employment request sent by employer_id: {auth_user_id} to user id: {employment_create.employee_id} could not be saved. Error: {e}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail='Something went wrong')

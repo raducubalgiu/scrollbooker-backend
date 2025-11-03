@@ -1,3 +1,5 @@
+from typing import List
+
 from fastapi import APIRouter, Request, status
 
 from core.dependencies import DBSession, BusinessSession, BusinessAndManagerSession, ClientAndBusinessSession
@@ -8,7 +10,7 @@ router = APIRouter(tags=["Employment Request"])
 
 @router.get("/users/{user_id}/employment-requests",
     summary="List Employment Requests Filtered By User Id",
-    response_model=list[EmploymentsRequestsResponse],
+    response_model=List[EmploymentsRequestsResponse],
     dependencies=[BusinessSession])
 async def get_user_employment_requests(db: DBSession, user_id: int, request: Request):
     return await get_employment_requests_by_user_id(db, user_id, request)
