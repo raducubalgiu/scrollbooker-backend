@@ -23,8 +23,8 @@ async def get_professions_by_business_type(db: DBSession, business_type_id: int)
 @router.get("/professions/with-business-types",
     summary='List All Professions with Business Types',
     response_model=PaginatedResponse[ProfessionWithBusinessTypesResponse])
-async def get_professions_with_business_types(db: DBSession, page: int, limit: int):
-    return await get_all_professions_with_business_types(db, page, limit)
+async def get_professions_with_business_types(db: DBSession, pagination: Pagination):
+    return await get_all_professions_with_business_types(db, pagination)
 
 @router.get("/professions",
     summary='List All Professions',

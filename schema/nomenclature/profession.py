@@ -26,5 +26,8 @@ class BusinessTypeLoadOnly(BaseModel):
     id: int
     name: str
 
+    class Config:
+        from_attributes = True
+
 class ProfessionWithBusinessTypesResponse(ProfessionResponse):
     business_types: Optional[List[BusinessTypeLoadOnly]] = []

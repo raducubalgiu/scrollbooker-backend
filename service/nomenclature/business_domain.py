@@ -6,15 +6,19 @@ from models import BusinessDomain
 from schema.nomenclature.business_domain import BusinessDomainCreate, BusinessDomainUpdate, \
     BusinessDomainResponse, BusinessDomainsWithBusinessTypes
 
-
-async def get_all_business_domain(db: DBSession, pagination: Pagination):
-    return await db_get_all(db,
-                            model=BusinessDomain,
-                            schema=BusinessDomainResponse,
-                            page=pagination.page,
-                            limit=pagination.limit,
-                            order_by="created_at",
-                            descending=True)
+async def get_all_business_domain(
+        db: DBSession,
+        pagination: Pagination
+):
+    return await db_get_all(
+        db=db,
+        model=BusinessDomain,
+        schema=BusinessDomainResponse,
+        page=pagination.page,
+        limit=pagination.limit,
+        order_by="created_at",
+        descending=True
+    )
 
 async def get_all_business_domains_with_business_types(db: DBSession):
     return await db_get_all(db,

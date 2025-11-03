@@ -132,7 +132,11 @@ async def verify_user_email(db: DBSession, request: Request):
 #             detail="Something went wrong"
 #         )
 
-async def login_user(db: DBSession, username: str, password: str):
+async def login_user(
+        db: DBSession,
+        username: str,
+        password: str
+) -> AuthResponse:
     user = await db_get_one(
         db = db,
         model=User,
@@ -149,7 +153,13 @@ async def login_user(db: DBSession, username: str, password: str):
     return await generate_tokens(user.id, username, user.fullname, user.email, user.role.name)
 
 # Generate access and refresh tokens
-async def generate_tokens(user_id: int, username: str, fullname: str, email: EmailStr, role: str):
+async def generate_tokens(
+        user_id: int,
+        username: str,
+        fullname: str,
+        email: EmailStr,
+        role: str
+) -> AuthResponse:
     access_token = await create_token(
         data={
             "id": user_id,
@@ -173,9 +183,12 @@ async def generate_tokens(user_id: int, username: str, fullname: str, email: Ema
         expires_at=timedelta(days=float(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS"))),
         secret_key=os.getenv("REFRESH_SECRET_KEY")
     )
-    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+    return AuthResponse(access_token=access_token, refresh_token=refresh_token, token_type="bearer" )
 
-async def get_refresh_token(db: DBSession, token: RefreshToken):
+async def get_refresh_token(
+        db: DBSession,
+        token: RefreshToken
+) -> AuthResponse:
     try:
         payload = await decode_token(token.refresh_token, os.getenv("REFRESH_SECRET_KEY"))
 
@@ -209,7 +222,7 @@ async def get_refresh_token(db: DBSession, token: RefreshToken):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Invalid refresh token')
 
-async def get_user_info(db: DBSession, token: str):
+async def get_user_info(db: DBSession, token: str) -> UserInfoResponse:
     try:
         payload = await decode_token(token, secret_key=os.getenv("SECRET_KEY"))
 
@@ -302,7 +315,11 @@ async def get_user_permissions(db: DBSession, token: str):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Invalid access token')
 
-async def update_user_info(db: DBSession, user_update: UserInfoUpdate ,token: str):
+async def update_user_info(
+        db: DBSession,
+        user_update: UserInfoUpdate,
+        token: str
+) -> UserInfoResponse:
     try:
         payload = await decode_token(token, secret_key=os.getenv("SECRET_KEY"))
 

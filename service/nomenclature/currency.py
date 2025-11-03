@@ -1,19 +1,27 @@
 from typing import List
 
-from fastapi import HTTPException, Request, Response, status
+from fastapi import HTTPException, Request, status
 from sqlalchemy import select, and_, delete, insert
 from sqlalchemy.orm import selectinload
 
-from core.crud_helpers import db_create, db_get_all, db_update
+from core.crud_helpers import db_create, db_get_all, db_update, PaginatedResponse
 from core.dependencies import DBSession, Pagination
-from core.enums.registration_step_enum import RegistrationStepEnum
 from models import Currency, User, UserCurrency, Product
 from schema.nomenclature.currency import CurrencyCreate, CurrencyResponse, CurrencyUpdate, UserCurrenciesUpdate
-from core.logger import logger
-from schema.user.user import UserAuthStateResponse
 
-async def get_all_currencies(db: DBSession, pagination: Pagination):
-    return await db_get_all(db, model=Currency, schema=CurrencyResponse, page=pagination.page, limit=pagination.limit, order_by="created_at", descending=True)
+async def get_all_currencies(
+        db: DBSession,
+        pagination: Pagination
+) -> PaginatedResponse[CurrencyResponse]:
+    return await db_get_all(
+        db=db,
+        model=Currency,
+        schema=CurrencyResponse,
+        page=pagination.page,
+        limit=pagination.limit,
+        order_by="created_at",
+        descending=True
+    )
 
 async def create_new_currency(db: DBSession, currency_create: CurrencyCreate):
     return await db_create(db, model=Currency, create_data=currency_create)

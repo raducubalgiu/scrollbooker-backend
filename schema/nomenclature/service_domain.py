@@ -10,9 +10,11 @@ class ServiceDomainCreate(ServiceDomainBase):
 
 class ServiceDomainUpdate(BaseModel):
     name: Optional[str] = None
+    business_domain_id: int
 
 class ServiceDomainResponse(ServiceDomainBase):
     id: int
+    business_domain_id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
 

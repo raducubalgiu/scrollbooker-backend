@@ -13,6 +13,7 @@ class BusinessDomain(Base):
 
     business_types = relationship("BusinessType", back_populates="business_domain")
     professions = relationship("Profession", back_populates="business_domain")
+    service_domains = relationship("ServiceDomain", back_populates="business_domain")
 
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)

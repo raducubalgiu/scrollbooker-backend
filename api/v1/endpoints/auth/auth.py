@@ -45,7 +45,7 @@ async def user_permissions(db: DBSession, token: str = Depends(oauth2_bearer)):
 
 @router.put("/update-user-info",
             response_model=UserInfoResponse)
-async def user_info(db: DBSession, user_update: UserInfoUpdate, token: str = Depends(oauth2_bearer)):
+async def user_info_update(db: DBSession, user_update: UserInfoUpdate, token: str = Depends(oauth2_bearer)):
     return await update_user_info(db, user_update, token)
 
 @router.post("/verify-email")

@@ -8,27 +8,25 @@ from models import Base
 from typing import List, Any, Type
 from core.logger import logger
 
-ModelType = TypeVar("ModelType", bound=Base)
-SchemaIn = TypeVar("SchemaIn", bound=BaseModel)
-SchemaOut = TypeVar("SchemaOut", bound=BaseModel)
+SchemaT = TypeVar("SchemaT", bound=BaseModel)
+ModelT = TypeVar("ModelT", bound=Base)
 
-class PaginatedResponse(BaseModel, Generic[SchemaOut]):
+class PaginatedResponse(BaseModel, Generic[SchemaT]):
     count: int
-    results: List[SchemaOut]
+    results: List[SchemaT]
 
-async def db_get_all_paginate(
-        db: DBSession,
-        model: Type[SchemaIn],
-        schema: Type[SchemaOut],
-        page: int,
-        limit: int,
-        filters: Optional[Dict[Any, Any]] = None,
-        order_by: Optional[Union[str, List[str]]] = None,
-        descending: Optional[bool] = False,
-        unique: Optional[bool] = None,
-        joins: Optional[List] = None,
-
-) -> PaginatedResponse[SchemaOut]:
+async def db_get_all(
+    db: DBSession,
+    model: Type[ModelT],
+    filters: Optional[Dict[Any, Any]] = None,
+    joins: Optional[List] = None,
+    unique: Optional[bool] = None,
+    order_by: Optional[Union[str, List[str]]] = None,
+    descending: Optional[bool] = False,
+    schema: Optional[Type[SchemaT]] = None,
+    page: Optional[int] = None,
+    limit: Optional[int] = None
+) -> Union[List[ModelT], PaginatedResponse[SchemaT]]:
     query_all = select(model)
 
     if joins:
@@ -37,7 +35,7 @@ async def db_get_all_paginate(
     if filters:
         for field, value in filters.items():
             column = getattr(model, field) if isinstance(field, str) else field
-            query_all = query_all.where(column == value)  # type: ignore
+            query_all = query_all.where(column == value)
 
     if order_by:
         if isinstance(order_by, str):
@@ -49,75 +47,32 @@ async def db_get_all_paginate(
             else:
                 raise ValueError(f"Column '{column_name}' does not exist in {model.__name__}")
 
-    total_query = await db.execute(select(query_all.subquery()))
-    total = len(total_query.scalars().all())
+    count_query = select(func.count()).select_from(query_all.subquery())
 
-    result = await db.execute(query_all.offset((page - 1) * limit).limit(limit))
-    items = result.scalars().unique().all() if unique else result.scalars().all()
+    if page is not None and limit is not None:
+        query_all = query_all.offset((page - 1) * limit).limit(limit)
 
-    results = [schema.model_validate(obj) for obj in items]
-    return PaginatedResponse(count=total, results=results)
+    result = await db.execute(query_all)
+    data = result.scalars().unique().all() if unique else result.scalars().all()
 
-async def db_get_all(
-        db: DBSession,
-        model: Type[ModelType],
-        filters: Optional[Dict[Any, Any]] = None,
-        joins: Optional[List] = None,
-        unique: Optional[bool] = None,
-        order_by: Optional[Union[str, List[str]]] = None,
-        descending: Optional[bool] = False,
-        schema: Optional[Type[SchemaOut]] = None,
-        page: Optional[int] = None,
-        limit: Optional[int] = None
-        ) -> Union[List[ModelType], PaginatedResponse[SchemaOut]]:
+    if schema:
+        data = [schema.model_validate(obj) for obj in data]
 
-        query_all = select(model)
+    if page is not None and limit is not None:
+        total_result = await db.execute(count_query)
+        total = total_result.scalar_one()
 
-        if joins:
-            query_all = query_all.options(*joins)
+        return PaginatedResponse(count=total, results=data)
 
-        if filters:
-            for field, value in filters.items():
-                column = getattr(model, field) if isinstance(field, str) else field
-                query_all = query_all.where(column == value)
-
-        if order_by:
-            if isinstance(order_by, str):
-                order_by = [order_by]
-            for column_name in order_by:
-                column = getattr(model, column_name, None)
-                if column is not None:
-                    query_all = query_all.order_by(desc(column) if descending else asc(column))
-                else:
-                    raise ValueError(f"Column '{column_name}' does not exist in {model.__name__}")
-
-        count_query = select(func.count()).select_from(query_all.subquery())
-
-        if page is not None and limit is not None:
-            query_all = query_all.offset((page - 1) * limit).limit(limit)
-
-        result = await db.execute(query_all)
-        data = result.scalars().unique().all() if unique else result.scalars().all()
-
-        if schema:
-            data = [schema.model_validate(obj) for obj in data]
-
-        if page is not None and limit is not None:
-            total_result = await db.execute(count_query)
-            total = total_result.scalar_one()
-
-            return PaginatedResponse[SchemaOut](count=total, results=data)
-
-        return data
-
+    return data
 
 async def db_get_one(
-        db: DBSession,
-        model: Type[ModelType],
-        filters: Optional[Dict[Any, Any]] = None,
-        joins: Optional[List] = None,
-        raise_not_found: bool = True
-) -> ModelType:
+    db: DBSession,
+    model: Type[ModelT],
+    filters: Optional[Dict[Any, Any]] = None,
+    joins: Optional[List] = None,
+    raise_not_found: bool = True
+) -> Optional[ModelT]:
     query_one = select(model)
 
     if joins:
@@ -137,7 +92,12 @@ async def db_get_one(
 
     return instance
 
-async def db_create(db: DBSession, model: Type[ModelType], create_data: SchemaIn, extra_params: Optional[dict] = None) -> ModelType:
+async def db_create(
+    db: DBSession,
+    model: Type[ModelT],
+    create_data: SchemaT,
+    extra_params: Optional[dict] = None
+) -> Optional[ModelT]:
     if create_data is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail='No data provided')
@@ -150,7 +110,11 @@ async def db_create(db: DBSession, model: Type[ModelType], create_data: SchemaIn
 
     return new_obj
 
-async def db_delete(db: DBSession, model: Type[ModelType], resource_id: int):
+async def db_delete(
+    db: DBSession,
+    model: Type[ModelT],
+    resource_id: int
+):
     db_obj = await db.get(model, resource_id)
 
     if not db_obj:
@@ -160,12 +124,12 @@ async def db_delete(db: DBSession, model: Type[ModelType], resource_id: int):
     await db.commit()
 
 async def db_update(
-        db: DBSession,
-        model: Type[ModelType],
-        update_data: SchemaIn,
-        resource_id: Optional[int] = None,
-        filters: Optional[Dict[str, Any]] = None,
-        load_options: Optional[list] = None
+    db: DBSession,
+    model: Type[ModelT],
+    update_data: SchemaT,
+    resource_id: Optional[int] = None,
+    filters: Optional[Dict[str, Any]] = None,
+    load_options: Optional[list] = None
 ):
     query_put = select(model)
 
@@ -197,12 +161,12 @@ async def db_update(
     return resource
 
 async def db_get_many_to_many(
-        db: DBSession,
-        model_one: Type[ModelType],
-        resource_one_id: int,
-        model_two: Type[ModelType],
-        resource_two_id: int,
-        relation_table: Table
+    db: DBSession,
+    model_one: Type[ModelT],
+    resource_one_id: int,
+    model_two: Type[ModelT],
+    resource_two_id: int,
+    relation_table: Table
 ):
     resource_one = await db.get(model_one, resource_one_id)
     resource_two = await db.get(model_two, resource_two_id)
@@ -224,14 +188,13 @@ async def db_get_many_to_many(
                             detail="These resources are not associated")
     return many_to_many
 
-
 async def db_insert_many_to_many(
-        db: DBSession,
-        model_one: Type[ModelType],
-        resource_one_id: int,
-        model_two: Type[ModelType],
-        resource_two_id: int,
-        relation_table: Table
+    db: DBSession,
+    model_one: Type[ModelT],
+    resource_one_id: int,
+    model_two: Type[ModelT],
+    resource_two_id: int,
+    relation_table: Table
 ):
     resource_one = await db.get(model_one, resource_one_id)
     resource_two = await db.get(model_two, resource_two_id)
@@ -262,12 +225,12 @@ async def db_insert_many_to_many(
     return {"detail": f"{model_two.__name__} id: {resource_two_id} successfully attached to {model_one.__name__} id: {resource_one_id}"}
 
 async def db_remove_many_to_many(
-        db: DBSession,
-        model_one: Type[ModelType],
-        resource_one_id: int,
-        model_two: Type[ModelType],
-        resource_two_id: int,
-        relation_table: Table
+    db: DBSession,
+    model_one: Type[ModelT],
+    resource_one_id: int,
+    model_two: Type[ModelT],
+    resource_two_id: int,
+    relation_table: Table
 ):
     resource_one = await db.get(model_one, resource_one_id)
     resource_two = await db.get(model_two, resource_two_id)

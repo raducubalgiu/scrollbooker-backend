@@ -12,6 +12,7 @@ class BusinessType(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(50), nullable=False, unique=True, index=True)
     active = Column(Boolean, nullable=False, default=True)
+
     business_domain_id = Column(Integer, ForeignKey("business_domains.id", ondelete="CASCADE"), nullable=False)
     has_employees = Column(Boolean, default=True)
     plural = Column(String(100), unique=True)
