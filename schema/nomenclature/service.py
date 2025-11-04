@@ -5,7 +5,7 @@ from datetime import datetime
 class ServiceBase(BaseModel):
     name: str = Field(min_length=3, max_length=50)
     business_domain_id: int
-    keywords: List[str] = []
+    service_domain_id: Optional[int]
 
     class Config:
         from_attributes = True
@@ -15,12 +15,14 @@ class ServiceCreate(ServiceBase):
 
 class ServiceUpdate(BaseModel):
     name: Optional[str] = None
+    service_domain_id: int
     keywords: Optional[List[str]] = None
     active: Optional[bool] = None
 
 class ServiceResponse(ServiceBase):
     id: int
     active: bool = True
+    service_domain_id: Optional[int] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
 

@@ -25,7 +25,7 @@ async def get_all_services(
         schema=ServiceResponse,
         page=pagination.page,
         limit=pagination.limit,
-        order_by="business_domain_id",
+        order_by="created_at",
         descending=True
     )
 

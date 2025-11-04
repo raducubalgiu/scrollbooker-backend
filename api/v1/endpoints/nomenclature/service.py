@@ -1,8 +1,6 @@
-from typing import Union
+from typing import Union, List
 
-from fastapi import APIRouter
-from starlette import status
-from starlette.requests import Request
+from fastapi import APIRouter, status, Request
 
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession, Pagination, BusinessSession
@@ -18,8 +16,7 @@ router = APIRouter(tags=["Services"])
 
 @router.get("/services",
     summary='List All Services',
-    response_model=Union[PaginatedResponse[ServiceResponse],
-    list[ServiceResponse]])
+    response_model=Union[PaginatedResponse[ServiceResponse], List[ServiceResponse]])
 async def get_services(db: DBSession, pagination: Pagination):
     return await get_all_services(db, pagination)
 
