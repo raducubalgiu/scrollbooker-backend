@@ -1,3 +1,5 @@
+from typing import Union, List
+
 from core.crud_helpers import db_create, db_update, db_delete, db_get_all, PaginatedResponse
 from core.dependencies import DBSession, Pagination
 from schema.nomenclature.service_domain import ServiceDomainCreate, ServiceDomainUpdate, \
@@ -7,11 +9,27 @@ from models import ServiceDomain
 async def get_all_service_domains(
         db: DBSession,
         pagination: Pagination
-) -> PaginatedResponse[ServiceDomainResponse]:
+) -> Union[PaginatedResponse[ServiceDomainResponse], List[ServiceDomainResponse]]:
     return await db_get_all(
         db=db,
         model=ServiceDomain,
         schema=ServiceDomainResponse,
+        page=pagination.page,
+        limit=pagination.limit,
+        order_by="created_at",
+        descending=True
+    )
+
+async def get_service_domains_by_business_domain_id(
+        db: DBSession,
+        business_domain_id: int,
+        pagination: Pagination
+) -> Union[PaginatedResponse[ServiceDomainResponse], List[ServiceDomainResponse]]:
+    return await db_get_all(
+        db=db,
+        model=ServiceDomain,
+        schema=ServiceDomainResponse,
+        filters={ ServiceDomain.business_domain_id: business_domain_id },
         page=pagination.page,
         limit=pagination.limit,
         order_by="created_at",
