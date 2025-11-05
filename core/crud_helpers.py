@@ -2,7 +2,7 @@ from typing import TypeVar, Optional, Dict, Union, Generic
 from fastapi import HTTPException, Query
 from pydantic import BaseModel
 from starlette import status
-from sqlalchemy import select, Table, insert, delete, asc, desc, func
+from sqlalchemy import select, Table, insert, delete, asc, desc, func, and_
 from core.dependencies import DBSession
 from models import Base
 from typing import List, Any, Type
@@ -176,17 +176,15 @@ async def db_get_many_to_many(
                             detail=f"{model_one.__name__} or {model_two.__name__} not found")
 
     many_to_many_stmt = await db.execute(
-        select(relation_table).where(
-            (relation_table.c[list(relation_table.c.keys())[0]] == resource_one_id) & (relation_table.c[list(relation_table.c.keys())[1]] == resource_two_id)  # type: ignore
+        select(relation_table)
+        .where(and_(
+            relation_table.c[list(relation_table.c.keys())[0]] == resource_one_id),
+            relation_table.c[list(relation_table.c.keys())[1]] == resource_two_id
         )
     )
-    many_to_many = many_to_many_stmt.scalar_one_or_none()
+    many_to_many = many_to_many_stmt.mappings().all()
 
-    if not many_to_many:
-        logger.warning(f"{model_one.__name__} id: {resource_one_id} is not associated with {model_one.__name__} id: {resource_two_id}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="These resources are not associated")
-    return many_to_many
+    return many_to_many if many_to_many else []
 
 async def db_insert_many_to_many(
     db: DBSession,

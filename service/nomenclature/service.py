@@ -6,11 +6,11 @@ from starlette.requests import Request
 
 from core.dependencies import DBSession, Pagination
 from core.enums.role_enum import RoleEnum
-from models import Service, BusinessType, Business, User, business_services, Product
+from models import Service, BusinessType, Business, User, business_services, Product, Filter, service_filters
 from schema.nomenclature.service import ServiceCreate, ServiceUpdate, ServiceResponse, ServiceIdsUpdate, \
     ServiceWithEmployeesResponse, ServiceEmployee
 from core.crud_helpers import db_create, db_delete, db_update, db_get_all, db_insert_many_to_many, \
-    db_remove_many_to_many, db_get_one
+    db_remove_many_to_many, db_get_one, db_get_many_to_many
 from models.nomenclature.service_business_types import service_business_types
 from core.logger import logger
 from collections import defaultdict
@@ -232,8 +232,34 @@ async def update_services_by_business_id(db: DBSession, services_update: Service
             detail="Something went wrong"
         )
 
+async def get_all_service_filter_relation(db: DBSession, service_id: int, filter_id: int):
+    return await db_get_many_to_many(db,
+        model_one=Service,
+        resource_one_id=service_id,
+        model_two=Filter,
+        resource_two_id=filter_id,
+        relation_table=service_filters
+    )
 
-async def attach_services_to_business_type(db: DBSession, business_type_id: int, service_id: int):
+async def attach_service_to_filter(db: DBSession, service_id: int, filter_id: int):
+    return await db_insert_many_to_many(db,
+        model_one=Service,
+        resource_one_id=service_id,
+        model_two=Filter,
+        resource_two_id=filter_id,
+        relation_table=service_filters
+    )
+
+async def detach_service_from_filter(db: DBSession, service_id: int, filter_id: int):
+    return await db_remove_many_to_many(db,
+        model_one=Service,
+        resource_one_id=service_id,
+        model_two=Filter,
+        resource_two_id=filter_id,
+        relation_table=service_filters
+    )
+
+async def attach_service_to_business_type(db: DBSession, business_type_id: int, service_id: int):
     return await db_insert_many_to_many(db,
         model_one=Service,
         resource_one_id=service_id,
@@ -242,7 +268,7 @@ async def attach_services_to_business_type(db: DBSession, business_type_id: int,
         relation_table=service_business_types
     )
 
-async def detach_services_from_business_type(db: DBSession, business_type_id: int, service_id: int):
+async def detach_service_from_business_type(db: DBSession, business_type_id: int, service_id: int):
     return await db_remove_many_to_many(db,
         model_one=Service,
         resource_one_id=service_id,

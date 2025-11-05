@@ -1,26 +1,25 @@
-from typing import List
+from typing import List, Union
 
 from sqlalchemy.orm import joinedload
 
 from core.crud_helpers import db_create, db_update, db_delete, db_get_one, \
     db_insert_many_to_many, db_remove_many_to_many, db_get_all, PaginatedResponse
-from core.dependencies import DBSession
+from core.dependencies import DBSession, Pagination
 from models.nomenclature.business_type_filters import business_type_filters
 from schema.nomenclature.filter import FilterCreate, FilterUpdate, FilterWithSubFiltersResponse
 from models import Filter, BusinessType
 
 async def get_all_filters(
         db: DBSession,
-        page: int,
-        limit: int
-) -> PaginatedResponse[FilterWithSubFiltersResponse]:
+        pagination: Pagination
+) -> Union[PaginatedResponse[FilterWithSubFiltersResponse], List[FilterWithSubFiltersResponse]]:
     return await db_get_all(
         db=db,
         model=Filter,
         schema= FilterWithSubFiltersResponse,
         unique=True,
-        page=page,
-        limit=limit,
+        page=pagination.page,
+        limit=pagination.limit,
         order_by="created_at",
         descending=True
     )

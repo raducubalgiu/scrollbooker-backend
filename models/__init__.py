@@ -7,6 +7,7 @@ from models.nomenclature.currency import Currency
 from models.nomenclature.filter import Filter
 from models.nomenclature.profession import Profession
 from models.nomenclature.service import Service
+from models.nomenclature.service_filters import service_filters
 from models.nomenclature.service_domain import ServiceDomain
 from models.nomenclature.sub_filter import SubFilter
 from models.nomenclature.problem import Problem

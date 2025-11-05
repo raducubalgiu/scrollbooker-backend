@@ -8,9 +8,11 @@ from core.dependencies import SuperAdminSession
 from schema.nomenclature.service import ServiceResponse, ServiceCreate, ServiceUpdate, ServiceIdsUpdate, \
     ServiceWithEmployeesResponse
 from service.nomenclature.service import create_new_service, \
-    delete_service_by_id, update_service_by_id, get_all_services, attach_services_to_business_type, \
-    detach_services_from_business_type, get_services_by_business_id, get_services_by_service_domain_id, \
-    get_services_by_business_type_id, update_services_by_business_id, get_services_by_user_id
+    delete_service_by_id, update_service_by_id, get_all_services, get_services_by_business_id, \
+    get_services_by_service_domain_id, \
+    get_services_by_business_type_id, update_services_by_business_id, get_services_by_user_id, \
+    get_all_service_filter_relation
+from service.nomenclature.service import attach_service_to_filter, detach_service_from_filter, attach_service_to_business_type, detach_service_from_business_type
 
 router = APIRouter(tags=["Services"])
 
@@ -72,14 +74,32 @@ async def delete_service(db: DBSession, service_id: int):
 async def update_business_services(db: DBSession, services_update: ServiceIdsUpdate, request: Request):
     return await update_services_by_business_id(db, services_update, request)
 
+@router.get("/services/{service_id}/filters/{filter_id}",
+    summary='Get All Service - Filter Relation',
+    status_code=status.HTTP_201_CREATED)
+async def get_service_filter_relation(db: DBSession, service_id: int, filter_id: int):
+    return await get_all_service_filter_relation(db, service_id, filter_id)
+
+@router.post("/services/{service_id}/filters/{filter_id}",
+    summary='Create Service - Filter Relation',
+    status_code=status.HTTP_201_CREATED)
+async def attach_service_filter(db: DBSession, service_id: int, filter_id: int):
+    return await attach_service_to_filter(db, service_id, filter_id)
+
+@router.delete("/services/{service_id}/filters/{filter_id}",
+    summary='Remove Service - Filter Relation',
+    status_code=status.HTTP_204_NO_CONTENT)
+async def detach_service_filter(db: DBSession, service_id: int, filter_id: int):
+    return await detach_service_from_filter(db, service_id, filter_id)
+
 @router.post("/services/{service_id}/business-types/{business_type_id}",
     summary='Create Service - Business Type Relation',
     status_code=status.HTTP_201_CREATED)
 async def attach_service_business_type(db: DBSession, service_id: int, business_type_id: int):
-    return await attach_services_to_business_type(db, business_type_id, service_id)
+    return await attach_service_to_business_type(db, business_type_id, service_id)
 
 @router.delete("/services/{service_id}/business-types/{business_type_id}",
     summary='Remove Service - Business Type Relation',
     status_code=status.HTTP_204_NO_CONTENT)
 async def detach_service_business_type(db: DBSession, service_id: int, business_type_id: int):
-    return await detach_services_from_business_type(db, business_type_id, service_id)
+    return await detach_service_from_business_type(db, business_type_id, service_id)
