@@ -25,25 +25,25 @@ async def get_services(db: DBSession, pagination: Pagination):
 @router.get(
     "/business-types/{business_type_id}/services",
     summary='List All Services Filtered By Business Type Id',
-    response_model=Union[PaginatedResponse[ServiceResponse], list[ServiceResponse]])
+    response_model=List[ServiceResponse])
 async def get_services_by_business_type(db: DBSession, business_type_id: int):
     return await get_services_by_business_type_id(db, business_type_id)
 
 @router.get("/service-domains/{service_domain_id}/services",
     summary='List All Services Filtered by Service Domain Id',
-    response_model=Union[PaginatedResponse[ServiceResponse], list[ServiceResponse]])
+    response_model=Union[PaginatedResponse[ServiceResponse], List[ServiceResponse]])
 async def get_services_by_service_domain(db: DBSession, service_domain_id: int, pagination: Pagination):
     return await get_services_by_service_domain_id(db, service_domain_id, pagination)
 
 @router.get("/businesses/{business_id}/services",
     summary='List All Services Filtered by Business Id',
-    response_model=list[ServiceResponse])
+    response_model=List[ServiceResponse])
 async def get_services_by_business(db: DBSession, business_id: int):
     return await get_services_by_business_id(db, business_id)
 
 @router.get("/users/{user_id}/services",
             summary='List All Services Filtered By User Id - Only Services with Products',
-            response_model=list[ServiceWithEmployeesResponse])
+            response_model=List[ServiceWithEmployeesResponse])
 async def get_services_by_user(db: DBSession, user_id: int):
     return await get_services_by_user_id(db, user_id)
 

@@ -1,3 +1,5 @@
+from typing import Union, List
+
 from starlette import status
 from sqlalchemy import select, or_, and_, delete, insert, func
 from sqlalchemy.orm import joinedload
@@ -10,7 +12,7 @@ from models import Service, BusinessType, Business, User, business_services, Pro
 from schema.nomenclature.service import ServiceCreate, ServiceUpdate, ServiceResponse, ServiceIdsUpdate, \
     ServiceWithEmployeesResponse, ServiceEmployee
 from core.crud_helpers import db_create, db_delete, db_update, db_get_all, db_insert_many_to_many, \
-    db_remove_many_to_many, db_get_one, db_get_many_to_many
+    db_remove_many_to_many, db_get_one, db_get_many_to_many, PaginatedResponse
 from models.nomenclature.service_business_types import service_business_types
 from core.logger import logger
 from collections import defaultdict
@@ -18,46 +20,60 @@ from collections import defaultdict
 async def get_all_services(
         db: DBSession,
         pagination: Pagination
-):
+) -> Union[PaginatedResponse[ServiceResponse], List[ServiceResponse]]:
     return await db_get_all(
         db=db,
         model=Service,
         schema=ServiceResponse,
         page=pagination.page,
         limit=pagination.limit,
-        order_by="created_at",
+        order_by=["service_domain_id", "order_index"],
         descending=True
     )
 
-async def get_services_by_business_type_id(db: DBSession, business_type_id: int):
-    business_type = await db_get_one(db,
-                                     model=BusinessType,
-                                     filters={BusinessType.id: business_type_id},
-                                     joins=[joinedload(BusinessType.services)])
+async def get_services_by_business_type_id(
+        db: DBSession,
+        business_type_id: int
+) -> List[ServiceResponse]:
+    business_type = await db_get_one(
+        db=db,
+        model=BusinessType,
+        filters={BusinessType.id: business_type_id},
+        joins=[joinedload(BusinessType.services)]
+    )
     return business_type.services
 
-async def get_services_by_service_domain_id(db: DBSession, service_domain_id: int, pagination: Pagination):
-    return await db_get_all(db,
-                            model=Service,
-                            schema=ServiceResponse,
-                            filters={Service.service_domain_id: service_domain_id},
-                            page=pagination.page,
-                            limit=pagination.limit)
+async def get_services_by_service_domain_id(
+        db: DBSession,
+        service_domain_id: int,
+        pagination: Pagination
+) -> Union[PaginatedResponse[ServiceResponse], List[ServiceResponse]]:
+    return await db_get_all(
+        db=db,
+        model=Service,
+        schema=ServiceResponse,
+        filters={ Service.service_domain_id: service_domain_id },
+        page=pagination.page,
+        limit=pagination.limit
+    )
 
-async def get_services_by_business_id(db: DBSession, business_id: int):
-    stmt = (
+async def get_services_by_business_id(
+        db: DBSession,
+        business_id: int
+) -> List[ServiceResponse]:
+    result = await db.execute(
         select(Business)
         .where(and_(Business.id == business_id))
-        .options(
-            joinedload(Business.services)
-        )
+        .options(joinedload(Business.services))
     )
-    result = await db.execute(stmt)
     business = result.scalars().first()
 
     return business.services
 
-async def get_services_by_user_id(db: DBSession, user_id: int):
+async def get_services_by_user_id(
+    db: DBSession,
+    user_id: int
+) -> List[ServiceWithEmployeesResponse]:
     user_result = await db.execute(
         select(User)
         .where(User.id == user_id)
@@ -115,6 +131,7 @@ async def get_services_by_user_id(db: DBSession, user_id: int):
         .join(Product, Product.service_id == Service.id)
         .where(User.id == user_id)
         .group_by(Service.id)
+        .order_by(Service.order_index)
     )
 
     result = await db.execute(stmt)

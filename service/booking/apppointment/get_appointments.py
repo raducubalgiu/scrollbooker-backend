@@ -7,7 +7,6 @@ from fastapi import HTTPException, Request, status
 from datetime import datetime, timedelta, time, timezone
 from zoneinfo import ZoneInfo
 
-from geoalchemy2.shape import to_shape
 from sqlalchemy import select, and_, or_, desc, func
 from sqlalchemy.orm import aliased, joinedload
 
@@ -19,7 +18,7 @@ from schema.booking.appointment import AppointmentBusiness, \
     CalendarEventsResponse, CalendarEventsDay, CalendarEventsCustomer, AppointmentUser, AppointmentProductResponse, \
     AppointmentResponse
 from core.dependencies import DBSession
-from models import Appointment, Schedule, User, Business, Currency, AppointmentProduct, Product
+from models import Appointment, Schedule, User, Business, Currency, AppointmentProduct, Product, UserCounters
 from schema.nomenclature.currency import CurrencyMiniResponse
 from service.booking.business import get_business_by_user_id
 
@@ -118,11 +117,15 @@ async def get_appointment_by_id(
                 map_url=map_url
             ),
             total_price=appointment.total_price,
+            total_price_with_discount=appointment.total_price_with_discount,
+            total_discount=appointment.total_discount,
             total_duration=appointment.total_duration,
             payment_currency=CurrencyMiniResponse(
                 id=currency.id,
                 name=currency.name
-            )
+            ),
+            has_written_review=appointment.has_written_review,
+            has_video_review=appointment.has_video_review
         )
 
 async def get_appointments_by_user_id(
@@ -150,11 +153,13 @@ async def get_appointments_by_user_id(
         select(
             Appointment,
             Currency,
+            UserCounters,
             customer_user.id, customer_user.fullname, customer_user.username, customer_user.avatar, customer_user.profession,
             provider_user.id, provider_user.fullname, provider_user.username, provider_user.avatar, provider_user.profession,
         )
         .join(customer_user, Appointment.customer_id == customer_user.id)
         .join(provider_user, Appointment.user_id == provider_user.id)
+        .join(UserCounters, UserCounters.user_id == provider_user.id)
         .join(Currency, Currency.id == Appointment.payment_currency_id)
     )
 
@@ -188,6 +193,7 @@ async def get_appointments_by_user_id(
     for idx, (
          appointment,
          currency,
+         counters,
          c_id, c_fullname, c_username, c_avatar, c_prof,
          p_id, p_fullname, p_username, p_avatar, p_prof
     ) in enumerate(rows):
@@ -208,7 +214,9 @@ async def get_appointments_by_user_id(
                     fullname= p_fullname,
                     username= p_username,
                     avatar= p_avatar,
-                    profession= p_prof
+                    profession= p_prof,
+                    ratings_count=counters.ratings_count,
+                    ratings_average=counters.ratings_average
                 ),
                 customer=AppointmentUser(
                     id=c_id,
@@ -222,11 +230,15 @@ async def get_appointments_by_user_id(
                     coordinates=business.coordinates
                 ),
                 total_price=appointment.total_price,
+                total_price_with_discount=appointment.total_price_with_discount,
+                total_discount=appointment.total_discount,
                 total_duration=appointment.total_duration,
                 payment_currency=CurrencyMiniResponse(
                     id=currency.id,
                     name=currency.name
-                )
+                ),
+                has_written_review=appointment.has_written_review,
+                has_video_review=appointment.has_video_review
             )
 
         appointments.append(dto)

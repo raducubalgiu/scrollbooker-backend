@@ -19,11 +19,16 @@ class Appointment(Base):
 
     customer_fullname = Column(String(50), nullable=False)
 
-    status = Column(Enum(AppointmentStatusEnum), default=AppointmentStatusEnum.IN_PROGRESS, nullable=False, index=True)
-    channel = Column(Enum(AppointmentChannelEnum), default=AppointmentChannelEnum.SCROLL_BOOKER, nullable=False, index=True)
+    has_written_review = Column(Boolean, nullable=False, default=False)
+    has_video_review = Column(Boolean, nullable=False, default=False)
 
     total_price = Column(DECIMAL, nullable=False)
+    total_price_with_discount = Column(DECIMAL, nullable=False)
+    total_discount = Column(DECIMAL, nullable=False)
     total_duration = Column(Integer, nullable=False)
+
+    status = Column(Enum(AppointmentStatusEnum), default=AppointmentStatusEnum.IN_PROGRESS, nullable=False, index=True)
+    channel = Column(Enum(AppointmentChannelEnum), default=AppointmentChannelEnum.SCROLL_BOOKER, nullable=False, index=True)
 
     is_blocked = Column(Boolean, nullable=False, default=False)
     message = Column(String(100), nullable=True)

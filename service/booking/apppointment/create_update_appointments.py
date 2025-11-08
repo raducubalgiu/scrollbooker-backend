@@ -132,22 +132,28 @@ async def create_new_scroll_booker_appointment(
         # Calculate totals
         exchange_rate_timestamp = datetime.now(timezone.utc)
         any_converted = False
+
         total_price: Decimal = Decimal("0")
+        total_price_with_discount: Decimal = Decimal("0")
         total_duration: int = 0
+
         link_models: list[AppointmentProduct] = []
 
         for p in products:
+            price: Decimal = p.price
             price_with_discount: Decimal = p.price_with_discount
             total_duration += p.duration
 
             if p.currency_id == payment_currency_id:
                 exchange_rate: Optional[Decimal] = None
+                converted_price = price
                 converted_price_with_discount = price_with_discount
             else:
                 # Convert Price -- Should complete
                 any_converted = True
 
-            total_price += converted_price_with_discount
+            total_price += converted_price
+            total_price_with_discount += converted_price_with_discount
 
             link_models.append(
                 AppointmentProduct(
@@ -164,6 +170,9 @@ async def create_new_scroll_booker_appointment(
                 )
             )
 
+        discount_value = total_price - total_price_with_discount
+        total_discount = (discount_value / total_price) * 100
+
         # Create Appointment
         appointment = Appointment(
             start_date=appointment_create.start_date,
@@ -173,6 +182,8 @@ async def create_new_scroll_booker_appointment(
             customer_id=auth_user.id,
             customer_fullname=auth_user.fullname,
             total_price=total_price,
+            total_price_with_discount=total_price_with_discount,
+            total_discount=total_discount,
             total_duration=total_duration,
             payment_currency_id=payment_currency_id,
             exchange_rate_source=("BNR" if any_converted else None),

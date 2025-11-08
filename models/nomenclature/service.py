@@ -1,3 +1,5 @@
+from email.policy import default
+
 from sqlalchemy import Column, Integer, Boolean, String, TIMESTAMP, func, ForeignKey, Index
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import relationship
@@ -12,6 +14,8 @@ class Service(Base):
     name = Column(String(50), unique=True, index=True)
     keywords = Column(JSONB, nullable=True, server_default="[]", index=True)
     active = Column(Boolean, default=True, index=True)
+
+    order_index = Column(Integer, nullable=False, default=0)
 
     business_domain_id = Column(Integer, ForeignKey("business_domains.id", ondelete="CASCADE"), nullable=False, index=True)
     service_domain_id = Column(Integer, ForeignKey("service_domains.id", ondelete="CASCADE"), index=True)

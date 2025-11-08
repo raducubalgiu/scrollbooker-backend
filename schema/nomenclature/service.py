@@ -4,6 +4,7 @@ from datetime import datetime
 
 class ServiceBase(BaseModel):
     name: str = Field(min_length=3, max_length=50)
+    order_index: int
     business_domain_id: int
     service_domain_id: Optional[int]
 
@@ -15,6 +16,7 @@ class ServiceCreate(ServiceBase):
 
 class ServiceUpdate(BaseModel):
     name: Optional[str] = None
+    order_index: int
     service_domain_id: int
     keywords: Optional[List[str]] = None
     active: Optional[bool] = None

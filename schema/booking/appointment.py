@@ -19,6 +19,8 @@ class AppointmentUser(BaseModel):
     username: Optional[str] = None
     avatar: Optional[str] = None
     profession: Optional[str] = None
+    ratings_average: Optional[float] = None
+    ratings_count: Optional[int] = None
 
 class AppointmentProductResponse(BaseModel):
     id: Optional[int] = None
@@ -44,8 +46,12 @@ class AppointmentResponse(BaseModel):
     customer: AppointmentUser
     business: AppointmentBusiness
     total_price: Decimal
+    total_price_with_discount: Decimal
+    total_discount: Decimal
     total_duration: int
     payment_currency: CurrencyMiniResponse
+    has_written_review: bool
+    has_video_review: bool
 
 class AppointmentScrollBookerCreate(BaseModel):
     start_date: datetime

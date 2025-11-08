@@ -1,7 +1,6 @@
 from typing import TypeVar, Optional, Dict, Union, Generic
-from fastapi import HTTPException, Query
+from fastapi import HTTPException, status
 from pydantic import BaseModel
-from starlette import status
 from sqlalchemy import select, Table, insert, delete, asc, desc, func, and_
 from core.dependencies import DBSession
 from models import Base
