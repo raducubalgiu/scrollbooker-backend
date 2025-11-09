@@ -8,8 +8,9 @@ from sqlalchemy import select, insert, update, func
 
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession
-from models import Business, User, Review, UserCounters, ReviewLike, ReviewProductLike, Service, Product
-from schema.booking.review import ReviewCreate, ReviewSummaryResponse, RatingBreakdown, UserReviewResponse
+from models import Business, User, Review, UserCounters, ReviewLike, ReviewProductLike, Service, Product, Appointment
+from schema.booking.review import ReviewCreate, ReviewSummaryResponse, RatingBreakdown, UserReviewResponse, \
+    ReviewResponse
 from core.logger import logger
 
 async def get_reviews_by_user_id(
@@ -164,19 +165,48 @@ async def update_review_counters(db: DBSession, user_id: int, rating: int):
     user_counters.ratings_average = new_ratings_average
     user_counters.ratings_count = new_ratings_count
 
-async def create_new_review(db: DBSession, review_data: ReviewCreate, request: Request):
-    auth_user_id = request.state.user.get("id")
-    await restrict_employee_and_business(db, review_data, request)
-
+async def create_new_review(
+        db: DBSession,
+        appointment_id: int,
+        review_create: ReviewCreate,
+        request: Request
+) -> ReviewResponse:
     try:
+        auth_user_id = request.state.user.get("id")
+        await restrict_employee_and_business(db, review_create, request)
+
+        appointment: Appointment = await db.get(Appointment, appointment_id)
+
+        if not appointment:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Appointment not found"
+            )
+
+        product: Product = await db.get(Product, review_create.product_id)
+
+        if not product:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Product not found"
+            )
+
         # Create Review
-        review = Review(**review_data.model_dump(), customer_id=auth_user_id)
+        review = Review(
+            **review_create.model_dump(),
+            service_id=product.service_id,
+            customer_id=auth_user_id
+        )
         db.add(review)
         await db.flush()
 
         # Update User Counters
-        if review_data.parent_id is None:
+        if review_create.parent_id is None:
             await update_review_counters(db, review.user_id, review.rating)
+
+        # Update Appointment
+        appointment.has_written_review = True
+        db.add(appointment)
 
         await db.commit()
         return review

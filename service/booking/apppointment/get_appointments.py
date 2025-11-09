@@ -94,7 +94,7 @@ async def get_appointment_by_id(
                         name=product_currency.name
                     ),
                     converted_price_with_discount=appointment_product.converted_price_with_discount,
-                    exchange_rate=appointment_product.exchange_rate
+                    exchange_rate=appointment_product.exchange_rate,
                 ) for appointment_product, product_id, product_currency in products
             ],
             user=AppointmentUser(

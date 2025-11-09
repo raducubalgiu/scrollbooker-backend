@@ -1,13 +1,10 @@
 from typing import Optional, List
 
-from fastapi import APIRouter, Query
-from starlette.requests import Request
-from fastapi import status
+from fastapi import APIRouter, Query, status, Request
 
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession
-from schema.booking.review import ReviewResponse, ReviewCreate, ReviewSummaryResponse, \
-    UserReviewResponse
+from schema.booking.review import ReviewResponse, ReviewCreate, ReviewSummaryResponse, UserReviewResponse
 from service.booking.review import create_new_review, like_review_by_id, unlike_review_by_id, \
     get_reviews_by_user_id, get_reviews_summary_by_user_id
 
@@ -23,20 +20,25 @@ async def get_author_reviews(
         limit: int,
         request: Request,
         ratings: Optional[List[int]] = Query(None),
-):
+) -> PaginatedResponse[UserReviewResponse]:
     return await get_reviews_by_user_id(db, user_id, page, limit, request, ratings)
 
 @router.get("/users/{user_id}/reviews-summary",
     summary='List Reviews Summary By User Id - Business Or Employee',
     response_model=ReviewSummaryResponse)
-async def get_reviews_summary(db: DBSession, user_id: int):
+async def get_reviews_summary(db: DBSession, user_id: int) -> ReviewSummaryResponse:
     return await get_reviews_summary_by_user_id(db, user_id)
 
-@router.post("/reviews",
+@router.post("/appointments/{appointment_id}/create-review",
     summary='Create New Review',
     response_model=ReviewResponse)
-async def create_review(db: DBSession, review_data: ReviewCreate, request :Request):
-    return await create_new_review(db, review_data, request)
+async def create_review(
+        db: DBSession,
+        appointment_id: int,
+        review_create: ReviewCreate,
+        request :Request
+) -> ReviewResponse:
+    return await create_new_review(db, appointment_id, review_create, request)
 
 @router.post("/reviews/{review_id}/likes",
     summary='Like Review',
