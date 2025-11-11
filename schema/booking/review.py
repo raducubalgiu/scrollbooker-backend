@@ -9,18 +9,22 @@ class ReviewCreate(BaseModel):
     product_id: int
     parent_id: Optional[int] = None
 
+class ReviewUpdate(BaseModel):
+    review: str = Field(max_length=500)
+    rating: int = Field(gt=0, lt=6)
+
 class ReviewResponse(BaseModel):
     id: int
-    customer_id: int
     review: str
     rating: int
+    customer_id: int
     user_id: int
     service_id: int
     product_id: int
+    appointment_id: int
     parent_id: Optional[int] = None
 
     created_at: datetime
-    updated_at: datetime
 
     class Config:
         from_attributes = True

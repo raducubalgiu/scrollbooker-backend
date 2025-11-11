@@ -1,12 +1,12 @@
 from typing import Optional, List
 
-from fastapi import APIRouter, Query, status, Request
+from fastapi import APIRouter, Query, status, Request, Response
 
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession
-from schema.booking.review import ReviewResponse, ReviewCreate, ReviewSummaryResponse, UserReviewResponse
+from schema.booking.review import ReviewResponse, ReviewCreate, ReviewSummaryResponse, UserReviewResponse, ReviewUpdate
 from service.booking.review import create_new_review, like_review_by_id, unlike_review_by_id, \
-    get_reviews_by_user_id, get_reviews_summary_by_user_id
+    get_reviews_by_user_id, get_reviews_summary_by_user_id, delete_review_by_id, update_review_by_id
 
 router = APIRouter(tags=["Reviews"])
 
@@ -39,6 +39,21 @@ async def create_review(
         request :Request
 ) -> ReviewResponse:
     return await create_new_review(db, appointment_id, review_create, request)
+
+@router.delete("/reviews/{review_id}")
+async def delete_review(db: DBSession, review_id: int, request: Request) -> Response:
+    return await delete_review_by_id(db, review_id, request)
+
+@router.patch("/reviews/{review_id}",
+              summary='Update Review By Id',
+              response_model=ReviewResponse)
+async def update_review(
+        db: DBSession,
+        review_id: int,
+        review_update: ReviewUpdate,
+        request: Request
+) -> ReviewResponse:
+    return await update_review_by_id(db, review_id, review_update, request)
 
 @router.post("/reviews/{review_id}/likes",
     summary='Like Review',

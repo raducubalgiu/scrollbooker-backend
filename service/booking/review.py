@@ -1,16 +1,15 @@
+from decimal import Decimal
 from typing import Optional, List
 
-from fastapi import HTTPException, Query
+from fastapi import HTTPException, Query, Response, Request, status
 from sqlalchemy.orm import joinedload
-from starlette.requests import Request
-from starlette import status
-from sqlalchemy import select, insert, update, func
+from sqlalchemy import select, insert, update, func, literal, case
 
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession
-from models import Business, User, Review, UserCounters, ReviewLike, ReviewProductLike, Service, Product, Appointment
+from models import User, Review, UserCounters, ReviewLike, ReviewProductLike, Service, Product, Appointment
 from schema.booking.review import ReviewCreate, ReviewSummaryResponse, RatingBreakdown, UserReviewResponse, \
-    ReviewResponse
+    ReviewResponse, ReviewUpdate
 from core.logger import logger
 
 async def get_reviews_by_user_id(
@@ -19,7 +18,7 @@ async def get_reviews_by_user_id(
         page: int, limit: int,
         request: Request,
         ratings: Optional[List[int]] = Query(None)
-):
+) -> PaginatedResponse[UserReviewResponse]:
     auth_user_id = request.state.user.get("id")
 
     reviews_stmt = select(Review).where(
@@ -32,7 +31,9 @@ async def get_reviews_by_user_id(
             Review.rating.in_(ratings)
         )
 
-    reviews_stmt = (reviews_stmt.options(
+    reviews_stmt = (
+        reviews_stmt
+        .options(
             joinedload(Review.customer).load_only(User.id, User.username, User.fullname, User.avatar),
             joinedload(Review.service).load_only(Service.id, Service.name),
             joinedload(Review.product).load_only(Product.id, Product.name)
@@ -87,7 +88,10 @@ async def get_reviews_by_user_id(
         ]
     )
 
-async def get_reviews_summary_by_user_id(db: DBSession, user_id):
+async def get_reviews_summary_by_user_id(
+        db: DBSession,
+        user_id
+) -> ReviewSummaryResponse:
     result = await db.execute(
         select(
             func.count(Review.id),
@@ -97,6 +101,7 @@ async def get_reviews_summary_by_user_id(db: DBSession, user_id):
     )
 
     total_reviews, average_rating = result.first()
+
     if total_reviews == 0:
         return ReviewSummaryResponse(
             average_rating=0.0,
@@ -126,44 +131,45 @@ async def get_reviews_summary_by_user_id(db: DBSession, user_id):
         breakdown=breakdown
     )
 
-async def restrict_employee_and_business(db: DBSession, review_data: ReviewCreate, request: Request):
-    auth_user_id = request.state.user.get("id")
-    auth_user_role = request.state.user.get("role")
-    user = await db.get(User, auth_user_id)
+async def apply_rating_change(
+    db: DBSession,
+    user_id: int,
+    delta_count: int,
+    delta_sum: Decimal,
+) -> UserCounters:
+    uc = UserCounters
 
-    if auth_user_role == 'business' and auth_user_id != review_data.user_id and review_data.parent_id is None:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                                detail='You do not have permission to perform this action')
+    count_new_expr = uc.ratings_count + literal(delta_count)
 
-    if auth_user_role == 'employee':
-        stmt = await db.execute(
-            select(Business)
-            .where(Business.id == user.employee_business_id) # type: ignore
-            .options(joinedload(Business.services))
+    numerator_expr = (uc.ratings_average * uc.ratings_count) + literal(delta_sum)
+    denom_expr = func.nullif(count_new_expr, 0)
+
+    avg_new_expr = case(
+        (count_new_expr > 0, numerator_expr / denom_expr),
+        else_=literal(0.0)
+    )
+
+    stmt = (
+        update(uc)
+        .where(uc.user_id == user_id)
+        .values(
+            ratings_count=count_new_expr,
+            ratings_average=avg_new_expr,
         )
-        business = stmt.scalars().first()
+        .returning(uc.user_id, uc.ratings_count, uc.ratings_average)
+    )
 
-        for service in business.services:
-            if service.id == review_data.service_id:
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                                    detail='You do not have permission to perform this action')
+    result = await db.execute(stmt)
+    row = result.first()
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User Counters not found",
+        )
 
-async def update_review_counters(db: DBSession, user_id: int, rating: int):
-    result = await db.execute(
-        select(UserCounters)
-        .filter(UserCounters.user_id == user_id))  # type: ignore
-    user_counters = result.scalars().first()
+    obj = (await db.execute(select(uc).where(uc.user_id == user_id))).scalars().first()
+    return obj
 
-    if not user_counters:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail='User Counters not found')
-
-    old_ratings_count = user_counters.ratings_count
-    new_ratings_count = user_counters.ratings_count + 1
-    new_ratings_average = (user_counters.ratings_average * old_ratings_count + rating) / new_ratings_count
-
-    user_counters.ratings_average = new_ratings_average
-    user_counters.ratings_count = new_ratings_count
 
 async def create_new_review(
         db: DBSession,
@@ -171,10 +177,8 @@ async def create_new_review(
         review_create: ReviewCreate,
         request: Request
 ) -> ReviewResponse:
-    try:
+    async with db.begin():
         auth_user_id = request.state.user.get("id")
-        await restrict_employee_and_business(db, review_create, request)
-
         appointment: Appointment = await db.get(Appointment, appointment_id)
 
         if not appointment:
@@ -194,6 +198,7 @@ async def create_new_review(
         # Create Review
         review = Review(
             **review_create.model_dump(),
+            appointment_id=appointment_id,
             service_id=product.service_id,
             customer_id=auth_user_id
         )
@@ -202,20 +207,109 @@ async def create_new_review(
 
         # Update User Counters
         if review_create.parent_id is None:
-            await update_review_counters(db, review.user_id, review.rating)
+            await apply_rating_change(
+                db=db,
+                user_id=review.user_id,
+                delta_count=1,
+                delta_sum=review.rating
+            )
 
         # Update Appointment
         appointment.has_written_review = True
         db.add(appointment)
 
-        await db.commit()
         return review
 
-    except Exception as e:
-        await db.rollback()
-        logger.error(f"Review could not be created. Error: {e}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="Something went wrong")
+async def update_review_by_id(
+    db: DBSession,
+    review_id: int,
+    review_update: ReviewUpdate,
+    request: Request
+) -> ReviewResponse:
+    async with db.begin():
+        auth_user_id = request.state.user.get("id")
+        review: Review = await db.get(Review, review_id)
+
+        if not review:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Review not found"
+            )
+
+        if review.customer_id != auth_user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to perform this action"
+            )
+
+        appointment: Appointment = await db.get(Appointment, review.appointment_id)
+
+        if not appointment:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Appointment not found"
+            )
+
+        # Update Review
+        review.rating = review_update.rating
+        review.review = review_update.review
+
+        db.add(review)
+        await db.flush()
+
+        if review_update.rating != review.rating:
+            await apply_rating_change(
+                db=db,
+                user_id=review.user_id,
+                delta_count=0,
+                delta_sum=Decimal(review_update.rating - review.rating)
+            )
+
+        return review
+
+async def delete_review_by_id(
+        db: DBSession,
+        review_id: int,
+        request: Request
+) -> Response:
+    async with db.begin():
+        auth_user_id = request.state.user.get("id")
+
+        review: Review = await db.get(Review, review_id)
+        appointment: Appointment = await db.get(Appointment, review.appointment_id)
+
+        if not review:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Review not found'
+            )
+
+        if not appointment:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Appointment not found'
+            )
+
+        if review.user_id != auth_user_id and review.customer_id != auth_user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail='You do not have permission to perform this action'
+            )
+
+        await db.delete(review)
+
+        await apply_rating_change(
+            db=db,
+            user_id=review.user_id,
+            delta_count=-1,
+            delta_sum=-review.rating
+        )
+
+        # Update Appointment
+        appointment.has_written_review = False
+        db.add(appointment)
+
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 async def like_review_by_id(db: DBSession, review_id: int, request: Request):
     auth_user_id = request.state.user.get("id")
@@ -266,7 +360,10 @@ async def like_review_by_id(db: DBSession, review_id: int, request: Request):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail='Something went wrong')
 
-async def unlike_review_by_id(db: DBSession, review_id: int, request: Request):
+async def unlike_review_by_id(
+        db: DBSession,
+        review_id: int, request: Request
+):
     auth_user_id = request.state.user.get("id")
     review = await db.get(Review, review_id)
 

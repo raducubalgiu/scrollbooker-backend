@@ -33,6 +33,11 @@ class AppointmentProductResponse(BaseModel):
     converted_price_with_discount: Decimal
     exchange_rate: Optional[Decimal] = None
 
+class AppointmentWrittenReview(BaseModel):
+    id: int
+    review: str
+    rating: int
+
 class AppointmentResponse(BaseModel):
     id: int
     start_date: datetime
@@ -52,6 +57,7 @@ class AppointmentResponse(BaseModel):
     payment_currency: CurrencyMiniResponse
     has_written_review: bool
     has_video_review: bool
+    written_review: Optional[AppointmentWrittenReview] = None
 
 class AppointmentScrollBookerCreate(BaseModel):
     start_date: datetime

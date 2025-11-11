@@ -16,9 +16,9 @@ from core.enums.role_enum import RoleEnum
 from schema.booking.appointment import AppointmentBusiness, \
     CalendarEventsSlot, CalendarEventsInfo, \
     CalendarEventsResponse, CalendarEventsDay, CalendarEventsCustomer, AppointmentUser, AppointmentProductResponse, \
-    AppointmentResponse
+    AppointmentResponse, AppointmentWrittenReview
 from core.dependencies import DBSession
-from models import Appointment, Schedule, User, Business, Currency, AppointmentProduct, Product, UserCounters
+from models import Appointment, Schedule, User, Business, Currency, AppointmentProduct, Product, UserCounters, Review
 from schema.nomenclature.currency import CurrencyMiniResponse
 from service.booking.business import get_business_by_user_id
 
@@ -37,10 +37,12 @@ async def get_appointment_by_id(
     result = await db.execute(
         select(
             Appointment,
+            Review,
             Currency,
             customer_user,
             provider_user,
         )
+        .outerjoin(Review, Review.appointment_id == Appointment.id)
         .join(Currency, Currency.id == Appointment.payment_currency_id)
         .join(customer_user, Appointment.customer_id == customer_user.id)
         .join(provider_user, Appointment.user_id == provider_user.id)
@@ -48,7 +50,7 @@ async def get_appointment_by_id(
     )
     row = result.first()
 
-    appointment, currency, customer, provider = row
+    appointment, review, currency, customer, provider = row
     business = await get_business_by_user_id(db, provider.id)
 
     business_lat = business.coordinates.lat
@@ -125,7 +127,12 @@ async def get_appointment_by_id(
                 name=currency.name
             ),
             has_written_review=appointment.has_written_review,
-            has_video_review=appointment.has_video_review
+            has_video_review=appointment.has_video_review,
+            written_review=AppointmentWrittenReview(
+                id=review.id,
+                review=review.review,
+                rating=review.rating
+            ) if review else None
         )
 
 async def get_appointments_by_user_id(
@@ -152,11 +159,13 @@ async def get_appointments_by_user_id(
     base_query = (
         select(
             Appointment,
+            Review,
             Currency,
             UserCounters,
             customer_user.id, customer_user.fullname, customer_user.username, customer_user.avatar, customer_user.profession,
             provider_user.id, provider_user.fullname, provider_user.username, provider_user.avatar, provider_user.profession,
         )
+        .outerjoin(Review, Review.appointment_id == Appointment.id)
         .join(customer_user, Appointment.customer_id == customer_user.id)
         .join(provider_user, Appointment.user_id == provider_user.id)
         .join(UserCounters, UserCounters.user_id == provider_user.id)
@@ -192,6 +201,7 @@ async def get_appointments_by_user_id(
 
     for idx, (
          appointment,
+         review,
          currency,
          counters,
          c_id, c_fullname, c_username, c_avatar, c_prof,
@@ -238,7 +248,12 @@ async def get_appointments_by_user_id(
                     name=currency.name
                 ),
                 has_written_review=appointment.has_written_review,
-                has_video_review=appointment.has_video_review
+                has_video_review=appointment.has_video_review,
+                written_review=AppointmentWrittenReview(
+                    id=review.id,
+                    review=review.review,
+                    rating=review.rating
+                ) if review else None
             )
 
         appointments.append(dto)
