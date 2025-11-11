@@ -70,7 +70,7 @@ class UserReviewResponse(BaseModel):
     product: ReviewProduct
     like_count: int
     is_liked: bool
-    is_liked_by_author: bool
+    is_liked_by_product_owner: bool
     created_at: datetime
 
     class Config:

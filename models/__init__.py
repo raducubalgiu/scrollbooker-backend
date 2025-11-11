@@ -24,7 +24,7 @@ from models.booking.schedule import Schedule
 from models.booking.business_services import business_services
 from models.booking.review.review import Review
 from models.booking.review.review_likes import ReviewLike
-from models.booking.review.review_product_likes import ReviewProductLike
+from models.booking.review.review_product_owner_likes import ReviewProductOwnerLike
 from models.booking.employment_request import EmploymentRequest
 
 # SOCIAL
