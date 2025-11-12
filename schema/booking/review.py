@@ -38,6 +38,15 @@ class ReviewSummaryResponse(BaseModel):
     total_reviews: int
     breakdown: List[RatingBreakdown]
 
+class ReviewBusinessOwner(BaseModel):
+    id: int
+    username: str
+    fullname: str
+    avatar: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
 class ReviewCustomer(BaseModel):
     id: int
     username: str
@@ -65,6 +74,7 @@ class UserReviewResponse(BaseModel):
     id: int
     rating: int
     review: str
+    product_business_owner: ReviewBusinessOwner
     customer: ReviewCustomer
     service: ReviewService
     product: ReviewProduct

@@ -188,7 +188,7 @@ async def get_appointments_by_user_id(
         )
 
     base_query = base_query.where(and_(*conditions))
-    base_query = base_query.order_by(desc(Appointment.created_at)).offset((page - 1) * limit).limit(limit)
+    base_query = base_query.order_by(desc(Appointment.start_date)).offset((page - 1) * limit).limit(limit)
 
     total_count = await db.execute(select(func.count()).select_from(base_query.subquery()))
     count = total_count.scalars().first()

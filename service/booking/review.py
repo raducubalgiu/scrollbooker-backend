@@ -72,6 +72,7 @@ async def get_reviews_by_user_id(
     stmt = (
         stmt
         .options(
+            joinedload(Review.business_or_employee).load_only(User.id, User.username, User.fullname, User.avatar),
             joinedload(Review.customer).load_only(User.id, User.username, User.fullname, User.avatar),
             joinedload(Review.service).load_only(Service.id, Service.name),
             joinedload(Review.product).load_only(Product.id, Product.name)
@@ -114,6 +115,7 @@ async def get_reviews_by_user_id(
                 id=review.id,
                 rating=review.rating,
                 review=review.review,
+                product_business_owner=review.business_or_employee,
                 customer=review.customer,
                 service=review.service,
                 product=review.product,
@@ -137,8 +139,7 @@ async def get_reviews_summary_by_user_id(
         .where(Review.user_id == user_id)
     )
 
-    total_reviews: int = result.first()
-    average_rating: float = result.first()
+    total_reviews, average_rating = result.first()
 
     if total_reviews == 0:
         return ReviewSummaryResponse(
