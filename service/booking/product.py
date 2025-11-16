@@ -1,16 +1,16 @@
-from typing import List
+from typing import List, Tuple, Sequence
 
-from fastapi import HTTPException
-from fastapi.params import Query
-from sqlalchemy.orm import joinedload
-from starlette.requests import Request
-from starlette import status
-from core.crud_helpers import db_delete, db_get_all, db_update, db_get_one, PaginatedResponse
-from core.dependencies import DBSession, check_resource_ownership, Pagination
-from models import Product, Schedule, product_sub_filters, business_services, SubFilter, Appointment, AppointmentProduct
-from schema.booking.product import ProductCreateWithSubFilters, ProductUpdate, ProductWithSubFiltersResponse, ProductResponse
+from fastapi import HTTPException, Query, Request, status
 from core.logger import logger
 from sqlalchemy import insert, select
+from sqlalchemy.engine import Result, Row
+from sqlalchemy.orm import joinedload
+from sqlalchemy.sql import Select
+
+from core.crud_helpers import db_delete, db_get_all, db_update, db_get_one, PaginatedResponse
+from core.dependencies import DBSession, check_resource_ownership, Pagination
+from models import Product, Schedule, product_sub_filters, business_services, SubFilter, AppointmentProduct, PostProduct
+from schema.booking.product import ProductCreateWithSubFilters, ProductUpdate, ProductWithSubFiltersResponse, ProductResponse
 
 async def get_products_by_user_id(
         db: DBSession,
@@ -73,6 +73,22 @@ async def get_products_by_appointment_id(
     )
     products = products_stmt.scalars().unique().all()
     return products
+
+async def get_products_by_post_id(
+    db: DBSession,
+    post_id: int
+) -> List[ProductResponse]:
+    stmt: Select = (
+        select(Product)
+        .join(PostProduct, PostProduct.product_id == Product.id)
+        .options(joinedload(Product.sub_filters).joinedload(SubFilter.filter))
+        .where(PostProduct.post_id == post_id)
+    )
+    result: Result = await db.execute(stmt)
+    products = result.scalars().unique().all()
+
+    return products
+
 
 async def create_new_product(
         db: DBSession,

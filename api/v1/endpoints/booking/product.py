@@ -5,7 +5,7 @@ from fastapi import APIRouter, Request, status, Query
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession, BusinessAndEmployeesSession, Pagination
 from service.booking.product import create_new_product, delete_by_id, update_by_id, get_products_by_user_id, \
-    get_products_by_user_id_and_service_id, get_product_by_id, get_products_by_appointment_id
+    get_products_by_user_id_and_service_id, get_product_by_id, get_products_by_appointment_id, get_products_by_post_id
 from schema.booking.product import ProductResponse, ProductCreateWithSubFilters, ProductUpdate, ProductWithSubFiltersResponse
 
 router = APIRouter(tags=["Products"])
@@ -45,6 +45,12 @@ async def get_product(db: DBSession, product_id: int) -> ProductResponse:
             response_model=List[ProductResponse])
 async def get_products_by_appointment(db: DBSession, appointment_id: int) -> List[ProductResponse]:
     return await get_products_by_appointment_id(db, appointment_id)
+
+@router.get("/posts/{post_id}/products",
+            summary='List All Products Filtered By Post Id',
+            response_model=List[ProductResponse])
+async def get_products_by_post(db: DBSession, post_id: int) -> List[ProductResponse]:
+    return await get_products_by_post_id(db, post_id)
 
 @router.post(
     "/products",
