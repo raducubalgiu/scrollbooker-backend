@@ -34,6 +34,7 @@ from models.social.bookmark_posts import BookmarkPost
 from models.social.repost import Repost
 from models.social.hashtag import Hashtag
 from models.social.post import Post
+from models.social.post_products import PostProduct
 from models.social.post_media import PostMedia
 from models.social.post_shares import post_shares
 from models.social.comment.comment import Comment

@@ -6,7 +6,7 @@ from sqlalchemy.sql import Select
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import Pagination, DBSession
 from models import Like, Post, Repost, BookmarkPost, Follow, User, UserCounters, Product, Currency, Business
-from schema.social.post import UserPostResponse, PostProduct, PostProductCurrency, PostCounters, PostUserActions, \
+from schema.social.post import UserPostResponse, PostProductCurrency, PostCounters, PostUserActions, \
     LastMinute, PostBusinessOwner, PostEmployee, PostUser
 from service.social.post_media import get_post_media
 
@@ -80,8 +80,6 @@ def build_posts_list_query(
             Employee.id.label('e_id'),
             Employee.fullname.label('e_fullname'),
             Employee.avatar.label("e_avatar"),
-            Product,
-            Currency,
             is_liked.label('is_liked'),
             is_reposted.label('is_reposted'),
             is_bookmarked.label('is_bookmarked'),
@@ -101,9 +99,6 @@ def build_posts_list_query(
         # Employee
         .outerjoin(Employee, Employee.id == Post.employee_id)
 
-        .outerjoin(Product, Product.id == Post.product_id)
-        .outerjoin(Currency, Currency.id == Product.currency_id)
-
         .order_by(desc(Post.created_at))
         .offset((pagination.page - 1) * pagination.limit)
         .limit(pagination.limit)
@@ -116,8 +111,6 @@ def row_to_response(row, media_map) -> UserPostResponse:
          u_id, u_fullname, u_username, u_avatar, u_profession, u_ratings_avg, u_ratings_count,
          bo_id, bo_fullname, bo_avatar, bo_ratings_average,
          e_id, e_fullname, e_avatar,
-         product,
-         currency,
          is_liked,
          is_reposted,
          is_bookmarked,
@@ -148,19 +141,6 @@ def row_to_response(row, media_map) -> UserPostResponse:
         ),
         employee=employee,
         business_id=post.business_id,
-        product=PostProduct(
-            id=product.id,
-            name=product.name,
-            description=product.description,
-            duration=product.duration,
-            price=product.price,
-            price_with_discount=product.price_with_discount,
-            discount=product.discount,
-            currency=PostProductCurrency(
-                id=currency.id,
-                name=currency.name
-            )
-        ) if product is not None else None,
         counters=PostCounters(
             comment_count=post.comment_count,
             like_count=post.like_count,
@@ -174,7 +154,6 @@ def row_to_response(row, media_map) -> UserPostResponse:
             is_bookmarked=is_bookmarked,
             is_reposted=is_reposted,
         ),
-        mentions=post.mentions,
         hashtags=post.hashtags,
         is_video_review=post.is_video_review,
         rating=post.rating,

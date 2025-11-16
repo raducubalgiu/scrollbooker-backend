@@ -7,9 +7,9 @@ from starlette import status
 from sqlalchemy import select, desc, func, literal, and_, or_
 from core.crud_helpers import PaginatedResponse
 from core.dependencies import DBSession, Pagination
-from models import User, Follow, PostMedia, Repost, BookmarkPost, UserCounters, Like, Product, Currency, Business
-from schema.social.post import PostCreate, UserPostResponse, PostCounters, LastMinute, PostUserActions, PostProduct, \
-    PostProductCurrency, PostBusinessOwner, PostEmployee, PostUser
+from models import User, Follow, PostMedia, Repost, BookmarkPost, UserCounters, Like, Business
+from schema.social.post import PostCreate, UserPostResponse, PostCounters, LastMinute, PostUserActions, \
+    PostBusinessOwner, PostEmployee, PostUser
 from models.social.post import Post
 from core.logger import logger
 from service.social.util.fetch_paginated_posts import fetch_paginated_posts
@@ -20,7 +20,7 @@ async def get_explore_feed_posts(
         pagination: Pagination,
         request: Request,
         business_types: Optional[List[int]] = Query(default=None)
-):
+) -> PaginatedResponse[UserPostResponse]:
     auth_user_id = request.state.user.get("id")
 
     BusinessOwner = aliased(User)
@@ -96,8 +96,6 @@ async def get_explore_feed_posts(
             Employee.id.label('e_id'),
             Employee.fullname.label('e_fullname'),
             Employee.avatar.label("e_avatar"),
-            Product,
-            Currency,
             is_liked.label('is_liked'),
             is_reposted.label('is_reposted'),
             is_bookmarked.label('is_bookmarked'),
@@ -114,8 +112,7 @@ async def get_explore_feed_posts(
         .join(OwnerCounters, OwnerCounters.user_id == BusinessOwner.id)
 
         .outerjoin(Employee, Employee.id == Post.employee_id)
-        .outerjoin(Product, Product.id == Post.product_id)
-        .outerjoin(Currency, Currency.id == Product.currency_id))
+    )
 
     if business_types:
         query = query.where(Post.business_type_id.in_(business_types))
@@ -135,7 +132,7 @@ async def get_explore_feed_posts(
 
     results = []
 
-    for post, u_id, u_fullname, u_username, u_avatar, u_profession, u_ratings_average, u_ratings_count, bo_id, bo_fullname, bo_avatar, bo_ratings_average, e_id, e_fullname, e_avatar, product, currency, is_liked, is_reposted, is_bookmarked, is_follow in posts:
+    for post, u_id, u_fullname, u_username, u_avatar, u_profession, u_ratings_average, u_ratings_count, bo_id, bo_fullname, bo_avatar, bo_ratings_average, e_id, e_fullname, e_avatar, is_liked, is_reposted, is_bookmarked, is_follow in posts:
         media_files = media_map.get(post.id, [])
         employee = PostEmployee(id=e_id, fullname=e_fullname, avatar=e_avatar) if e_id and e_fullname else None
 
@@ -160,19 +157,6 @@ async def get_explore_feed_posts(
             ),
             employee=employee,
             business_id=post.business_id,
-            product=PostProduct(
-                id=product.id,
-                name=product.name,
-                description=product.description,
-                duration=product.duration,
-                price=product.price,
-                price_with_discount=product.price_with_discount,
-                discount=product.discount,
-                currency=PostProductCurrency(
-                    id=currency.id,
-                    name=currency.name
-                )
-            ) if product is not None else None,
             counters=PostCounters(
                 comment_count=post.comment_count,
                 like_count=post.like_count,
@@ -186,7 +170,6 @@ async def get_explore_feed_posts(
                 is_bookmarked=is_bookmarked,
                 is_reposted=is_reposted,
             ),
-            mentions=post.mentions,
             hashtags=post.hashtags,
             bookable=post.bookable,
             rating=post.rating,

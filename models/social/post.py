@@ -1,7 +1,8 @@
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from models import Base
-from sqlalchemy import Column, Integer, String, TIMESTAMP, func, ForeignKey, Boolean, ARRAY, Text, BigInteger, Index
+from sqlalchemy import Column, Integer, String, TIMESTAMP, func, ForeignKey, Boolean, ARRAY, Text, BigInteger, Index, \
+    DECIMAL
 
 class Post(Base):
     __tablename__ = "posts"
@@ -10,7 +11,6 @@ class Post(Base):
     description = Column(String(500), nullable=True)
 
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=True)
 
     business_type_id = Column(Integer, ForeignKey("business_types.id", ondelete="CASCADE"), nullable=False, index=True)
     business_id = Column(Integer, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -39,6 +39,11 @@ class Post(Base):
     bookmark_count = Column(Integer, nullable=False, default=0)
     bookings_count = Column(Integer, nullable=False, default=0)
 
+    total_price = Column(DECIMAL, nullable=True)
+    total_price_with_discount = Column(DECIMAL, nullable=True)
+    total_discount = Column(DECIMAL, nullable=True)
+    total_duration = Column(Integer, nullable=True)
+
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
@@ -62,7 +67,6 @@ class Post(Base):
         foreign_keys=[business_owner_id],
         back_populates="business_owner_posts"
     )
-    product = relationship("Product", back_populates="posts")
     comments = relationship("Comment", back_populates="post", cascade="all, delete")
     media_files = relationship(
         "PostMedia",
@@ -77,7 +81,6 @@ class Post(Base):
         Index("idx_posts_business_owner_id", "business_owner_id"),
         Index("idx_posts_business_type_id", "business_type_id"),
         Index("idx_posts_employee_id", "employee_id"),
-        Index("idx_posts_product_id", "product_id"),
         Index("idx_posts_created_at", "created_at"),
 
 
@@ -87,7 +90,6 @@ class Post(Base):
                       "business_owner_id",
                       "business_type_id",
                       "employee_id",
-                      "product_id",
                       "created_at"
               )
 

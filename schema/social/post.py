@@ -63,7 +63,7 @@ class PostProductCurrency(BaseModel):
     class Config:
         from_attributes = True
 
-class PostProduct(BaseModel):
+class PostProductResponse(BaseModel):
     id: int
     name: str
     description: Optional[str] = None
@@ -127,7 +127,6 @@ class UserPostResponse(BaseModel):
     user: PostUser
     business_owner: PostBusinessOwner
     employee: Optional[PostEmployee] = None
-    product: Optional[PostProduct] = None
     counters: PostCounters
     media_files: List[PostMediaResponse]
     user_actions: PostUserActions

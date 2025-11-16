@@ -20,7 +20,7 @@ async def get_explore_feed(
         pagination: Pagination,
         request: Request,
         business_types: Optional[List[int]] = Query(default=None)
-):
+) -> PaginatedResponse[UserPostResponse]:
     return await get_explore_feed_posts(db, pagination, request, business_types)
 
 @router.get("/posts/following",
