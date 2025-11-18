@@ -5,7 +5,7 @@ from starlette.requests import Request
 from starlette import status
 from sqlalchemy import select, or_
 from core.crud_helpers import db_get_one, db_get_all
-from core.dependencies import DBSession, check_resource_ownership
+from core.dependencies import DBSession, check_resource_ownership, AuthenticatedUser
 from schema.booking.schedule import ScheduleCreate, ScheduleUpdate, ScheduleResponse
 from models import Schedule, Business, User
 import calendar
@@ -46,9 +46,9 @@ async def get_schedules_by_user_id(db: DBSession, user_id: int) -> List[Schedule
 async def create_user_schedule(
         db: DBSession,
         schedule_create: ScheduleCreate,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> ScheduleResponse:
-    auth_user_id = request.state.user.get("id")
+    auth_user_id = auth_user.id
     business = await get_business(db, auth_user_id)
 
     if not business:
@@ -83,10 +83,10 @@ async def update_user_schedule(
         db: DBSession,
         schedule_id: int,
         schedule_update: ScheduleUpdate,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> ScheduleResponse:
-    auth_user_id = request.state.user.get("id")
-    schedule = await check_resource_ownership(db, Schedule, schedule_id, request)
+    auth_user_id = auth_user.id
+    schedule = await check_resource_ownership(db, Schedule, schedule_id, auth_user)
     await get_business(db, auth_user_id)
 
     schedule.start_time = schedule_update.start_time
@@ -100,13 +100,13 @@ async def update_user_schedule(
 async def update_user_schedules(
         db: DBSession,
         schedule_update: List[ScheduleUpdate],
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> List[ScheduleResponse]:
     try:
         updated_schedules = []
 
         for schedule in schedule_update:
-            updated_schedule = await update_user_schedule(db, schedule.id, schedule, request)
+            updated_schedule = await update_user_schedule(db, schedule.id, schedule, auth_user)
             updated_schedules.append(updated_schedule)
 
         return updated_schedules

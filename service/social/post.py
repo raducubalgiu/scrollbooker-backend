@@ -6,7 +6,7 @@ from starlette.requests import Request
 from starlette import status
 from sqlalchemy import select, desc, func, literal, and_, or_
 from core.crud_helpers import PaginatedResponse
-from core.dependencies import DBSession, Pagination
+from core.dependencies import DBSession, Pagination, AuthenticatedUser
 from models import User, Follow, PostMedia, Repost, BookmarkPost, UserCounters, Like, Business
 from schema.social.post import PostCreate, UserPostResponse, PostCounters, LastMinute, PostUserActions, \
     PostBusinessOwner, PostEmployee, PostUser
@@ -18,10 +18,10 @@ from service.social.post_media import get_post_media
 async def get_explore_feed_posts(
         db: DBSession,
         pagination: Pagination,
-        request: Request,
+        auth_user: AuthenticatedUser,
         business_types: Optional[List[int]] = Query(default=None)
 ) -> PaginatedResponse[UserPostResponse]:
-    auth_user_id = request.state.user.get("id")
+    auth_user_id = auth_user.id
 
     BusinessOwner = aliased(User)
     OwnerCounters = aliased(UserCounters)
@@ -191,9 +191,9 @@ async def get_explore_feed_posts(
 async def get_following_posts(
         db: DBSession,
         pagination: Pagination,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> PaginatedResponse[UserPostResponse]:
-    auth_user_id = request.state.user.get("id")
+    auth_user_id = auth_user.id
 
     base_ids = (
         select(Post.id)
@@ -215,9 +215,9 @@ async def get_posts_by_user_id(
         db: DBSession,
         user_id: int,
         pagination: Pagination,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> PaginatedResponse[UserPostResponse]:
-    auth_user_id = request.state.user.get("id")
+    auth_user_id = auth_user.id
 
     base_ids = (
         select(Post.id)
@@ -235,9 +235,9 @@ async def get_video_reviews_by_user_id(
     db: DBSession,
     user_id: int,
     pagination: Pagination,
-    request: Request
+    auth_user: AuthenticatedUser
 ) -> PaginatedResponse[UserPostResponse]:
-    auth_user_id = request.state.user.get("id")
+    auth_user_id = auth_user.id
 
     base_ids = (
         select(Post.id)
@@ -257,10 +257,14 @@ async def get_video_reviews_by_user_id(
         base_post_ids_query=base_ids
     )
 
-async def create_new_post(db: DBSession, post_create: PostCreate, request: Request):
-    auth_user_id = request.state.user.get("id")
-
+async def create_new_post(
+        db: DBSession,
+        post_create: PostCreate,
+        auth_user: AuthenticatedUser
+):
     try:
+        auth_user_id = auth_user.id
+
         post_data = post_create.model_dump(exclude={"media_files"})
         post_data["user_id"] = auth_user_id
 

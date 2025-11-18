@@ -2,7 +2,7 @@ from typing import Set, List, Union
 from fastapi import HTTPException, Request, Response, status
 
 from core.crud_helpers import PaginatedResponse
-from core.dependencies import DBSession, Pagination
+from core.dependencies import DBSession, Pagination, AuthenticatedUser
 from schema.social.comment import CommentCreate, CommentResponse, CommentUser
 from sqlalchemy import select, update, insert, func, and_, delete
 from models import Comment, CommentLike, CommentPostLike, Post, User, UserCounters
@@ -126,10 +126,10 @@ async def create_new_comment(
         db: DBSession,
         post_id: int,
         comment_data: CommentCreate,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> CommentResponse:
     async with db.begin():
-        auth_user_id = request.state.user.get("id")
+        auth_user_id = auth_user.id
 
         if await _get_post_author_id(db, post_id) is None:
             raise HTTPException(status_code=404, detail="Post not found")
@@ -184,9 +184,9 @@ async def get_comments_by_post_id(
         db: DBSession,
         post_id: int,
         pagination: Pagination,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> PaginatedResponse[CommentResponse]:
-    auth_user_id = request.state.user.get("id")
+    auth_user_id = auth_user.id
 
     count = await _count_top_level_comments(db, post_id)
     comments = await _select_comments(db, post_id, pagination.page, pagination.limit)
@@ -225,9 +225,9 @@ async def get_comments_by_parent_id(
     post_id: int,
     parent_id: int,
     pagination: Pagination,
-    request: Request,
-    ) -> PaginatedResponse[CommentResponse]:
-        auth_user_id = request.state.user.get("id")
+    auth_user: AuthenticatedUser,
+) -> PaginatedResponse[CommentResponse]:
+        auth_user_id = auth_user.id
 
         parent_info = await db.execute(
             select(Comment.id, Comment.post_id)
@@ -272,11 +272,11 @@ async def get_comments_by_parent_id(
 async def like_post_comment(
         db: DBSession,
         comment_id: int,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> Response:
-    auth_user_id = request.state.user.get("id")
-
     async with db.begin():
+        auth_user_id = auth_user.id
+
         comment = await db.get(Comment, comment_id)
         if not comment:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
@@ -329,11 +329,11 @@ async def like_post_comment(
 async def unlike_post_comment(
         db: DBSession,
         comment_id: int,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> Response:
-    auth_user_id = request.state.user.get("id")
-
     async with db.begin():
+        auth_user_id = auth_user.id
+
         comment = await db.get(Comment, comment_id)
         if not comment:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,

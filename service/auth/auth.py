@@ -1,11 +1,11 @@
 import os
+import secrets
 
 from pydantic import EmailStr
-from starlette.requests import Request
-from fastapi import HTTPException
+from fastapi import HTTPException, Request, status
+
 from sqlalchemy.orm import joinedload
-from sqlalchemy import select, or_, desc
-from starlette import status
+from sqlalchemy import select, or_
 from datetime import timedelta
 from dotenv import load_dotenv
 from core.enums.registration_step_enum import RegistrationStepEnum
@@ -13,45 +13,61 @@ from core.enums.role_enum import RoleEnum
 from core.logger import logger
 from core.crud_helpers import db_get_one
 from core.security import hash_password, verify_password, create_token, decode_token
-from core.dependencies import DBSession
+from core.dependencies import DBSession, AuthenticatedUser
 from models import User, UserCounters, Role, Business, Permission
 from schema.auth.auth import UserRegister, UserInfoResponse, UserInfoUpdate
 from jose import JWTError
 
-from schema.auth.token import RefreshToken, AuthResponse
+from schema.auth.token import RefreshToken, AuthResponse, TokenPayload
 
 load_dotenv()
 
-async def register_user(db: DBSession, user_register: UserRegister):
-    try:
-        user = await db_get_one(db,
-                                model=User,
-                                filters={User.email: user_register.email},
-                                raise_not_found=False)
-        if user:
+async def register_user(
+    db: DBSession,
+    user_register: UserRegister
+) -> AuthResponse:
+    async with db.begin():
+        existing_user_id: int = await db.scalar(
+            select(User.id)
+            .where(User.email == user_register.email)
+        )
+
+        if existing_user_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail='User already registered')
 
         hashed = await hash_password(user_register.password)
-        role = await db_get_one(db, model=Role, filters={Role.name: user_register.role_name})
 
-        users_stmt = await db.execute(select(User.id).order_by(desc("id")))
-        last_user = users_stmt.mappings().first()
+        role: Role = await db.scalar(
+            select(Role)
+            .where(Role.name == user_register.role_name)
+            .limit(1)
+        )
 
-        username = f"user{last_user.id}"
-        fullname = f"user{last_user.id}"
+        if not role:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Role Not Found')
+
+        temp_name = f"tmp_{secrets.token_hex(8)}"
 
         new_user = User(
             email=user_register.email,
             password=hashed,
-            username=username,
-            fullname=fullname,
+            username=temp_name,
+            fullname=temp_name,
             role_id=role.id,
             is_validated=False,
             registration_step=RegistrationStepEnum.COLLECT_USER_EMAIL_VALIDATION
         )
         db.add(new_user)
+        await db.flush()
+
+        final_name = f"user{new_user.id}"
+        new_user.username = final_name
+        new_user.fullname = final_name
+
         await db.flush()
 
         # Create User Counters
@@ -71,18 +87,12 @@ async def register_user(db: DBSession, user_register: UserRegister):
         #
         # await send_verification_email(to_email=str(user_register.email), verify_link=link)
 
-        await db.commit()
         await db.refresh(new_user)
 
-        return await generate_tokens(new_user.id, username, fullname, new_user.email, role.name)
-    except Exception as e:
-        await db.rollback()
-        logger.error(f"User could not be registered. Error {e}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail='Something went wrong')
+        return await generate_tokens(new_user.id, new_user.username, new_user.fullname, new_user.email, role.name)
 
-async def verify_user_email(db: DBSession, request: Request):
-    auth_user_id = request.state.user.get("id")
+async def verify_user_email(db: DBSession, auth_user: AuthenticatedUser):
+    auth_user_id = auth_user.id
 
     user = await db.get(User, auth_user_id)
 
@@ -161,25 +171,25 @@ async def generate_tokens(
         role: str
 ) -> AuthResponse:
     access_token = await create_token(
-        data={
-            "id": user_id,
-            "sub": username,
-            "fullname": fullname,
-            "email": email,
-            "role": role,
-        },
+        payload=TokenPayload(
+            id=user_id,
+            username=username,
+            fullname=fullname,
+            email=email,
+            role=role
+        ),
         expires_at=timedelta(minutes=float(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))),
         secret_key=os.getenv("SECRET_KEY")
     )
 
     refresh_token = await create_token(
-        data={
-            "id": user_id,
-            "sub": username,
-            "fullname": fullname,
-            "email": email,
-            "role": role
-        },
+        payload=TokenPayload(
+            id=user_id,
+            username=username,
+            fullname=fullname,
+            email=email,
+            role=role
+        ),
         expires_at=timedelta(days=float(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS"))),
         secret_key=os.getenv("REFRESH_SECRET_KEY")
     )
@@ -195,8 +205,8 @@ async def get_refresh_token(
         if not payload:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
 
-        username = payload.get("sub")
-        email = payload.get("email")
+        username = payload.username
+        email = payload.email
 
         user_stmt = await db.execute(
             select(User)
@@ -230,8 +240,8 @@ async def get_user_info(db: DBSession, token: str) -> UserInfoResponse:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                                 detail='Invalid token')
 
-        username = payload.get("sub")
-        email = payload.get("email")
+        username = payload.username
+        email = payload.email
 
         user_stmt = await db.execute(
             select(User)
@@ -287,8 +297,8 @@ async def get_user_permissions(db: DBSession, token: str):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                                 detail='Invalid token')
 
-        username = payload.get("sub")
-        email = payload.get("email")
+        username = payload.username
+        email = payload.email
 
         user_stmt = await db.execute(
             select(User)
@@ -327,14 +337,17 @@ async def update_user_info(
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                                 detail='Invalid token')
 
-        username = payload.get("sub")
-        user = await db_get_one(db, model=User,
-                                filters={User.username: username},
-                                joins=[
-                                    joinedload(User.counters),
-                                    joinedload(User.owner_business).load_only(Business.id),
-                                    joinedload(User.role).load_only(Role.name)
-                                ])
+        username = payload.username
+        user = await db_get_one(
+            db=db,
+            model=User,
+            filters={User.username: username},
+            joins=[
+                joinedload(User.counters),
+                joinedload(User.owner_business).load_only(Business.id),
+                joinedload(User.role).load_only(Role.name)
+            ]
+        )
 
         if not user:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")

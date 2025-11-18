@@ -3,9 +3,9 @@ from fastapi.params import Depends
 from starlette.requests import Request
 
 from core.crud_helpers import PaginatedResponse
-from core.dependencies import DBSession
+from core.dependencies import DBSession, AuthenticatedUser, Pagination
 from schema.user.user import UserBaseMinimum, UsernameUpdate, FullNameUpdate, BioUpdate, GenderUpdate, SearchUsername, \
-    SearchUsernameResponse, BirthDateUpdate, UserUpdateResponse, WebsiteUpdate, PublicEmailUpdate
+    SearchUsernameResponse, BirthDateUpdate, UserUpdateResponse, WebsiteUpdate, PublicEmailUpdate, UserProfileResponse
 from service.user.user import get_user_followers_by_user_id, \
     get_user_followings_by_user_id, get_user_dashboard_summary_by_id, \
     get_available_professions_by_user_id, get_product_durations_by_user_id, update_user_fullname, \
@@ -20,52 +20,81 @@ router = APIRouter(prefix="/users", tags=["Users"])
 async def search_username(db: DBSession, query: SearchUsername = Depends()):
     return await search_available_username(db, query)
 
-@router.get("/{user_id}/user-profile")
-async def get_user_profile(db: DBSession, user_id: int, request: Request):
-    return await get_user_profile_by_id(db, user_id, request)
+@router.get("/{user_id}/user-profile",
+            summary='Get User Profile By Id',
+            response_model=UserProfileResponse)
+async def get_user_profile(db: DBSession, user_id: int, auth_user: AuthenticatedUser) -> UserProfileResponse:
+    return await get_user_profile_by_id(db, user_id, auth_user)
 
-@router.patch(
-    "/user-info/fullname",
-    summary='Update User Fullname',
-    response_model=UserUpdateResponse)
-async def update_fullname(db: DBSession, fullname_update: FullNameUpdate, request: Request):
-    return await update_user_fullname(db, fullname_update, request)
+@router.patch("/user-info/fullname",
+            summary='Update User Fullname',
+            response_model=UserUpdateResponse)
+async def update_fullname(
+        db: DBSession,
+        fullname_update: FullNameUpdate,
+        auth_user: AuthenticatedUser
+) -> UserUpdateResponse:
+    return await update_user_fullname(db, fullname_update, auth_user)
 
 @router.patch("/user-info/username",
               summary='Update User Username',
               response_model=UserUpdateResponse)
-async def update_username(db: DBSession, username_update: UsernameUpdate, request: Request):
-    return await update_user_username(db, username_update, request)
+async def update_username(
+        db: DBSession,
+        username_update: UsernameUpdate,
+        auth_user: AuthenticatedUser
+) -> UserUpdateResponse:
+    return await update_user_username(db, username_update, auth_user)
 
 @router.patch("/user-info/birthdate",
               summary='Update User BirthDate',
               response_model=UserUpdateResponse)
-async def update_birthdate(db: DBSession, birthdate_update: BirthDateUpdate, request: Request):
-    return await update_user_birthdate(db, birthdate_update, request)
+async def update_birthdate(
+        db: DBSession,
+        birthdate_update: BirthDateUpdate,
+        auth_user: AuthenticatedUser
+) -> UserUpdateResponse:
+    return await update_user_birthdate(db, birthdate_update, auth_user)
 
 @router.patch("/user-info/gender",
               summary='Update User Gender',
               response_model=UserUpdateResponse)
-async def update_gender(db: DBSession, gender_update: GenderUpdate, request: Request):
-    return await update_user_gender(db, gender_update, request)
+async def update_gender(
+        db: DBSession,
+        gender_update: GenderUpdate,
+        auth_user: AuthenticatedUser
+) -> UserUpdateResponse:
+    return await update_user_gender(db, gender_update, auth_user)
 
 @router.patch("/user-info/bio",
               summary='Update User Bio',
               response_model=UserUpdateResponse)
-async def update_bio(db: DBSession, bio_update: BioUpdate, request: Request):
-    return await update_user_bio(db, bio_update, request)
+async def update_bio(
+        db: DBSession,
+        bio_update: BioUpdate,
+        auth_user: AuthenticatedUser
+) -> UserUpdateResponse:
+    return await update_user_bio(db, bio_update, auth_user)
 
 @router.patch("/user-info/website",
               summary='Update User Website',
               response_model=UserUpdateResponse)
-async def update_website(db: DBSession, website: WebsiteUpdate, request: Request):
-    return await update_user_website(db, website, request)
+async def update_website(
+        db: DBSession,
+        website: WebsiteUpdate,
+        auth_user: AuthenticatedUser
+) -> UserUpdateResponse:
+    return await update_user_website(db, website, auth_user)
 
 @router.patch("/user-info/public-email",
               summary='Update User Public Email',
               response_model=UserUpdateResponse)
-async def update_public_email(db: DBSession, public_email: PublicEmailUpdate, request: Request):
-    return await update_user_public_email(db, public_email, request)
+async def update_public_email(
+        db: DBSession,
+        public_email: PublicEmailUpdate,
+        auth_user: AuthenticatedUser
+) -> UserUpdateResponse:
+    return await update_user_public_email(db, public_email, auth_user)
 
 @router.get("/{user_id}/dashboard-summary")
 async def get_user_dashboard_summary(db: DBSession, user_id: int, start_date: str, end_date: str, all_employees: bool = Query(False)):
@@ -75,13 +104,27 @@ async def get_user_dashboard_summary(db: DBSession, user_id: int, start_date: st
 async def get_user_product_durations(db:DBSession, user_id: int):
     return await get_product_durations_by_user_id(db, user_id)
 
-@router.get("/{user_id}/followers", response_model=PaginatedResponse[UserBaseMinimum])
-async def get_user_followers(db: DBSession, user_id: int, page: int, limit: int, request: Request):
-    return await get_user_followers_by_user_id(db, user_id, page, limit, request)
+@router.get("/{user_id}/followers",
+            summary='List User Followers',
+            response_model=PaginatedResponse[UserBaseMinimum])
+async def get_user_followers(
+        db: DBSession,
+        user_id: int,
+        pagination: Pagination,
+        auth_user: AuthenticatedUser
+) -> PaginatedResponse[UserBaseMinimum]:
+    return await get_user_followers_by_user_id(db, user_id, pagination, auth_user)
 
-@router.get("/{user_id}/followings", response_model=PaginatedResponse[UserBaseMinimum])
-async def get_user_followings(db: DBSession, user_id: int, page: int, limit: int, request: Request):
-    return await get_user_followings_by_user_id(db, user_id, page, limit, request)
+@router.get("/{user_id}/followings",
+            summary='List User Followings',
+            response_model=PaginatedResponse[UserBaseMinimum])
+async def get_user_followings(
+        db: DBSession,
+        user_id: int,
+        pagination: Pagination,
+        auth_user: AuthenticatedUser
+) -> PaginatedResponse[UserBaseMinimum]:
+    return await get_user_followings_by_user_id(db, user_id, pagination, auth_user)
 
 @router.get("/{user_id}/available-professions")
 async def get_user_available_professions(db: DBSession, user_id: int):

@@ -129,7 +129,7 @@ async def db_update(
     resource_id: Optional[int] = None,
     filters: Optional[Dict[str, Any]] = None,
     load_options: Optional[list] = None
-):
+) -> ModelT:
     query_put = select(model)
 
     if resource_id:

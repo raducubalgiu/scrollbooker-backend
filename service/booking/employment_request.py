@@ -5,7 +5,7 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy import select, and_, delete
 
 from core.crud_helpers import db_create, db_get_one
-from core.dependencies import DBSession
+from core.dependencies import DBSession, AuthenticatedUser
 from core.enums.employment_requests_status_enum import EmploymentRequestsStatusEnum
 from core.enums.notification_type import NotificationTypeEnum
 from core.enums.role_enum import RoleEnum
@@ -21,9 +21,9 @@ from service.booking.business import get_business_by_user_id
 async def get_employment_requests_by_user_id(
         db: DBSession,
         user_id: int,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> List[EmploymentsRequestsResponse]:
-    auth_user_id = request.state.user.get("id")
+    auth_user_id = auth_user.id
 
     business = await get_business_by_user_id(db, auth_user_id)
     user = await db_get_one(db, model=User, filters={User.id: user_id}, joins=[joinedload(User.role)])
@@ -61,9 +61,9 @@ async def get_employment_requests_by_user_id(
 async def get_employment_request_by_id(
         db: DBSession,
         employment_request_id: int,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> EmploymentsRequestsResponse:
-    auth_user_id = request.state.user.get("id")
+    auth_user_id = auth_user.id
 
     result = await db.execute(
         select(EmploymentRequest)
@@ -87,9 +87,9 @@ async def get_employment_request_by_id(
 async def create_employment_request(
     db: DBSession,
     employment_create: EmploymentRequestCreate,
-    request: Request
+    auth_user: AuthenticatedUser
 ) -> Response:
-    auth_user_id = request.state.user.get("id")
+    auth_user_id = auth_user.id
 
     try :
         business = await db_get_one(
@@ -145,11 +145,11 @@ async def respond_employment_request(
         db: DBSession,
         employment_request_id: int,
         employment_update: EmploymentRequestUpdate,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> Response:
     try:
         async with db.begin():
-            auth_user_id = request.state.user.get("id")
+            auth_user_id = auth_user.id
 
             # Get Employment Request
             employment_request = await db.get(EmploymentRequest, employment_request_id)

@@ -3,7 +3,7 @@ from typing import List
 from fastapi import APIRouter, Request, status, Query
 
 from core.crud_helpers import PaginatedResponse
-from core.dependencies import DBSession, BusinessAndEmployeesSession, Pagination
+from core.dependencies import DBSession, BusinessAndEmployeesSession, Pagination, AuthenticatedUser
 from service.booking.product import create_new_product, delete_by_id, update_by_id, get_products_by_user_id, \
     get_products_by_user_id_and_service_id, get_product_by_id, get_products_by_appointment_id, get_products_by_post_id
 from schema.booking.product import ProductResponse, ProductCreateWithSubFilters, ProductUpdate, ProductWithSubFiltersResponse
@@ -60,9 +60,9 @@ async def get_products_by_post(db: DBSession, post_id: int) -> List[ProductRespo
 async def create_product(
         db: DBSession,
         product_with_sub_filters: ProductCreateWithSubFilters,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> ProductResponse:
-    return await create_new_product(db, product_with_sub_filters, request)
+    return await create_new_product(db, product_with_sub_filters, auth_user)
 
 @router.put(
     "/products/{product_id}",
@@ -73,15 +73,15 @@ async def update_product(
         db: DBSession,
         product_id: int,
         product_update: ProductUpdate,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> ProductResponse:
-    return await update_by_id(db, product_id, product_update, request)
+    return await update_by_id(db, product_id, product_update, auth_user)
 
 @router.delete(
     "/products/{product_id}",
     summary="Delete Product",
     status_code=status.HTTP_204_NO_CONTENT,
     dependencies=[BusinessAndEmployeesSession])
-async def delete_product(db: DBSession, product_id: int, request: Request):
-    return await delete_by_id(db, product_id, request)
+async def delete_product(db: DBSession, product_id: int, auth_user: AuthenticatedUser):
+    return await delete_by_id(db, product_id, auth_user)
 

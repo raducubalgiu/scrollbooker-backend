@@ -2,7 +2,7 @@ from fastapi import HTTPException, Request, status, Response
 from sqlalchemy import select, and_, insert, delete
 
 from core.crud_helpers import PaginatedResponse
-from core.dependencies import DBSession, Pagination
+from core.dependencies import DBSession, Pagination, AuthenticatedUser
 from models import BookmarkPost, Post
 from schema.social.post import UserPostResponse
 from service.social.util.fetch_paginated_posts import fetch_paginated_posts
@@ -13,9 +13,9 @@ async def get_bookmarked_posts_by_user(
         db: DBSession,
         user_id: int,
         pagination: Pagination,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> PaginatedResponse[UserPostResponse]:
-    auth_user_id = request.state.user.get("id")
+    auth_user_id = auth_user.id
 
     base_ids = (
         select(Post.id)
@@ -33,9 +33,9 @@ async def get_bookmarked_posts_by_user(
 async def bookmark_post_by_id(
         db: DBSession,
         post_id: int,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> Response:
-    auth_user_id = request.state.user.get("id")
+    auth_user_id = auth_user.id
 
     async with db.begin():
         is_post_bookmarked = await is_post_actioned(db, BookmarkPost, post_id, auth_user_id)
@@ -57,9 +57,9 @@ async def bookmark_post_by_id(
 async def unbookmark_post_by_id(
         db: DBSession,
         post_id: int,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> Response:
-    auth_user_id = request.state.user.get("id")
+    auth_user_id = auth_user.id
 
     async with db.begin():
         is_post_bookmarked = await is_post_actioned(db, BookmarkPost, post_id, auth_user_id)

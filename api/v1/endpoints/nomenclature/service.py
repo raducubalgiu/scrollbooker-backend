@@ -3,7 +3,7 @@ from typing import Union, List
 from fastapi import APIRouter, status, Request
 
 from core.crud_helpers import PaginatedResponse
-from core.dependencies import DBSession, Pagination, BusinessSession
+from core.dependencies import DBSession, Pagination, BusinessSession, AuthenticatedUser
 from core.dependencies import SuperAdminSession
 from schema.nomenclature.service import ServiceResponse, ServiceCreate, ServiceUpdate, ServiceIdsUpdate, \
     ServiceWithEmployeesResponse
@@ -71,8 +71,12 @@ async def delete_service(db: DBSession, service_id: int):
 @router.put("/businesses/update-services",
             summary='Update Business Services',
             dependencies=[BusinessSession])
-async def update_business_services(db: DBSession, services_update: ServiceIdsUpdate, request: Request):
-    return await update_services_by_business_id(db, services_update, request)
+async def update_business_services(
+        db: DBSession,
+        services_update: ServiceIdsUpdate,
+        auth_user: AuthenticatedUser
+) -> List[ServiceResponse]:
+    return await update_services_by_business_id(db, services_update, auth_user)
 
 @router.get("/services/{service_id}/filters/{filter_id}",
     summary='Get All Service - Filter Relation',

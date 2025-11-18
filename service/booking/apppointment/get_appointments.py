@@ -17,7 +17,7 @@ from schema.booking.appointment import AppointmentBusiness, \
     CalendarEventsSlot, CalendarEventsInfo, \
     CalendarEventsResponse, CalendarEventsDay, CalendarEventsCustomer, AppointmentUser, AppointmentProductResponse, \
     AppointmentResponse, AppointmentWrittenReview
-from core.dependencies import DBSession
+from core.dependencies import DBSession, AuthenticatedUser, Pagination
 from models import Appointment, Schedule, User, Business, Currency, AppointmentProduct, Product, UserCounters, Review
 from schema.nomenclature.currency import CurrencyMiniResponse
 from service.booking.business import get_business_by_user_id
@@ -137,12 +137,11 @@ async def get_appointment_by_id(
 
 async def get_appointments_by_user_id(
     db: DBSession,
-    page: int,
-    limit: int,
-    request: Request,
+    pagination: Pagination,
+    auth_user: AuthenticatedUser,
     as_customer: Optional[bool] = None
 ):
-    auth_user_id = request.state.user.get("id")
+    auth_user_id = auth_user.id
 
     user_stmt = await db.execute(
         select(User)
@@ -188,7 +187,7 @@ async def get_appointments_by_user_id(
         )
 
     base_query = base_query.where(and_(*conditions))
-    base_query = base_query.order_by(desc(Appointment.start_date)).offset((page - 1) * limit).limit(limit)
+    base_query = base_query.order_by(desc(Appointment.start_date)).offset((pagination.page - 1) * pagination.limit).limit(pagination.limit)
 
     total_count = await db.execute(select(func.count()).select_from(base_query.subquery()))
     count = total_count.scalars().first()
@@ -297,8 +296,8 @@ async def get_appointments_by_user_id(
         results=appointments
     )
 
-async def get_appointments_number_by_user_id(db: DBSession, request: Request):
-    auth_user_id = request.state.user.get("id")
+async def get_appointments_number_by_user_id(db: DBSession, auth_user: AuthenticatedUser) -> int:
+    auth_user_id = auth_user.id
 
     stmt = (
         select(func.count())

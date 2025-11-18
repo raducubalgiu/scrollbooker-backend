@@ -1,10 +1,10 @@
-from fastapi import Request, HTTPException
+from fastapi import Response, HTTPException, status
+
 from sqlalchemy import select, desc, and_, literal, func, or_
 from sqlalchemy.orm import joinedload
-from starlette import status
 
 from core.crud_helpers import PaginatedResponse
-from core.dependencies import DBSession
+from core.dependencies import DBSession, Pagination, AuthenticatedUser
 from core.enums.role_enum import RoleEnum
 from models import Notification, Follow, User, Role, UserCounters
 from schema.user.notification import NotificationResponse
@@ -12,11 +12,10 @@ from schema.user.user import UserBaseMinimum
 
 async def get_notifications_by_user_id(
         db: DBSession,
-        page: int,
-        limit: int,
-        request: Request
+        pagination: Pagination,
+        auth_user: AuthenticatedUser
 ) -> PaginatedResponse[NotificationResponse]:
-    auth_user_id = request.state.user.get("id")
+    auth_user_id = auth_user.id
 
     count_stmt = select(func.count()).select_from(Notification).where(
         and_(
@@ -68,8 +67,8 @@ async def get_notifications_by_user_id(
         )
         .options(joinedload(Notification.sender))
         .order_by(desc(Notification.created_at))
-        .offset((page - 1) * limit)
-        .limit(limit)
+        .offset((pagination.page - 1) * pagination.limit)
+        .limit(pagination.limit)
     )
 
     notifications = []
@@ -104,9 +103,13 @@ async def get_notifications_by_user_id(
         results=notifications
     )
 
-async def delete_notification_by_id(db: DBSession, notification_id, request: Request):
-    auth_user_id = request.state.user.get("id")
-    notification = await db.get(Notification, notification_id)
+async def delete_notification_by_id(
+        db: DBSession,
+        notification_id,
+        auth_user: AuthenticatedUser
+) -> Response:
+    auth_user_id = auth_user.id
+    notification: Notification = await db.get(Notification, notification_id)
 
     if not notification:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
@@ -118,4 +121,7 @@ async def delete_notification_by_id(db: DBSession, notification_id, request: Req
 
     notification.is_deleted = True
     db.add(notification)
+
     await db.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

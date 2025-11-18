@@ -9,15 +9,16 @@ from sqlalchemy.orm import joinedload
 from starlette import status
 from starlette.requests import Request
 
-from core.crud_helpers import db_get_all, db_get_one, db_update
-from core.dependencies import DBSession
+from core.crud_helpers import db_get_all, db_get_one, db_update, PaginatedResponse
+from core.dependencies import DBSession, AuthenticatedUser, Pagination
 from core.enums.appointment_status_enum import AppointmentStatusEnum
 from core.enums.role_enum import RoleEnum
 from models import User, Follow, Appointment, Product, Business, Role, BusinessType, Schedule, UserCounters
 from sqlalchemy import select, func, case, and_, or_, distinct, exists, literal_column
 from schema.user.user import UsernameUpdate, FullNameUpdate, BioUpdate, GenderUpdate, UserProfileResponse, \
     OpeningHours, SearchUsername, SearchUsernameResponse, BirthDateUpdate, UserAuthStateResponse, \
-    UserUpdateResponse, WebsiteUpdate, PublicEmailUpdate, UserProfileBusinessOwner
+    UserUpdateResponse, WebsiteUpdate, PublicEmailUpdate, UserProfileBusinessOwner, UserBaseMinimum
+
 
 async def search_available_username(db: DBSession, query: SearchUsername = Depends()):
     result = await db.execute(select(User.id).where(and_(User.username == query.username)))
@@ -57,8 +58,12 @@ async def generate_username_suggestions(db: DBSession, base: str, max_suggestion
             suggestions.append(candidate)
     return suggestions
 
-async def get_user_profile_by_id(db: DBSession, user_id: int, request: Request):
-    auth_user_id = request.state.user.get("id")
+async def get_user_profile_by_id(
+        db: DBSession,
+        user_id: int,
+        auth_user: UserProfileResponse
+) -> UserProfileResponse:
+    auth_user_id = auth_user.id
 
     lat = 44.450653
     lng = 25.992614
@@ -211,9 +216,19 @@ async def get_user_profile_by_id(db: DBSession, user_id: int, request: Request):
         address=user.business_address
     )
 
-async def update_user_fullname(db: DBSession, fullname_update: FullNameUpdate, request: Request):
-    auth_user_id = request.state.user.get("id")
-    user = await db_update(db, model=User, update_data=fullname_update, filters={"id": auth_user_id})
+async def update_user_fullname(
+        db: DBSession,
+        fullname_update: FullNameUpdate,
+        auth_user: AuthenticatedUser
+) -> UserUpdateResponse:
+    auth_user_id = auth_user.id
+
+    user = await db_update(
+        db=db,
+        model=User,
+        update_data=fullname_update,
+        filters={ "id": auth_user_id }
+    )
 
     return UserUpdateResponse(
         id=user.id,
@@ -226,8 +241,13 @@ async def update_user_fullname(db: DBSession, fullname_update: FullNameUpdate, r
         public_email=user.public_email,
     )
 
-async def update_user_username(db: DBSession, username_update: UsernameUpdate, request: Request):
-    auth_user_id = request.state.user.get("id")
+async def update_user_username(
+    db: DBSession,
+    username_update: UsernameUpdate,
+    auth_user: AuthenticatedUser
+) -> UserUpdateResponse:
+    auth_user_id = auth_user.id
+
     user_stmt = await db.execute(
         select(User)
         .where(and_(User.id == auth_user_id))
@@ -260,8 +280,12 @@ async def update_user_username(db: DBSession, username_update: UsernameUpdate, r
         public_email=user.public_email,
     )
 
-async def update_user_birthdate(db: DBSession, birthdate_update: BirthDateUpdate, request: Request):
-    auth_user_id = request.state.user.get("id")
+async def update_user_birthdate(
+    db: DBSession,
+    birthdate_update: BirthDateUpdate,
+    auth_user: AuthenticatedUser
+) -> UserUpdateResponse:
+    auth_user_id = auth_user.id
     user = await db.get(User, auth_user_id)
 
     if not user:
@@ -290,9 +314,13 @@ async def update_user_birthdate(db: DBSession, birthdate_update: BirthDateUpdate
         public_email=user.public_email,
     )
 
-async def update_user_gender(db: DBSession, gender_update: GenderUpdate, request: Request):
-    auth_user_id = request.state.user.get("id")
-    user = await db.get(User, auth_user_id)
+async def update_user_gender(
+    db: DBSession,
+    gender_update: GenderUpdate,
+    auth_user: AuthenticatedUser
+) -> UserUpdateResponse:
+    auth_user_id = auth_user.id
+    user: User = await db.get(User, auth_user_id)
 
     if not user:
         raise HTTPException(
@@ -301,8 +329,8 @@ async def update_user_gender(db: DBSession, gender_update: GenderUpdate, request
         )
 
     user.gender = gender_update.gender
-
     db.add(user)
+
     await db.commit()
     await db.refresh(user)
 
@@ -317,9 +345,19 @@ async def update_user_gender(db: DBSession, gender_update: GenderUpdate, request
         public_email=user.public_email,
     )
 
-async def update_user_bio(db: DBSession, bio_update: BioUpdate, request: Request):
-    auth_user_id = request.state.user.get("id")
-    user= await db_update(db, model=User, update_data=bio_update, filters={"id": auth_user_id})
+async def update_user_bio(
+        db: DBSession,
+        bio_update: BioUpdate,
+        auth_user: AuthenticatedUser
+) -> UserUpdateResponse:
+    auth_user_id = auth_user.id
+
+    user= await db_update(
+        db=db,
+        model=User,
+        update_data=bio_update,
+        filters={ "id": auth_user_id }
+    )
 
     return UserUpdateResponse(
         id=user.id,
@@ -332,9 +370,19 @@ async def update_user_bio(db: DBSession, bio_update: BioUpdate, request: Request
         public_email=user.public_email,
     )
 
-async def update_user_website(db: DBSession, website_update: WebsiteUpdate, request: Request):
-    auth_user_id = request.state.user.get("id")
-    user= await db_update(db, model=User, update_data=website_update, filters={"id": auth_user_id})
+async def update_user_website(
+        db: DBSession,
+        website_update: WebsiteUpdate,
+        auth_user: AuthenticatedUser
+) -> UserUpdateResponse:
+    auth_user_id = auth_user.id
+
+    user = await db_update(
+        db=db,
+        model=User,
+        update_data=website_update,
+        filters={ "id": auth_user_id }
+    )
 
     return UserUpdateResponse(
         id=user.id,
@@ -347,9 +395,19 @@ async def update_user_website(db: DBSession, website_update: WebsiteUpdate, requ
         public_email=user.public_email,
     )
 
-async def update_user_public_email(db: DBSession, public_email_update: PublicEmailUpdate, request: Request):
-    auth_user_id = request.state.user.get("id")
-    user= await db_update(db, model=User, update_data=public_email_update, filters={"id": auth_user_id})
+async def update_user_public_email(
+        db: DBSession,
+        public_email_update: PublicEmailUpdate,
+        auth_user: AuthenticatedUser
+) -> UserUpdateResponse:
+    auth_user_id = auth_user.id
+
+    user = await db_update(
+        db=db,
+        model=User,
+        update_data=public_email_update,
+        filters={"id": auth_user_id}
+    )
 
     return UserUpdateResponse(
         id=user.id,
@@ -451,8 +509,13 @@ async def get_user_dashboard_summary_by_id(db: DBSession, user_id: int, start_da
 
     return response
 
-async def get_user_followers_by_user_id(db: DBSession, user_id: int, page: int, limit: int, request: Request):
-   auth_user_id = request.state.user.get("id")
+async def get_user_followers_by_user_id(
+        db: DBSession,
+        user_id: int,
+        pagination: Pagination,
+        auth_user: AuthenticatedUser
+) -> PaginatedResponse[UserBaseMinimum]:
+   auth_user_id = auth_user.id
 
    is_follow = (
        select(Follow)
@@ -495,19 +558,24 @@ async def get_user_followers_by_user_id(db: DBSession, user_id: int, page: int, 
 
    total_count = await db.execute(followers_query)
 
-   followers_query = followers_query.offset((page - 1) * limit).limit(limit)
+   followers_query = followers_query.offset((pagination.page - 1) * pagination.limit).limit(pagination.limit)
    followers_result = await db.execute(followers_query)
 
    count = len(total_count.scalars().all())
    data = followers_result.mappings().all()
 
-   return {
-       "count": count,
-       "results": data
-   }
+   return PaginatedResponse(
+       count=count,
+       results=data
+   )
 
-async def get_user_followings_by_user_id(db: DBSession, user_id: int, page: int, limit: int, request: Request):
-   auth_user_id = request.state.user.get("id")
+async def get_user_followings_by_user_id(
+        db: DBSession,
+        user_id: int,
+        pagination: Pagination,
+        auth_user: AuthenticatedUser
+) -> PaginatedResponse[UserBaseMinimum]:
+   auth_user_id = auth_user.id
 
    is_follow = (
        select(Follow)
@@ -549,17 +617,17 @@ async def get_user_followings_by_user_id(db: DBSession, user_id: int, page: int,
    )
 
    total_count = await db.execute(followings_query)
-   followings_query = followings_query.offset((page - 1) * limit).limit(limit)
+   followings_query = followings_query.offset((pagination.page - 1) * pagination.limit).limit(pagination.limit)
 
    followings_result = await db.execute(followings_query)
 
    count = len(total_count.scalars().all())
    data = followings_result.mappings().all()
 
-   return {
-       "count": count,
-       "results": data
-   }
+   return PaginatedResponse(
+       count=count,
+       results=data
+   )
 
 # If Business - return Business Types, if employee - return Professions
 async def get_available_professions_by_user_id(db: DBSession, user_id: int):

@@ -1,11 +1,12 @@
+from typing import Optional
+
 from starlette.exceptions import HTTPException
 from starlette import status
-from starlette.requests import Request
-from core.dependencies import DBSession
+from core.dependencies import DBSession, AuthenticatedUser
 from core.enums.registration_step_enum import RegistrationStepEnum
 from models import User
 from schema.onboarding.onboarding import OnBoardingResponse
-from schema.user.user import BirthDateUpdate, GenderUpdate
+from schema.user.user import BirthDateUpdate, GenderUpdate, UserUpdateResponse
 from service.onboarding.verify_registration_step import verify_registration_step
 from service.user.user import update_user_birthdate, update_user_gender
 from core.logger import logger
@@ -13,16 +14,20 @@ from core.logger import logger
 async def collect_client_birthdate(
     db: DBSession,
     birthdate_update: BirthDateUpdate,
-    request: Request
+    auth_user: AuthenticatedUser
 ) -> OnBoardingResponse:
     try:
         await verify_registration_step(
             db=db,
-            request=request,
+            auth_user=auth_user,
             registration_step=RegistrationStepEnum.COLLECT_CLIENT_BIRTHDATE
         )
 
-        updated_birthdate = await update_user_birthdate(db, birthdate_update, request)
+        updated_birthdate: Optional[UserUpdateResponse] = await update_user_birthdate(
+            db=db,
+            birthdate_update=birthdate_update,
+            auth_user=auth_user
+        )
 
         if not updated_birthdate:
             raise HTTPException(
@@ -30,10 +35,10 @@ async def collect_client_birthdate(
                 detail="Birthdate could not be updated"
             )
 
-        user = await db.get(User, updated_birthdate.id)
+        user: User = await db.get(User, updated_birthdate.id)
         user.registration_step = RegistrationStepEnum.COLLECT_CLIENT_GENDER
-
         db.add(user)
+
         await db.commit()
 
         return OnBoardingResponse(
@@ -51,16 +56,20 @@ async def collect_client_birthdate(
 async def collect_client_gender(
     db: DBSession,
     gender_update: GenderUpdate,
-    request: Request
+    auth_user: AuthenticatedUser
 ) -> OnBoardingResponse:
     try:
         await verify_registration_step(
             db=db,
-            request=request,
+            auth_user=auth_user,
             registration_step=RegistrationStepEnum.COLLECT_CLIENT_GENDER
         )
 
-        updated_gender = await update_user_gender(db, gender_update, request)
+        updated_gender: Optional[UserUpdateResponse] = await update_user_gender(
+            db=db,
+            gender_update=gender_update,
+            auth_user=auth_user
+        )
 
         if not updated_gender:
             raise HTTPException(
@@ -68,10 +77,10 @@ async def collect_client_gender(
                 detail="Gender could not be updated"
             )
 
-        user = await db.get(User, updated_gender.id)
+        user: User = await db.get(User, updated_gender.id)
         user.registration_step = RegistrationStepEnum.COLLECT_CLIENT_LOCATION_PERMISSION
-
         db.add(user)
+
         await db.commit()
 
         return OnBoardingResponse(

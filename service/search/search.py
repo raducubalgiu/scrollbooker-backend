@@ -1,11 +1,11 @@
-from typing import Optional
+from typing import Optional, List, Union
 from geoalchemy2 import Geography
 from sqlalchemy.orm import Query
 from sqlalchemy import select, or_, func, and_, desc
 from starlette.requests import Request
 
-from core.crud_helpers import db_delete
-from core.dependencies import DBSession
+from core.crud_helpers import db_delete, PaginatedResponse
+from core.dependencies import DBSession, AuthenticatedUser, Pagination
 from core.enums.role_enum import RoleEnum
 from models import SearchKeyword, User, Service, BusinessType, UserCounters, Business, Role, Follow, UserSearchHistory
 from schema.search.search import SearchResponse, SearchServiceBusinessTypeResponse, SearchUserResponse, SearchCreate,  UserSearchHistoryResponse
@@ -16,7 +16,7 @@ async def search_keyword(
         query: str = Query,
         lat: Optional[float] = None,
         lng: Optional[float] = None
-):
+) -> List[SearchResponse]:
     max_per_type = 10
 
     user_point = func.ST_SetSRID(func.ST_Point(lng, lat), 4326)
@@ -141,12 +141,11 @@ async def search_keyword(
 async def search_all_users(
         db: DBSession,
         query: str,
-        request: Request,
-        page: Optional[int] = None,
-        limit: Optional[int] = 10,
+        auth_user: AuthenticatedUser,
+        pagination: Pagination,
         role_client: Optional[bool] = False
-):
-    auth_user_id = request.state.user.get("id")
+) -> Union[PaginatedResponse[SearchUserResponse], List[SearchUserResponse]]:
+    auth_user_id = auth_user.id
     search_term = f"%{query}%"
 
     is_follow = (
@@ -184,7 +183,7 @@ async def search_all_users(
         .where(*filters)
     )
 
-    if page is not None:
+    if pagination.page is not None:
         count_smt = select(func.count()).select_from(
             select(User.id)
             .join(Role, Role.id == User.role_id)
@@ -195,18 +194,18 @@ async def search_all_users(
         count_result = await db.execute(count_smt)
         count = count_result.scalar_one()
 
-        stmt = stmt.offset((page - 1) * limit)
-        stmt = stmt.order_by(User.username.asc()).limit(limit)
+        stmt = stmt.offset((pagination.page - 1) * pagination.limit)
+        stmt = stmt.order_by(User.username.asc()).limit(pagination.limit)
 
         users_stmt = await db.execute(stmt)
         users = users_stmt.mappings().all()
 
-        return {
-            "count": count,
-            "results": users
-        }
+        return PaginatedResponse(
+            count=count,
+            results=users
+        )
 
-    stmt = stmt.where(*filters).order_by(User.username.asc()).limit(limit)
+    stmt = stmt.where(*filters).order_by(User.username.asc()).limit(pagination.limit)
 
     users_stmt = await db.execute(stmt)
     users = users_stmt.mappings().all()
@@ -215,12 +214,12 @@ async def search_all_users(
 
 async def get_user_search_history(
         db: DBSession,
-        request: Request,
+        auth_user: AuthenticatedUser,
         lat: Optional[float] = None,
         lng: Optional[float] = None,
         timezone: Optional[str] = None
 ):
-    auth_user_id = request.state.user.get("id")
+    auth_user_id = auth_user.id
 
     search_result = await db.execute(
         select(UserSearchHistory)
@@ -237,8 +236,12 @@ async def get_user_search_history(
         "recently_search": search
     }
 
-async def create_user_search(db: DBSession, search_create: SearchCreate, request: Request):
-    auth_user_id = request.state.user.get("id")
+async def create_user_search(
+        db: DBSession,
+        search_create: SearchCreate,
+        auth_user: AuthenticatedUser
+) -> UserSearchHistoryResponse:
+    auth_user_id = auth_user.id
 
     result = await db.execute(
         select(SearchKeyword)
@@ -285,6 +288,6 @@ async def create_user_search(db: DBSession, search_create: SearchCreate, request
         created_at=new_user_search.created_at
     )
 
-async def delete_user_search(db: DBSession, search_id: int, request: Request):
+async def delete_user_search(db: DBSession, search_id: int):
     return await db_delete(db, model=UserSearchHistory, resource_id=search_id)
 

@@ -5,7 +5,7 @@ from sqlalchemy import select, and_, delete, insert
 from sqlalchemy.orm import selectinload
 
 from core.crud_helpers import db_create, db_get_all, db_update, PaginatedResponse
-from core.dependencies import DBSession, Pagination
+from core.dependencies import DBSession, Pagination, AuthenticatedUser
 from models import Currency, User, UserCurrency, Product
 from schema.nomenclature.currency import CurrencyCreate, CurrencyResponse, CurrencyUpdate, UserCurrenciesUpdate
 
@@ -47,9 +47,9 @@ async def get_currencies_by_user_id(db: DBSession, user_id: int):
 async def update_currencies_by_user(
         db: DBSession,
         currency_update: UserCurrenciesUpdate,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> List[CurrencyResponse]:
-    auth_user_id = request.state.user.get("id")
+    auth_user_id = auth_user.id
 
     async with db.begin():
         result = await db.execute(

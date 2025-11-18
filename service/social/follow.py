@@ -1,9 +1,9 @@
 from typing import Optional
 
-from fastapi import HTTPException, Request, Response, status
+from fastapi import HTTPException, Response, status
 from sqlalchemy import select, insert, and_, update, func, delete
 
-from core.dependencies import DBSession
+from core.dependencies import DBSession, AuthenticatedUser
 from core.enums.follow_type import FollowTypeEnum
 from core.enums.notification_type import NotificationTypeEnum
 from models import Follow, User, UserCounters, Notification
@@ -34,9 +34,9 @@ async def _update_counters(
 async def is_user_follow(
         db: DBSession,
         followee_id: int,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> Optional[FollowResponse]:
-    follower_id = request.state.user.get("id")
+    follower_id = auth_user.id
 
     follower = await db.get(User, follower_id)
     followee = await db.get(User, followee_id)
@@ -58,13 +58,13 @@ async def is_user_follow(
 async def follow_user(
         db :DBSession,
         followee_id: int,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> Response:
     async with db.begin():
-        follower_id = request.state.user.get("id")
+        follower_id = auth_user.id
 
         # Check Follow
-        if await is_user_follow(db, followee_id, request):
+        if await is_user_follow(db, followee_id, auth_user):
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Already followed!')
 
         # Follow
@@ -95,13 +95,13 @@ async def follow_user(
 async def unfollow_user(
         db :DBSession,
         followee_id: int,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> Response:
     async with db.begin():
-        follower_id = request.state.user.get("id")
+        follower_id = auth_user.id
 
         # Check Follow
-        if not await is_user_follow(db, followee_id, request):
+        if not await is_user_follow(db, followee_id, auth_user):
             raise HTTPException(status_code=400, detail='Not follow this user!')
 
         # Unfollow

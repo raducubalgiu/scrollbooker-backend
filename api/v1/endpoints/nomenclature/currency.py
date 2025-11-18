@@ -2,7 +2,7 @@ from typing import Union, List
 from fastapi import APIRouter, Request
 
 from core.crud_helpers import PaginatedResponse
-from core.dependencies import DBSession, SuperAdminSession, Pagination
+from core.dependencies import DBSession, SuperAdminSession, Pagination, AuthenticatedUser
 from schema.nomenclature.currency import CurrencyResponse, CurrencyCreate, CurrencyUpdate, UserCurrenciesUpdate
 from service.nomenclature.currency import create_new_currency, update_currency_by_id, \
     get_currencies_by_user_id, get_all_currencies, update_currencies_by_user
@@ -26,8 +26,12 @@ async def get_currencies_by_user(db: DBSession, user_id: int):
 @router.put("/users/update-currencies",
             summary='Update User Currencies',
             response_model=List[CurrencyResponse])
-async def update_user_currencies(db: DBSession, currency_update: UserCurrenciesUpdate, request: Request):
-    return await update_currencies_by_user(db, currency_update, request)
+async def update_user_currencies(
+        db: DBSession,
+        currency_update: UserCurrenciesUpdate,
+        auth_user: AuthenticatedUser
+) -> List[CurrencyResponse]:
+    return await update_currencies_by_user(db, currency_update, auth_user)
 
 @router.post(
     "/currencies",

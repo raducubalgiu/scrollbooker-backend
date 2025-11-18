@@ -6,7 +6,7 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy import select, insert, update, func, literal, case, and_
 
 from core.crud_helpers import PaginatedResponse
-from core.dependencies import DBSession, Pagination
+from core.dependencies import DBSession, Pagination, AuthenticatedUser
 from models import User, Review, UserCounters, ReviewLike, ReviewProductOwnerLike, Service, Product, Appointment
 from schema.booking.review import ReviewCreate, ReviewSummaryResponse, RatingBreakdown, UserReviewResponse, \
     ReviewResponse, ReviewUpdate
@@ -54,10 +54,10 @@ async def get_reviews_by_user_id(
         db: DBSession,
         user_id: int,
         pagination: Pagination,
-        request: Request,
+        auth_user: AuthenticatedUser,
         ratings: Optional[List[int]] = Query(None)
 ) -> PaginatedResponse[UserReviewResponse]:
-    auth_user_id = request.state.user.get("id")
+    auth_user_id = auth_user.id
 
     stmt = select(Review).where(
         Review.user_id == user_id,
@@ -174,10 +174,10 @@ async def create_new_review(
         db: DBSession,
         appointment_id: int,
         review_create: ReviewCreate,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> ReviewResponse:
     async with db.begin():
-        auth_user_id = request.state.user.get("id")
+        auth_user_id = auth_user.id
         appointment: Appointment = await db.get(Appointment, appointment_id)
 
         if not appointment:
@@ -223,10 +223,10 @@ async def update_review_by_id(
     db: DBSession,
     review_id: int,
     review_update: ReviewUpdate,
-    request: Request
+    auth_user: AuthenticatedUser
 ) -> ReviewResponse:
     async with db.begin():
-        auth_user_id = request.state.user.get("id")
+        auth_user_id = auth_user.id
         review: Review = await db.get(Review, review_id)
 
         if not review:
@@ -269,10 +269,10 @@ async def update_review_by_id(
 async def delete_review_by_id(
         db: DBSession,
         review_id: int,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> Response:
     async with db.begin():
-        auth_user_id = request.state.user.get("id")
+        auth_user_id = auth_user.id
 
         review: Review = await db.get(Review, review_id)
         appointment: Appointment = await db.get(Appointment, review.appointment_id)
@@ -313,10 +313,10 @@ async def delete_review_by_id(
 async def like_review_by_id(
         db: DBSession,
         review_id: int,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> Response:
     async with db.begin():
-        auth_user_id = request.state.user.get("id")
+        auth_user_id = auth_user.id
         review: Review = await db.get(Review, review_id)
 
         if not review:
@@ -370,10 +370,10 @@ async def like_review_by_id(
 async def unlike_review_by_id(
         db: DBSession,
         review_id: int,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> Response:
     async with db.begin():
-        auth_user_id = request.state.user.get("id")
+        auth_user_id = auth_user.id
         review: Review = await db.get(Review, review_id)
 
         if not review:

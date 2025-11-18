@@ -8,7 +8,7 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import Select
 
 from core.crud_helpers import db_delete, db_get_all, db_update, db_get_one, PaginatedResponse
-from core.dependencies import DBSession, check_resource_ownership, Pagination
+from core.dependencies import DBSession, check_resource_ownership, Pagination, AuthenticatedUser
 from models import Product, Schedule, product_sub_filters, business_services, SubFilter, AppointmentProduct, PostProduct
 from schema.booking.product import ProductCreateWithSubFilters, ProductUpdate, ProductWithSubFiltersResponse, ProductResponse
 
@@ -93,9 +93,10 @@ async def get_products_by_post_id(
 async def create_new_product(
         db: DBSession,
         product_with_sub_filters: ProductCreateWithSubFilters,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> ProductResponse:
-    auth_user_id = request.state.user.get("id")
+    auth_user_id = auth_user.id
+
     has_schedules = await db_get_all(db, model=Schedule, filters={Schedule.user_id: auth_user_id})
     business_has_services_stmt = await db.execute(select(business_services).where(
         business_services.c.business_id == product_with_sub_filters.product.business_id #type: ignore
@@ -141,13 +142,13 @@ async def update_by_id(
         db: DBSession,
         product_id: int,
         product_update: ProductUpdate,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> ProductResponse:
     await check_resource_ownership(
         db=db,
         resource_model=Product,
         resource_id=product_id,
-        request=request
+        auth_user=auth_user
     )
 
     return await db_update(db, model=Product, resource_id=product_id, update_data=product_update)
@@ -155,9 +156,9 @@ async def update_by_id(
 async def delete_by_id(
         db: DBSession,
         product_id: int,
-        request: Request
+        auth_user: AuthenticatedUser
 ):
-    await check_resource_ownership(db, Product, product_id, request)
+    await check_resource_ownership(db, Product, product_id, auth_user)
     return await db_delete(db, model=Product, resource_id=product_id)
 
 

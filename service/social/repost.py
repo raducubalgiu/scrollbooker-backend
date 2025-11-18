@@ -2,7 +2,7 @@ from fastapi import HTTPException, Request, status, Response
 from sqlalchemy import select, and_, insert, delete
 
 from core.crud_helpers import PaginatedResponse
-from core.dependencies import DBSession, Pagination
+from core.dependencies import DBSession, Pagination, AuthenticatedUser
 from models import Repost
 from models.social.post import Post
 from schema.social.post import UserPostResponse
@@ -15,9 +15,9 @@ async def get_reposts_by_user(
         db: DBSession,
         user_id: int,
         pagination: Pagination,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> PaginatedResponse[UserPostResponse]:
-    auth_user_id = request.state.user.get("id")
+    auth_user_id = auth_user.id
 
     base_ids = (
         select(Post.id)
@@ -36,11 +36,11 @@ async def repost_post_by_id(
         db: DBSession,
         post_id: int,
         repost_create: RepostCreate,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> Response:
-    auth_user_id = request.state.user.get("id")
-
     async with db.begin():
+        auth_user_id = auth_user.id
+
         post = await db.get(Post, post_id)
 
         if not post:
@@ -73,11 +73,11 @@ async def repost_post_by_id(
 async def un_repost_post_by_id(
         db: DBSession,
         post_id: int,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> Response:
-    auth_user_id = request.state.user.get("id")
-
     async with db.begin():
+        auth_user_id = auth_user.id
+
         is_post_reposted = await is_post_actioned(db, Repost, post_id, auth_user_id)
 
         if not is_post_reposted:

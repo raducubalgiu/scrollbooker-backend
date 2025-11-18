@@ -1,12 +1,12 @@
 from decimal import Decimal
 from typing import Optional
 
-from fastapi import HTTPException, Response, Request, status
+from fastapi import HTTPException, Response, status
 from datetime import datetime, timezone
 from core.enums.appointment_status_enum import AppointmentStatusEnum
 from schema.booking.appointment import AppointmentBlock, AppointmentCancel, AppointmentScrollBookerCreate, \
     AppointmentOwnClientCreate
-from core.dependencies import DBSession
+from core.dependencies import DBSession, AuthenticatedUser
 from models import Appointment, User, Product, AppointmentProduct, UserCurrency
 from sqlalchemy import select, and_, or_
 from core.logger import logger
@@ -39,10 +39,10 @@ async def _is_slot_booked(
 async def create_new_scroll_booker_appointment(
         db: DBSession,
         appointment_create: AppointmentScrollBookerCreate,
-        request: Request
+        auth_user: AuthenticatedUser
 ):
     async with db.begin():
-        auth_user_id = request.state.user.get("id")
+        auth_user_id = auth_user.id
         product_ids: list[int] = appointment_create.product_ids
         payment_currency_id: int = appointment_create.payment_currency_id
 
@@ -204,11 +204,11 @@ async def create_new_scroll_booker_appointment(
 async def create_new_own_client_appointment(
         db: DBSession,
         appointment_create: AppointmentOwnClientCreate,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> Response:
     try:
         async with db.begin():
-            auth_user_id = request.state.user.get("id")
+            auth_user_id = auth_user.id
 
             is_booked = await _is_slot_booked(
                 db=db,
@@ -245,11 +245,11 @@ async def create_new_own_client_appointment(
 async def create_new_blocked_appointment(
         db: DBSession,
         appointments_create: AppointmentBlock,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> Response:
     try:
         async with db.begin():
-            auth_user_id = request.state.user.get("id")
+            auth_user_id = auth_user.id
 
             for app_create in appointments_create.slots:
                 await _is_slot_booked(
@@ -282,46 +282,39 @@ async def create_new_blocked_appointment(
 async def cancel_user_appointment(
         db: DBSession,
         appointment_cancel: AppointmentCancel,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> Response:
-    try:
-        async with db.begin():
-            auth_user_id = request.state.user.get("id")
-            appointment = await db.get(Appointment, appointment_cancel.appointment_id)
+    async with db.begin():
+        auth_user_id = auth_user.id
+        appointment = await db.get(Appointment, appointment_cancel.appointment_id)
 
-            if not appointment:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                                    detail='Appointment Not Found')
+        if not appointment:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                detail='Appointment Not Found')
 
-            my_appointment_result = await db.execute(
-                select(Appointment)
-                .where(and_(
-                    Appointment.id == appointment_cancel.appointment_id,
-                    or_(
-                        Appointment.user_id == auth_user_id,
-                        Appointment.customer_id == auth_user_id
-                    )
-                ))
-            )
-            my_appointment = my_appointment_result.scalar_one_or_none()
-
-            if not my_appointment:
-                logger.error(f"User id: {auth_user_id} tried to cancel appointment: {appointment_cancel.appointment_id}")
-                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                                    detail='You do not have permission to perform this action')
-
-            appointment.status = AppointmentStatusEnum.CANCELED
-            appointment.message = appointment_cancel.message
-
-            db.add(appointment)
-
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
-    except Exception as e:
-        logger.error(f"Something went wrong. Error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='Something went wrong'
+        my_appointment_result = await db.execute(
+            select(Appointment)
+            .where(and_(
+                Appointment.id == appointment_cancel.appointment_id,
+                or_(
+                    Appointment.user_id == auth_user_id,
+                    Appointment.customer_id == auth_user_id
+                )
+            ))
         )
+        my_appointment = my_appointment_result.scalar_one_or_none()
+
+        if not my_appointment:
+            logger.error(f"User id: {auth_user_id} tried to cancel appointment: {appointment_cancel.appointment_id}")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                                detail='You do not have permission to perform this action')
+
+        appointment.status = AppointmentStatusEnum.CANCELED
+        appointment.message = appointment_cancel.message
+
+        db.add(appointment)
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 

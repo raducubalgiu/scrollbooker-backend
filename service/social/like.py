@@ -2,7 +2,7 @@ from fastapi import HTTPException, Request, Response, status
 from sqlalchemy import select, and_, insert, delete
 
 from core.crud_helpers import PaginatedResponse
-from core.dependencies import DBSession, Pagination
+from core.dependencies import DBSession, Pagination, AuthenticatedUser
 from models import Post, Like
 from schema.social.post import UserPostResponse
 from service.social.util.fetch_paginated_posts import fetch_paginated_posts
@@ -13,9 +13,9 @@ async def get_posts_liked_by_user_id(
         db: DBSession,
         user_id: int,
         pagination: Pagination,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> PaginatedResponse[UserPostResponse]:
-    auth_user_id = request.state.user.get("id")
+    auth_user_id = auth_user.id
 
     base_ids = (
         select(Post.id)
@@ -33,11 +33,11 @@ async def get_posts_liked_by_user_id(
 async def like_post_by_id(
         db: DBSession,
         post_id: int,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> Response:
-    auth_user_id = request.state.user.get("id")
-
     async with db.begin():
+        auth_user_id = auth_user.id
+
         is_post_liked = await is_post_actioned(db, Like, post_id, auth_user_id)
 
         if is_post_liked:
@@ -57,11 +57,11 @@ async def like_post_by_id(
 async def unlike_post_by_id(
         db: DBSession,
         post_id: int,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> Response:
-    auth_user_id = request.state.user.get("id")
-
     async with db.begin():
+        auth_user_id = auth_user.id
+
         is_post_liked = await is_post_actioned(db, Like, post_id, auth_user_id)
 
         if not is_post_liked:

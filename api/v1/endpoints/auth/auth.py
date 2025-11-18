@@ -8,7 +8,7 @@ from schema.auth.auth import UserRegister, UserInfoResponse, UserInfoUpdate
 from schema.auth.token import AuthResponse, RefreshToken
 from service.auth.auth import login_user, register_user, get_refresh_token, get_user_info, update_user_info, \
     get_user_permissions, verify_user_email
-from core.dependencies import DBSession
+from core.dependencies import DBSession, AuthenticatedUser
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -17,7 +17,7 @@ load_dotenv()
 @router.post("/register",
              summary='Register New User',
              response_model=AuthResponse)
-async def register(db: DBSession, user_register: UserRegister):
+async def register(db: DBSession, user_register: UserRegister) -> AuthResponse:
     return await register_user(db, user_register)
 
 @router.post("/login",
@@ -49,5 +49,5 @@ async def user_info_update(db: DBSession, user_update: UserInfoUpdate, token: st
     return await update_user_info(db, user_update, token)
 
 @router.post("/verify-email")
-async def verify_email(db: DBSession, request: Request):
-    return await verify_user_email(db, request)
+async def verify_email(db: DBSession, auth_user: AuthenticatedUser):
+    return await verify_user_email(db, auth_user)

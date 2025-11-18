@@ -2,7 +2,7 @@ from fastapi import APIRouter, Query, Request, status
 from typing import List, Optional
 
 from core.crud_helpers import PaginatedResponse
-from core.dependencies import DBSession, HTTPClient, RedisClient, SuperAdminSession, Pagination
+from core.dependencies import DBSession, HTTPClient, RedisClient, SuperAdminSession, Pagination, AuthenticatedUser
 from core.dependencies import BusinessSession
 from schema.booking.business import BusinessCreate, BusinessResponse, BusinessHasEmployeesUpdate, \
     BusinessCreateResponse, BusinessLocationResponse, BusinessEmployeeResponse
@@ -18,8 +18,13 @@ router = APIRouter(tags=["Businesses"])
     summary='Create New Business',
     response_model=BusinessCreateResponse,
     dependencies=[BusinessSession])
-async def create_business(db: DBSession, client: HTTPClient, business_data: BusinessCreate, request: Request):
-    return await create_new_business(db, client, business_data, request)
+async def create_business(
+        db: DBSession,
+        client: HTTPClient,
+        business_data: BusinessCreate,
+        auth_user: AuthenticatedUser
+) -> BusinessCreateResponse:
+    return await create_new_business(db, client, business_data, auth_user)
 
 @router.get("/businesses/{business_id}/location",
             response_model=BusinessLocationResponse)
@@ -47,7 +52,7 @@ async def get_recommended_businesses(
     "/users/{user_id}/businesses",
     summary='Get Business By User Id',
     response_model=BusinessResponse)
-async def get_business_by_user(db: DBSession, user_id: int):
+async def get_business_by_user(db: DBSession, user_id: int) -> BusinessResponse:
     return await get_business_by_user_id(db, user_id)
 
 @router.get(
@@ -55,15 +60,23 @@ async def get_business_by_user(db: DBSession, user_id: int):
     summary='List Employees filtered By Business Id',
     response_model=PaginatedResponse[BusinessEmployeeResponse],
     dependencies=[BusinessSession])
-async def get_business_employees(db: DBSession, business_id: int, pagination: Pagination):
+async def get_business_employees(
+        db: DBSession,
+        business_id: int,
+        pagination: Pagination
+) -> PaginatedResponse[BusinessEmployeeResponse]:
     return await get_business_employees_by_id(db, business_id, pagination)
 
 @router.patch("/businesses/update-has-employees",
               summary='Update Business has employees',
               response_model=BusinessResponse,
               dependencies=[BusinessSession])
-async def update_has_employees(db: DBSession, business_update: BusinessHasEmployeesUpdate, request: Request):
-    return await update_business_has_employees(db, business_update, request)
+async def update_has_employees(
+        db: DBSession,
+        business_update: BusinessHasEmployeesUpdate,
+        auth_user: AuthenticatedUser
+) -> BusinessResponse:
+    return await update_business_has_employees(db, business_update, auth_user)
 
 @router.get("/businesses/unapproved-businesses",
             summary='List All Businesses which waits for the approval',
@@ -98,5 +111,5 @@ async def get_nearby_businesses(db: DBSession,
     "/businesses/{business_id}",
     summary='Get Business By Id',
     response_model=BusinessResponse)
-async def get_business_by_user(db: DBSession, business_id: int):
+async def get_business_by_user(db: DBSession, business_id: int) -> BusinessResponse:
     return await get_business_by_id(db, business_id)

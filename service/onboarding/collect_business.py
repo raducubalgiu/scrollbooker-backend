@@ -1,17 +1,16 @@
-from typing import List
+from typing import List, Optional
 
 from starlette.exceptions import HTTPException
-from starlette.requests import Request
 from starlette import status
 
 from api.v1.endpoints.nomenclature.currency import update_user_currencies
-from core.dependencies import DBSession
+from core.dependencies import DBSession, AuthenticatedUser
 from core.enums.registration_step_enum import RegistrationStepEnum
 from models import User
 from schema.booking.business import BusinessHasEmployeesUpdate
 from schema.booking.schedule import ScheduleUpdate
-from schema.nomenclature.currency import UserCurrenciesUpdate
-from schema.nomenclature.service import ServiceIdsUpdate
+from schema.nomenclature.currency import UserCurrenciesUpdate, CurrencyResponse
+from schema.nomenclature.service import ServiceIdsUpdate, ServiceResponse
 from schema.onboarding.onboarding import OnBoardingResponse
 from service.booking.business import update_business_has_employees
 from service.booking.schedule import update_user_schedules
@@ -23,10 +22,15 @@ from service.nomenclature.service import update_services_by_business_id
 async def collect_business_services(
         db: DBSession,
         services_update: ServiceIdsUpdate,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> OnBoardingResponse:
-    auth_user_id = request.state.user.get("id")
-    services = await update_services_by_business_id(db, services_update, request)
+    auth_user_id = auth_user.id
+
+    services: Optional[List[ServiceResponse]] = await update_services_by_business_id(
+        db=db,
+        services_update=services_update,
+        auth_user=auth_user
+    )
 
     if not services:
         raise HTTPException(
@@ -34,7 +38,7 @@ async def collect_business_services(
             detail="Something went wrong"
         )
 
-    user = await db.get(User, auth_user_id)
+    user: User = await db.get(User, auth_user_id)
 
     if user.registration_step is RegistrationStepEnum.COLLECT_BUSINESS_SERVICES:
         user.registration_step = RegistrationStepEnum.COLLECT_BUSINESS_SCHEDULES
@@ -53,10 +57,11 @@ async def collect_business_services(
 async def collect_business_schedules(
     db: DBSession,
     schedule_update: List[ScheduleUpdate],
-    request: Request
+    auth_user: AuthenticatedUser
 ) -> OnBoardingResponse:
-    auth_user_id = request.state.user.get("id")
-    schedules = await update_user_schedules(db, schedule_update, request)
+    auth_user_id = auth_user.id
+
+    schedules = await update_user_schedules(db, schedule_update, auth_user)
 
     if not schedules:
         raise HTTPException(
@@ -82,9 +87,9 @@ async def collect_business_schedules(
 async def collect_business_has_employees(
         db: DBSession,
         business_update: BusinessHasEmployeesUpdate,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> OnBoardingResponse:
-    business = await update_business_has_employees(db, business_update, request)
+    business = await update_business_has_employees(db, business_update, auth_user)
 
     if not business:
         raise HTTPException(
@@ -113,11 +118,11 @@ async def collect_business_has_employees(
 async def collect_business_currencies(
         db: DBSession,
         currency_update: UserCurrenciesUpdate,
-        request: Request
+        auth_user: AuthenticatedUser
 ) -> OnBoardingResponse:
-    auth_user_id = request.state.user.get("id")
+    auth_user_id = auth_user.id
 
-    updated_user_currencies = await update_user_currencies(db, currency_update, request)
+    updated_user_currencies: List[CurrencyResponse] = await update_user_currencies(db, currency_update, auth_user)
 
     if not updated_user_currencies:
         raise HTTPException(
@@ -125,7 +130,7 @@ async def collect_business_currencies(
             detail='Something went wrong'
         )
 
-    user = await db.get(User, auth_user_id)
+    user: User = await db.get(User, auth_user_id)
 
     if user.registration_step is RegistrationStepEnum.COLLECT_BUSINESS_CURRENCIES:
         user.registration_step = RegistrationStepEnum.COLLECT_BUSINESS_VALIDATION

@@ -2,6 +2,12 @@ from typing import Optional
 from pydantic import BaseModel, Field, EmailStr, field_validator, ValidationError
 from schema.user.user import UserBase
 
+class RequestAuthUser(BaseModel):
+    id: int
+    username: str
+    email: EmailStr
+    role: str
+
 class UserRegister(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=20)

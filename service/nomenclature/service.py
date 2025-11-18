@@ -6,7 +6,7 @@ from sqlalchemy.orm import joinedload
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 
-from core.dependencies import DBSession, Pagination
+from core.dependencies import DBSession, Pagination, AuthenticatedUser
 from core.enums.role_enum import RoleEnum
 from models import Service, BusinessType, Business, User, business_services, Product, Filter, service_filters
 from schema.nomenclature.service import ServiceCreate, ServiceUpdate, ServiceResponse, ServiceIdsUpdate, \
@@ -174,8 +174,12 @@ async def update_service_by_id(db: DBSession, service_id: int, service_data: Ser
 async def delete_service_by_id(db: DBSession, service_id: int):
     return await db_delete(db, model=Service, resource_id=service_id)
 
-async def update_services_by_business_id(db: DBSession, services_update: ServiceIdsUpdate, request: Request):
-    auth_user_id = request.state.user.get("id")
+async def update_services_by_business_id(
+        db: DBSession,
+        services_update: ServiceIdsUpdate,
+        auth_user: AuthenticatedUser
+) -> List[ServiceResponse]:
+    auth_user_id = auth_user.id
 
     try:
         business_query = await db.execute(

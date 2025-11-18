@@ -7,7 +7,7 @@ from sqlalchemy.orm import joinedload
 from fastapi import HTTPException, Query, Request, Response
 
 from core.crud_helpers import PaginatedResponse
-from core.dependencies import RedisClient, Pagination
+from core.dependencies import RedisClient, Pagination, AuthenticatedUser
 from core.enums.day_of_week_enum import DayOfWeekEnum
 from core.enums.registration_step_enum import RegistrationStepEnum
 from core.logger import logger
@@ -150,7 +150,11 @@ async def get_business_by_user_id(db: DBSession, user_id: int) -> BusinessRespon
         has_employees=business.has_employees
     )
 
-async def get_business_employees_by_id(db: DBSession, business_id: int, pagination: Pagination):
+async def get_business_employees_by_id(
+        db: DBSession,
+        business_id: int,
+        pagination: Pagination
+) -> PaginatedResponse[BusinessEmployeeResponse]:
    base_q = (
        select(User.id)
        .join(EmploymentRequest, and_(
@@ -424,9 +428,9 @@ async def create_new_business(
         db: DBSession,
         client: HTTPClient,
         business_data: BusinessCreate,
-        request: Request
-):
-    auth_user_id = request.state.user.get("id")
+        auth_user: AuthenticatedUser
+) -> BusinessCreateResponse:
+    auth_user_id = auth_user.id
 
     try:
         place = await get_place_details(client, business_data.place_id)
@@ -512,10 +516,14 @@ async def create_new_business(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail='Business could not be created')
 
-async def update_business_has_employees(db: DBSession, business_update: BusinessHasEmployeesUpdate, request: Request):
-    auth_user_id = request.state.user.get("id")
-
+async def update_business_has_employees(
+        db: DBSession,
+        business_update: BusinessHasEmployeesUpdate,
+        auth_user: AuthenticatedUser
+) -> BusinessResponse:
     try:
+        auth_user_id = auth_user.id
+
         business_stmt = await db.execute(
             select(Business)
             .where(and_(Business.owner_id == auth_user_id))
